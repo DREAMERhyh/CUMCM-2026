@@ -1,0 +1,2 @@
+# Native Python visualization; localization is not part of this entry point.
+matplotlib>=3.8,<4
