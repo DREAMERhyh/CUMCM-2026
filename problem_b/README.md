@@ -1,6 +1,8 @@
-# B 题问题1：交会定位、区域直径与覆盖圆
+# B题 Q1至Q4 算法工程
 
-本目录当前实现边界为 **B-Q1**。输入若干检测点坐标及同一干扰源在这些点的实测示向度，程序构造正向 ±1° 误差扇区的纯交集，输出定位区域状态、凸多边形顶点、区域直径及端点，并判断以该直径线段为直径的圆能否覆盖定位区域。
+本目录已完成Q1和Q2的本地算法、可视化与testbench，并完成Q3/Q4可接入官方协议的离线策略、状态机和理论验证。Q3/Q4尚未接入官方模拟器，不能把离线结果视为正式成绩。第一次使用请先阅读 [`快速上手指南.md`](快速上手指南.md)。
+
+Q1输入若干检测点坐标及同一干扰源在这些点的实测示向度，程序构造正向 ±1° 误差扇区的纯交集，输出定位区域状态、凸多边形顶点、区域直径及端点，并判断以该直径线段为直径的圆能否覆盖定位区域。
 
 求解器只使用检测点与示向度；可选源坐标只画作人工核验标记，不参与计算。目标分布圆、真实接收半径和显示画幅也不裁剪 Q1 的真实定位区域。
 
@@ -106,10 +108,19 @@ print(region["diameter_circle"]["covers"])
 problem_b/
   PROJECT_CONTEXT.md              当前可恢复任务状态
   README.md                       使用说明与算法边界
+  快速上手指南.md                本科生使用说明
   VERIFICATION.md                 验证状态摘要
-  test_res.md                     最终验收结果
+  test_res_q1.md                  Q1验收结果
+  test_res_q2.md                  Q2验收结果
+  test_res_q3_offline.md          Q3离线验收结果
+  test_res_q4_offline.md          Q4离线验收结果
   code/
     geometry.py                   Q1 几何内核
+    common/                       Q2至Q4共享模型、物理区域和计时
+    q2/                           第二测点规划、CLI与图形
+    q3/                           全向搜索与清除策略
+    q4/                           定向源增量策略
+    runtime/                      HTTP适配、本地规则模型和执行器
     bearing_plot.py               Matplotlib 全局图与局部放大图
     plot_cli.py                   实测示向度统一入口
     environment.py                旧合成环境，仅用于回归核验
@@ -131,7 +142,7 @@ node --check code/visualization/app.js
 python code/plot_cli.py --demo --no-show --output output/q1_demo.png --result-json output/q1_demo.json
 ```
 
-实际执行结果、解析案例、随机样本范围和已知限制见 [`test_res.md`](test_res.md)。
+实际结果和边界分别见 [`test_res_q1.md`](test_res_q1.md)、[`test_res_q2.md`](test_res_q2.md)、[`test_res_q3_offline.md`](test_res_q3_offline.md) 和 [`test_res_q4_offline.md`](test_res_q4_offline.md)。
 
 ## 数值边界
 
