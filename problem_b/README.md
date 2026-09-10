@@ -1,127 +1,138 @@
-# B 题：命令行输入与 Python 画板
+# B 题问题1：交会定位、区域直径与覆盖圆
 
-当前入口是 **`code/plot_cli.py`**。输入检测点坐标及已经测得的示向度，固定展示 ±1° 误差边界，只做可视化，不计算扇区交集、多边形、直径或第二测点策略，也不检查接收距离。参考源坐标可选，仅用于画图。
+本目录当前实现边界为 **B-Q1**。输入若干检测点坐标及同一干扰源在这些点的实测示向度，程序构造正向 ±1° 误差扇区的纯交集，输出定位区域状态、凸多边形顶点、区域直径及端点，并判断以该直径线段为直径的圆能否覆盖定位区域。
 
-## Python 画板安装与运行
+求解器只使用检测点与示向度；可选源坐标只画作人工核验标记，不参与计算。目标分布圆、真实接收半径和显示画幅也不裁剪 Q1 的真实定位区域。
 
-需要 Python 3.10+、Matplotlib 及可用的桌面绘图后端。与下方的旧浏览器版不同，当前 Python 画板需安装额外绘图库：
+## 快速运行
 
-```bash
-python -m pip install -r problem_b/requirements.txt
-python problem_b/code/plot_cli.py
+需要 Python 3.10+ 和 Matplotlib：
+
+```powershell
+python -m pip install -r requirements.txt
+python code/plot_cli.py
 ```
 
-命令行依次询问点数、每个检测点的 `x y 示向度`，以及可选参考源坐标，例如：
+交互模式依次输入检测点数、每个点的 `x y 示向度`，以及可选参考源坐标。示向度范围为 `[0,360)`；正东为 0°，正北为 90°。
+
+也可直接使用命令行：
+
+```powershell
+python code/plot_cli.py --demo
+
+python code/plot_cli.py `
+  --point -600 -300 35.89 `
+  --point 850 -250 139.44 `
+  --point -200 1000 300.56 `
+  --source 220 280
+
+python code/plot_cli.py --demo --no-show `
+  --output output/q1_demo.png `
+  --result-json output/q1_demo.json
+```
+
+`--output` 支持 PNG 或 SVG。`--no-show` 用于无桌面环境，必须同时指定输出图。`--result-json` 保存输入、区域顶点、半平面、直径、覆盖圆、最小包围圆补充量及逐次加入观测的收缩记录。
+
+题面默认误差界为 ±1°。若需要评估接口两位小数舍入的保守裕量，可另跑：
+
+```powershell
+python code/plot_cli.py --demo --error-deg 1.005 --no-show --output output/q1_demo_margin.svg
+```
+
+1.005°只是工程敏感性参数，不是题面新增的误差分布。
+
+## 输出图
+
+全局图包含检测点、示向射线、误差边界和半径1800 m的题目背景圆；右上角局部放大图显示实际定位多边形、区域直径和直径圆。背景圆和画幅只用于显示。
+
+当区域为空或无界时，程序会明确报告状态，不用任意大方框伪造有限直径。当区域退化为点或线段时，分别返回直径0或线段端点距离。
+
+## 数学与算法
+
+对检测点 `s`、示向度 `theta` 和误差半宽 `epsilon`，程序把前向扇区写成两个半平面：
 
 ```text
-检测点数量：3
-S1 的 x y 示向度（空格分隔）：-600 -300 35.89
-S2 的 x y 示向度（空格分隔）：850 -250 139.44
-S3 的 x y 示向度（空格分隔）：-200 1000 300.56
-参考源 G 的 x y（可选，直接回车不显示）：220 280
+cross(u(theta-epsilon), q-s) >= 0
+cross(u(theta+epsilon), q-s) <= 0
 ```
 
-随后打开原生 Matplotlib 窗口，使用工具栏缩放、平移和保存。横纵坐标等比例；圆域半径 1800 m；各检测点及对应射线使用相同颜色；实线是输入示向度，虚线是其 ±1° 边界，淡色扇区仅为误差范围，不是求得的定位区域。图中文字采用简洁英文与数学标记，避免不同机器的中文字体缺失。
+多次观测得到所有半平面的交集。实现流程为：
 
-也可直接通过参数传入，并保存 PNG 或矢量 SVG：
+1. 枚举边界线交点并用全部约束筛选，独立判断空集与无界性；
+2. 对可行交点求严格逆时针凸包；
+3. 用旋转卡壳在 `O(n)` 时间求凸多边形直径；
+4. 保留 `O(n²)` 全点对算法作为 testbench oracle；
+5. 以直径端点中点为圆心、直径一半为半径，检查所有顶点；
+6. 额外用二点/三点支撑圆穷举最小包围圆，供后续问题复用。
 
-```bash
-python problem_b/code/plot_cli.py --demo
-python problem_b/code/plot_cli.py --point -600 -300 35.89 --point 850 -250 139.44 --source 220 280 --output problem_b/output/bearings.svg
-python problem_b/code/plot_cli.py --demo --no-show --output problem_b/output/bearings.png
-```
+半平面枚举基线约为 `O(m³)`，`m` 是半平面数；适合本题少量观测并便于审查。最小包围圆补充实现为小规模 `O(n⁴)` oracle，不冒称 Welzl 期望线性算法。
 
-`--point` 可以重复，不限于两个点。`--source` 可以省略。`--no-show` 适用于没有桌面的环境，须同时指定输出文件。射线按画幅截断显示，窗口边框和扇区远端都不是定位边界。
+## Q1 的圆覆盖结论
 
-Matplotlib 弹窗需要 Tk、Qt 等图形后端。Windows 官方 Python 安装时可包含 Tcl/Tk；运行 `python -m tkinter` 可检查 Tk 窗口是否可用。无桌面环境可直接导出图片。后端依据：[Matplotlib 官方说明](https://matplotlib.org/stable/users/explain/figure/backends.html)。
+**以定位区域直径为直径的圆不一定覆盖定位区域。**
 
-## 独立绘图函数
+程序对每个具体区域直接检查。一般反例是边长20的等边三角形：区域直径为20，而最小包围圆半径为 `20/sqrt(3) ≈ 11.547`，大于直径圆半径10。两次真实形式的测向扇区同样可以形成不能被直径圆覆盖的四边形，相关数值反例已进入 testbench。
 
-函数位于 `code/bearing_plot.py`，不导入旧版 `geometry.py` 或 `environment.py`：
+## Python 接口
 
 ```python
-from bearing_plot import plot_bearings
+from plot_cli import analyze_q1
 
-fig, ax = plot_bearings(
-    detector_points=[(-600, -300), (850, -250), (-200, 1000)],
-    bearings_deg=[35.89, 139.44, 300.56],
-    source=(220, 280),  # 可省略；仅作参考点，不用于计算示向度
-    show=True,
-    output_path=None,  # 可填 .png 或 .svg
+result = analyze_q1(
+    points=[(-600, -300), (850, -250), (-200, 1000)],
+    bearings=[35.89, 139.44, 300.56],
+    error_deg=1.0,
 )
+
+region = result["region"]
+print(region["status"])
+print(region["vertices"])
+print(region["diameter"], region["diameter_pair"])
+print(region["diameter_circle"]["covers"])
 ```
 
-在 `problem_b/code/` 下运行此示例，或将该目录加入 Python 模块搜索路径。示向度单位为度，范围 `[0,360)`，正东 0°、正北 90°。误差界是函数内部固定常量 `ERROR_DEG = 1.0`，不生成随机误差，也不修改输入的示向度。
+更底层的独立函数位于 `code/geometry.py`：
 
----
+- `bearing_planes`：示向度转正向半平面；
+- `intersect_halfplanes`：区域分类与顶点恢复；
+- `diameter_calipers`：旋转卡壳主算法；
+- `diameter_bruteforce`：全点对 oracle；
+- `minimum_enclosing_circle`：小规模支撑圆穷举；
+- `localize`：从观测表完成 Q1 求解。
 
-## 旧版浏览器实验说明（当前不使用）
-
-本地合成场景，用于前两问的几何展示与核验。只接受**确定取得有效示向度**的检测点，不模拟越界搜索或无信号处理流程，不连接官方模拟器，也不实现第三、四问。
-
-## 启动
-
-需要 Python 3.10 或更高版本及现代浏览器，无需安装第三方 Python 包，无需联网。
-
-在仓库根目录执行：
-
-```bash
-python problem_b/code/server.py
-```
-
-Linux 若 Python 命令为 `python3`，替换命令即可。Windows 同样可运行 `py problem_b/code/server.py`。随后在浏览器打开 <http://127.0.0.1:8765>。端口已占用时使用 `--port 8766`。按 Ctrl+C 停止。必须经本地服务器访问，不直接双击 HTML。
-
-## 使用窗口
-
-1. 默认示例含一个源和四个检测点，直接展示六边形定位区域。
-2. 编辑源坐标、频道、接收半径及检测点坐标；可增删源和检测点，选择当前分析频道后点击“计算并更新图形”。源上限 20，检测点支持 1—64 个。
-3. 误差留空时由种子、频道和检测坐标确定；也可手工输入 ±1° 内的误差。同一坐标重复观测必须使用相同误差设置。当前不支持直接录入实测示向度的 UI；数值模块 `geometry.localize` 可独立接收已有示向度。
-4. 使用种子生成可复现的源与检测点。两种生成方式均保证检测点在分布圆域内且对 G1 有有效示向度。“源附近”在 G1 周围最多 950 m 的圆盘内拒绝采样；“有效位置均匀采样”在整个目标圆域内拒绝无效点，得到圆域与可测范围交集上的条件均匀样本。这些仅是实验场景，不是题目给定的概率分布。
-5. 多源场景按频道分别分析同一组测点。生成器保证 G1 的有效性；切换其他频道时若某测点无效，窗口会提示修改，保留旧图并标明输入尚未计算。
-6. 左图展示全局坐标、分布圆与射线，右图自动放大定位区域。可隐藏真值或误差边界，也可显示直径圆。全局图中重合点可能遮挡，可通过坐标输入和观测表核查。
-7. 两幅图分别导出独立 SVG，保持矢量清晰度，适合论文插图。SVG 自带字体候选，但未嵌入字体；跨设备排版需检查字体。若 LaTeX 工具链不直接接收 SVG，可在 Windows 浏览器或矢量编辑器中转换为 PDF。
-8. “保存场景”导出当前输入 JSON；“导出结果”包含对应输入、观测、区域顶点、直径端点及真值核验结果。JSON 可重新导入复现。图形及结果导出要求输入没有尚未计算的修改。
-
-## 模型边界
-
-- 圆域中心为原点，正东为 x 正向、正北为 y 正向，单位米；源必须位于半径 1800 m 的圆域内。检测点允许在圆域外，但本阶段仍须有效。
-- 源均全向，频道互不相同，接收半径在 1000—1500 m。每次只对选中频道计算，其他源不干扰测向。
-- 有效测向条件：`5 < 距离 <= 接收半径`。手工输入不满足条件时拒绝整次计算并提示修正，绝不混入伪造示向度。
-- 真实方位为 `atan2(源y-测点y, 源x-测点x)`，由弧度转角度并归一化到 `[0,360)`；示向度为真实方位加有界误差后归一化。
-- 自动误差采用散列构造的固定合成误差场：相同种子、频道及位置返回相同误差，不随检测次数或检测顺序变化。不是官方误差场，未假设官方误差独立、均匀或正态。
-- 内部不舍入示向度，屏幕小数仅用于展示。本阶段按题面 ±1°，没有引入附件通信中的两位小数传输量化。
-- **定位区域为正向 ±1° 扇区的纯交集**。真实源坐标、源接收半径和已知分布圆只用于构造有效观测、绘图与事后核验，不用于裁剪定位区域。因此多边形可能部分位于分布圆外，这与第一问的纯交会定义一致。
-- 一次有效观测、共线或重复观测可能仍然产生无界区域。图上只显示画幅内部分，显示裁剪不参与直径计算。不声称存在有限多边形。
-
-## 计算方法与结构
+## 文件结构
 
 ```text
 problem_b/
-  README.md
-  VERIFICATION.md
+  PROJECT_CONTEXT.md              当前可恢复任务状态
+  README.md                       使用说明与算法边界
+  VERIFICATION.md                 验证状态摘要
+  test_res.md                     最终验收结果
   code/
-    environment.py          场景、输入验证、固定误差、有效观测、生成器
-    geometry.py             独立的扇区交集、区域分类、直径基准
-    server.py               仅监听本机的界面与计算接口
-    visualization/
-      index.html            输入与结果面板
-      style.css             窗口样式
-      app.js                SVG 绘图、交互与导出，不执行定位求解
+    geometry.py                   Q1 几何内核
+    bearing_plot.py               Matplotlib 全局图与局部放大图
+    plot_cli.py                   实测示向度统一入口
+    environment.py                旧合成环境，仅用于回归核验
+    server.py                     旧浏览器实验服务器
+    visualization/                旧浏览器界面
     tests/
-      test_geometry.py      解析案例与合成场景核验
+      test_geometry.py            原有几何与合成环境回归
+      test_q1_algorithms.py       Q1 算法 testbench
+      test_q1_cli.py              CLI/JSON/PNG/SVG 端到端 testbench
 ```
 
-1. 一条示向度转成两条半平面约束，交集是向前的窄扇区，不是无限直线两侧的双锥。
-2. 枚举边界交点，并用全部半平面筛选；独立判断可行性和无界方向，然后对有限顶点求凸包。当前小规模算法约 O(m³)，m 为半平面数。
-3. 凸多边形最远点对可取在顶点上。对所有顶点对计算欧氏距离，最大值为直径，复杂度 O(n²)。单点直径 0，线段取端点距离；空集不定义直径，无界集直径无限。
-4. 取直径端点中点为圆心、直径一半为半径，逐顶点判断圆是否覆盖区域；该圆不一定覆盖。尚未实现最小包围圆或旋转卡壳优化。
+## 验收
 
-当前普通双精度计算使用明确数值容差，不是精确算术。极端近平行或尺度差异巨大的输入仍需要独立高精度复核。先以本版完成几何核验，再决定第二问的测点优化和更快的直径算法。
+在 `problem_b/` 目录执行：
 
-## 运行核验
-
-```bash
-python -B -m unittest discover -s problem_b/code/tests -v
+```powershell
+python -B -m unittest discover -s code/tests -v
+node --check code/visualization/app.js
+python code/plot_cli.py --demo --no-show --output output/q1_demo.png --result-json output/q1_demo.json
 ```
 
-本次实际核验范围与未完成事项见 [VERIFICATION.md](VERIFICATION.md)。源材料：[B题原文](../document/CUMCM2026Problems/B题/B题.pdf)、[几何调研路线](../调研/B题-几何启发式路线.md)。
+实际执行结果、解析案例、随机样本范围和已知限制见 [`test_res.md`](test_res.md)。
+
+## 数值边界
+
+当前使用普通双精度和明确容差。testbench 已覆盖跨0°、近平行趋势、退化区域和随机凸包，但这不是任意病态浮点输入的形式化精确算术证书。若边界行列式接近阈值、结果异常巨大或有界区域无法恢复顶点，应保留原始输入并做高精度复核。
