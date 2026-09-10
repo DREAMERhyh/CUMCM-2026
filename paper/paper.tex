@@ -1,0 +1,126 @@
+% !TeX program = xelatex
+% 2026 全国大学生数学建模竞赛论文骨架（电子版）
+% 提交前请删除所有“待填写”提示，并核对 paper/README.md 中的清单。
+
+\documentclass[withoutpreface,bwprint]{cumcmthesis}
+\usepackage{cumcm2026}
+
+\title{论文题目（待填写）}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+请在此概述研究对象、主要问题、建模方法、求解过程、关键结果和结论。摘要应当独立、完整，避免只罗列章节安排；标题、摘要和关键词合计原则上不超过一页。
+
+针对问题一，待填写主要方法与结果；针对问题二，待填写主要方法与结果；如有更多问题，依次补充。最后概括模型的检验结果、适用范围与主要结论。
+
+\keywords{关键词一\quad 关键词二\quad 关键词三\quad 关键词四}
+\end{abstract}
+
+% 官方规范明确要求正文不设目录，正文从电子版第 2 页开始。
+
+\section{问题重述}
+
+用自己的语言准确重述赛题背景、已知条件、约束和需要解决的各项问题。避免大段照抄题面。
+
+\section{问题分析}
+
+分析各问题之间的关系、建模难点、可利用的数据和总体求解思路，并说明选择相应方法的理由。
+
+\section{模型假设}
+
+\begin{enumerate}
+  \item 待填写假设，并说明其合理性或适用条件；
+  \item 待填写假设，并说明忽略因素可能造成的影响。
+\end{enumerate}
+
+\section{符号说明}
+
+\begin{table}[H]
+  \centering
+  \caption{主要符号说明}
+  \label{tab:symbols}
+  \begin{tabularx}{0.9\textwidth}{@{}cXc@{}}
+    \toprule
+    符号 & 含义 & 单位 \\
+    \midrule
+    $x$ & 待填写 & 待填写 \\
+    $y$ & 待填写 & 待填写 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{模型建立与求解}
+
+\subsection{问题一的模型}
+
+给出变量、目标、约束和模型推导。公式应定义全部符号并标明必要单位，例如
+\begin{equation}
+  y=f(x),
+  \label{eq:model-example}
+\end{equation}
+其中，$x$ 与 $y$ 的含义见表~\ref{tab:symbols}。随后说明算法、参数来源、求解过程和数值结果。
+
+\subsection{问题二的模型}
+
+根据赛题问题数量增删本节。对所用公开数据、算法或他人成果，应在首次出现处给出引用。
+
+\section{模型检验与结果分析}
+
+报告误差分析、敏感性分析、稳健性检验或与基准方法的比较。图表应有编号、标题、单位和必要的数据来源说明。
+
+\section{模型评价与改进}
+
+说明模型的优点、局限、适用边界和可执行的改进方向，避免没有依据的泛泛评价。
+
+\section{结论}
+
+逐项回答赛题提出的问题，给出可复核的核心数值、判断或建议，并保持与摘要和正文结果一致。
+
+% 本模板整理过程使用了 AI；若后续用途变化，请据实修改花括号中的简要用途。
+\CumcmAIUsed{LaTeX 模板整理与排版检查}
+
+\begin{thebibliography}{9}
+  \bibitem{cumcmthesis}
+  LaTeX Studio.
+  \newblock CUMCMThesis：全国大学生数学建模竞赛 \LaTeX{} 论文模板[CP/OL].
+  \newblock 版本 2.9, 2026-08-26 [2026-09-10]. \url{https://github.com/latexstudio/CUMCMThesis}.
+
+  % 按正文首次引用顺序继续添加文献；所有公开资料和网上资料均须在正文标注。
+\end{thebibliography}
+
+\clearpage
+\begin{appendices}
+
+\section{支撑材料文件列表}
+
+本文排版框架在 CUMCMThesis 模板基础上整理，模板来源见文献~\cite{cumcmthesis}。
+
+提交前请在此逐项列出支撑材料中的文件名及用途，包括可运行源程序、自主查阅的数据资料和较大篇幅的中间结果。若确实没有支撑材料，应改为规范要求的表述：“本论文没有支撑材料”。
+
+\begin{table}[H]
+  \centering
+  \caption{支撑材料文件列表（待填写）}
+  \label{tab:supporting-files}
+  \begin{tabularx}{0.95\textwidth}{@{}cXX@{}}
+    \toprule
+    序号 & 文件名 & 内容与用途 \\
+    \midrule
+    1 & 待填写 & 待填写 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{源程序}
+
+提交时应附上建模所用的全部完整、可运行源程序，并保证运行结果与论文一致。篇幅适合时，可用下面的命令将代码纳入附录；同时应将源文件放入支撑材料。
+
+% 示例：\lstinputlisting[language=Python,caption={问题一求解程序}]{code/problem1.py}
+
+若论文确实没有使用程序，请删除本段说明并明确写出：“本论文没有用到程序”。
+
+\end{appendices}
+
+\end{document}

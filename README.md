@@ -3,6 +3,7 @@
 三人小组的全国大学生数学建模竞赛协作仓库。
 
 - `document/`：竞赛规定与论文格式规范。
+- [paper/](paper/README.md)：按 2026 年规范整理的匿名电子版 LaTeX 论文工程。
 - [AGENTS.md](AGENTS.md)：所有 agent 工作时须遵循的 AI 使用记录规则。
 - [ai_log/](ai_log/README.md)：AI 使用记录、模板及最终汇总说明。
 
