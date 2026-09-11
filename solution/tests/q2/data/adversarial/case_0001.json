@@ -1,0 +1,26 @@
+{
+  "case_id": "adversarial_42_0000",
+  "mode": "adversarial",
+  "input": {
+    "first_observation": {
+      "position": [
+        -1499.999,
+        -2e-05
+      ],
+      "channel": 1,
+      "result": "direction",
+      "bearing_deg": 358.999996944
+    },
+    "current_channel": 1,
+    "config_overrides": {
+      "min_receive_radius": 10.0
+    }
+  },
+  "oracle": {
+    "source_position": [
+      0.0,
+      -0.0001
+    ],
+    "bearing_error_deg": -1.0
+  }
+}

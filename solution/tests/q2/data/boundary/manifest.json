@@ -1,0 +1,11 @@
+{
+  "mode": "boundary",
+  "seed": 42,
+  "total": 4,
+  "cases": [
+    "case_0001.json",
+    "case_0002.json",
+    "case_0003.json",
+    "case_0004.json"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "case_id": "random_42_0003",
+  "mode": "random",
+  "input": {
+    "first_observation": {
+      "position": [
+        -998.736695025,
+        211.052273988
+      ],
+      "channel": 1,
+      "result": "direction",
+      "bearing_deg": 301.088722533
+    },
+    "current_channel": 1,
+    "config_overrides": {}
+  },
+  "oracle": {
+    "source_position": [
+      -909.899014167,
+      68.572885089
+    ],
+    "bearing_error_deg": -0.855332784589292
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "case_id": "boundary_42_0003",
+  "mode": "boundary",
+  "input": {
+    "first_observation": {
+      "position": [
+        -280.074034591,
+        107.510349027
+      ],
+      "channel": 20,
+      "result": "direction",
+      "bearing_deg": 158.0
+    },
+    "current_channel": 20,
+    "config_overrides": {}
+  },
+  "oracle": {
+    "source_position": [
+      -1680.444674337,
+      645.062273345
+    ],
+    "bearing_error_deg": -1.0
+  }
+}

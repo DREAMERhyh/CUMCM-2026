@@ -1,0 +1,15 @@
+{
+  "mode": "adversarial",
+  "seed": 42,
+  "total": 8,
+  "cases": [
+    "case_0001.json",
+    "case_0002.json",
+    "case_0003.json",
+    "case_0004.json",
+    "case_0005.json",
+    "case_0006.json",
+    "case_0007.json",
+    "case_0008.json"
+  ]
+}

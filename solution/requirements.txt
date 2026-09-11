@@ -1,0 +1,2 @@
+# Q1/Q2 native Python visualization; strategy and geometry otherwise use stdlib.
+matplotlib>=3.8,<4
