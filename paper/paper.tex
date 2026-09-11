@@ -25,43 +25,208 @@
 
 用自己的语言准确重述赛题背景、已知条件、约束和需要解决的各项问题。避免大段照抄题面。
 
+无线电干扰源的定位与清除是无线电频谱管理的重要任务。然而，即使确定了干扰源的分布区域，受制于
+环境因素影响，各干扰源的精确定位依旧需要技术人员在目标分布区域内进行。
+
+为了在危险环境中代替技术人员开展定位和清除工作，需要研发搭载于机器狗的干扰源自动定位清除系统。
+本文针对这一目标，实现了较为高效的定位清除策略，并在模拟器上进行了验证。
+
 \section{问题分析}
 
-分析各问题之间的关系、建模难点、可利用的数据和总体求解思路，并说明选择相应方法的理由。
+\subsection{问题一的分析}
+
+题目已给出交会定位法：每个检测点的示向度存在左右各 $1^\circ$ 的误差范围，多个检测点对应区域的公共部分即为干扰源的定位区域。因此，本问首先需要从几何上说明，在有效交会且公共区域有界的情况下，多个区域交汇所得的定位区域必为凸多边形。
+
+定位区域的直径定义为区域内任意两点之间距离的最大值。对于凸多边形，需要进一步证明这一最大值必能在两个顶点之间取得，从而将区域直径转化为最远顶点对之间的距离。得到直径端点后，以两端点的中点为圆心、直径的一半为半径作圆；该圆不一定覆盖整个定位区域，还需建立相应的几何判据。利用定位区域与圆的凸性，只需判断凸多边形的全部顶点是否位于圆内，即可确定该圆能否覆盖整个定位区域。
 
 \section{模型假设}
 
+\subsection{四问通用模型假设}
+
 \begin{enumerate}
-  \item 待填写假设，并说明其合理性或适用条件；
-  \item 待填写假设，并说明忽略因素可能造成的影响。
+  \item 测向机、机器狗和所有干扰源均位于同一水平面内，忽略其高度差异，并在题设直角坐标系中按欧氏距离计算位置关系；
+  \item 目标分布区域为以坐标原点为圆心、半径为 $1800\ \mathrm{m}$ 的闭圆域，区域边界包含在目标分布区域内；
+  \item 每个干扰源的频道保持不变且彼此不同，不同干扰源的信号互不影响，因而可按频道分别处理检测结果。
+\end{enumerate}
+
+\subsection{问题一的模型假设}
+
+\begin{enumerate}
+  \item 已知的各组检测点和示向度均对应同一个干扰源，除题设给出的示向误差外，检测点坐标不含误差；
+  \item 示向度真实误差不超过 $1^\circ$，误差边界计入允许区域，不对误差附加概率分布假设；
+  \item 问题一题干原文要求“计算多边形定位区域直径”，故本问将每次示向误差区域视为由两条向前无限延伸的边界射线围成的角区域，定位区域只取这些角区域的公共部分，不再使用有效接收半径或半径为 $1800\ \mathrm{m}$ 的目标圆域对其进行裁剪；
+  \item 主要讨论交会有效的情形，即多个角度误差区域的公共部分非空、有界且具有非零面积。若公共部分为空或无界，则不存在题目所述的有限多边形直径。
 \end{enumerate}
 
 \section{符号说明}
 
 \begin{table}[H]
   \centering
-  \caption{主要符号说明}
+  \caption{问题一主要符号说明}
   \label{tab:symbols}
   \begin{tabularx}{0.9\textwidth}{@{}cXc@{}}
     \toprule
     符号 & 含义 & 单位 \\
     \midrule
-    $x$ & 待填写 & 待填写 \\
-    $y$ & 待填写 & 待填写 \\
+    $n$ & 检测点的数量 & 个 \\
+    $S_i$ & 第 $i$ 个检测点 & m \\
+    $\theta_i$ & 在检测点 $S_i$ 处测得的示向度 & $^\circ$ \\
+    $\delta$ & 示向度的最大误差，本文取 $1^\circ$ & $^\circ$ \\
+    $C_i$ & 第 $i$ 次观测所确定的角度误差区域 & -- \\
+    $\Omega$ & 所有角度误差区域的公共部分，即定位区域 & -- \\
+    $O_0$ & 半径为 $1800\ \mathrm{m}$ 的目标圆域圆心 & m \\
+    $R_G$ & 干扰源 $G$ 的实际有效接收半径 & m \\
+    $\overline B(A,\rho)$ & 以 $A$ 为圆心、$\rho$ 为半径的闭圆域 & -- \\
+    $K(R_G)$ & 同时考虑角度、接收距离和目标圆域的物理可行域 & -- \\
+    $m$ & 定位凸多边形的顶点数 & 个 \\
+    $V_j$ & 定位凸多边形的第 $j$ 个顶点 & m \\
+    $d(P,Q)$ & 平面内两点 $P,Q$ 之间的欧氏距离 & m \\
+    $D$ & 定位区域的直径 & m \\
+    $V_p,V_q$ & 一组取得直径的端点 & m \\
+    $O,r$ & 直径圆的圆心和半径 & m \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
 \section{模型建立与求解}
 
-\subsection{问题一的模型}
+\subsection{问题一的模型建立与求解}
 
-给出变量、目标、约束和模型推导。公式应定义全部符号并标明必要单位，例如
+\subsubsection{交会定位区域的几何模型}
+
+记第 $i$ 个检测点为 $S_i$，在该点测得的示向度为 $\theta_i$。由题设，真实方位角位于 $\theta_i$ 左右各 $\delta=1^\circ$ 的范围内。以 $S_i$ 为顶点、两条向前无限延伸的误差边界射线为边界所夹的闭角区域记为 $C_i$。根据交会定位法，与全部观测相容的干扰源位置必须同时属于所有 $C_i$，故定位区域为
 \begin{equation}
-  y=f(x),
-  \label{eq:model-example}
+  \Omega=\bigcap_{i=1}^{n}C_i.
+  \label{eq:q1-intersection}
 \end{equation}
-其中，$x$ 与 $y$ 的含义见表~\ref{tab:symbols}。随后说明算法、参数来源、求解过程和数值结果。
+
+\noindent\textbf{命题 1：}若 $\Omega$ 非空、有界且具有非零面积，则 $\Omega$ 是凸多边形。
+
+\noindent\textbf{证明：}
+由于 $2\delta=2^\circ<180^\circ$，每个角度误差区域 $C_i$ 都是由两条边界射线围成的较小角区域。两条边界射线所在的直线各自确定一个包含该角内部的闭半平面，而 $C_i$ 恰为这两个闭半平面的交。任取同一闭半平面内的两点，其连线段仍位于该闭半平面内，故闭半平面为凸集；两个凸集的交仍为凸集，因此每个 $C_i$ 均为凸集。
+
+再任取 $A,B\in\Omega$。由式~\eqref{eq:q1-intersection}，对任意 $i$ 均有 $A,B\in C_i$。由于每个 $C_i$ 都是凸集，线段 $AB$ 属于每个 $C_i$，从而
+\begin{equation}
+  AB\subseteq\bigcap_{i=1}^{n}C_i=\Omega.
+\end{equation}
+因此 $\Omega$ 为凸集。另一方面，$n$ 个角度误差区域总共只有 $2n$ 条边界射线，$\Omega$ 的边界只能落在相应的有限条边界直线上。若 $\Omega$ 非空、有界且具有非零面积，其边界不可能含有无限延伸的射线，只能由有限条线段首尾相接形成简单闭合多边形。结合 $\Omega$ 的凸性可知，$\Omega$ 必为凸多边形。证毕。
+
+由命题 1，定位多边形的顶点必为若干误差边界的有效交点。求解时，将所有满足每一次观测角度限制的边界交点保留下来，再取这些点的凸包，即可得到按逆时针排列的顶点集
+\begin{equation}
+  \Omega=\operatorname{conv}\{V_1,V_2,\ldots,V_m\},
+  \label{eq:q1-convex-hull}
+\end{equation}
+其中 $\operatorname{conv}$ 表示凸包。
+
+图~\ref{fig:q1-region-intersection} 给出了两个角度误差区域交会形成有界凸定位区域的示意。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.58\textwidth]{figures/q1-region-intersection.pdf}
+  \caption{多个示向误差区域的公共交集（角度不按比例）}
+  \label{fig:q1-region-intersection}
+\end{figure}
+
+\subsubsection{定位区域直径及其求解}
+
+按照题目定义，定位区域的直径为区域内任意两点距离的最大值，即
+\begin{equation}
+  D=\max_{P,Q\in\Omega}d(P,Q)
+   =\max_{P,Q\in\Omega}\|P-Q\|_2.
+  \label{eq:q1-diameter-definition}
+\end{equation}
+由于 $\Omega$ 是有界闭集，$\Omega\times\Omega$ 也是紧集，而距离函数连续，故式~\eqref{eq:q1-diameter-definition} 中的最大值必能取得。
+
+\noindent\textbf{命题 2：}凸多边形的直径必由其两个顶点取得，即
+\begin{equation}
+  D=\max_{1\leq i,j\leq m}\|V_i-V_j\|_2.
+  \label{eq:q1-vertex-diameter}
+\end{equation}
+
+\noindent\textbf{证明：}
+任取 $P,Q\in\Omega$。由式~\eqref{eq:q1-convex-hull}，存在非负系数 $\lambda_i,\mu_j$，满足
+\begin{equation}
+  P=\sum_{i=1}^{m}\lambda_iV_i,\qquad
+  Q=\sum_{j=1}^{m}\mu_jV_j,\qquad
+  \sum_{i=1}^{m}\lambda_i=\sum_{j=1}^{m}\mu_j=1.
+\end{equation}
+于是
+\begin{align}
+  \|P-Q\|_2
+  &=\left\|\sum_{i=1}^{m}\sum_{j=1}^{m}
+      \lambda_i\mu_j(V_i-V_j)\right\|_2 \notag\\
+  &\leq\sum_{i=1}^{m}\sum_{j=1}^{m}
+      \lambda_i\mu_j\|V_i-V_j\|_2 \notag\\
+  &\leq\max_{1\leq i,j\leq m}\|V_i-V_j\|_2.
+  \label{eq:q1-diameter-proof}
+\end{align}
+这说明区域内任意两点之间的距离都不超过最远顶点对之间的距离。反之，所有顶点均属于 $\Omega$，故最远顶点对的距离也不可能超过 $D$。两边结合即得式~\eqref{eq:q1-vertex-diameter}。证毕。
+
+式~\eqref{eq:q1-vertex-diameter} 已将连续区域上的最大距离问题化为凸多边形顶点集上的最远点对问题。为与凸多边形的几何结构相适应，采用旋转卡壳法求解。其依据是：任一取得直径的顶点对必为一组对踵点。事实上，设 $V_p,V_q$ 为一组直径端点。分别过两点作垂直于 $V_pV_q$ 的直线；若多边形在过 $V_p$ 的直线外侧还存在一点 $X$，则向量 $X-V_p$ 在 $V_q$ 指向 $V_p$ 的方向上具有正投影，从而
+\begin{equation}
+  \|X-V_q\|_2^2
+  =\|V_p-V_q\|_2^2+\|X-V_p\|_2^2
+   +2(X-V_p)\mathbin{\boldsymbol{\cdot}}(V_p-V_q)
+  >D^2,
+\end{equation}
+与 $D$ 为最大距离矛盾。对 $V_q$ 同理，因此上述两条平行直线均为多边形的支撑线，$V_p,V_q$ 构成对踵点。沿凸多边形边界旋转一对平行支撑线时，对踵点只会沿顶点序列单调向前移动，故依次检查所有对踵点对即可得到直径，并且在顶点已经逆时针排列后只需进行一次线性扫描。
+
+\subsubsection{直径圆的覆盖判据}
+
+设旋转卡壳法得到的一组直径端点为 $V_p,V_q$。以线段 $V_pV_q$ 为直径构造圆，下文所称“圆覆盖”均指该圆的闭圆面覆盖。其圆心和半径分别为
+\begin{equation}
+  O=\frac{V_p+V_q}{2},\qquad r=\frac{D}{2}.
+  \label{eq:q1-diameter-circle}
+\end{equation}
+
+\noindent\textbf{命题 3：}直径圆能够覆盖整个定位区域 $\Omega$ 的充分必要条件为
+\begin{equation}
+  \max_{1\leq j\leq m}\|V_j-O\|_2\leq\frac{D}{2}.
+  \label{eq:q1-circle-criterion}
+\end{equation}
+
+\noindent\textbf{证明：}
+必要性显然：若直径圆覆盖 $\Omega$，则属于 $\Omega$ 的每个顶点都必须位于闭圆面内，因而满足式~\eqref{eq:q1-circle-criterion}。
+
+下面证明充分性。若全部顶点均满足 $\|V_j-O\|_2\leq r$，则对任意 $X\in\Omega$，由凸包表示可写成
+\begin{equation}
+  X=\sum_{j=1}^{m}\lambda_jV_j,\qquad
+  \lambda_j\geq0,\qquad \sum_{j=1}^{m}\lambda_j=1.
+\end{equation}
+利用三角不等式可得
+\begin{equation}
+  \|X-O\|_2
+  =\left\|\sum_{j=1}^{m}\lambda_j(V_j-O)\right\|_2
+  \leq\sum_{j=1}^{m}\lambda_j\|V_j-O\|_2
+  \leq\sum_{j=1}^{m}\lambda_jr=r.
+\end{equation}
+因此 $\Omega$ 中任意一点均位于闭圆面内，直径圆能够覆盖整个定位区域。证毕。
+
+命题 3 同时说明，区域直径等于某两个顶点间的最大距离，并不能直接推出以这两点为直径的圆一定覆盖该区域；最终结论必须由式~\eqref{eq:q1-circle-criterion} 判定。图~\ref{fig:q1-diameter-circle} 给出了直径圆未覆盖第三个顶点的几何示意。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.52\textwidth]{figures/q1-diameter-circle.pdf}
+  \caption{直径圆未覆盖定位区域的反例（长度不按比例）}
+  \label{fig:q1-diameter-circle}
+\end{figure}
+
+综上，问题一的数学求解过程为：依据交会定位法求出多个角度误差区域的公共部分，并构造其凸多边形顶点；利用旋转卡壳法在对踵点中求得最远顶点对及直径 $D$；最后计算所有顶点到直径圆圆心 $O$ 的距离，按照式~\eqref{eq:q1-circle-criterion} 给出能否覆盖的结论。该过程与问题分析及求解算法保持一致。
+
+\subsubsection{建模边界及对后续问题的影响}
+
+上述模型中的 $\Omega$ 是依照问题一原文所定义的交会定位多边形，并非利用题目全部物理条件得到的最小可行域。若干扰源 $G$ 的实际有效接收半径 $R_G$ 已知，则每次成功获得示向度还意味着干扰源位于以相应检测点为圆心、$R_G$ 为半径的闭圆域内；同时，干扰源还必须位于目标分布圆域内。此时更完整的物理可行域应为
+\begin{equation}
+  K(R_G)=\Omega\cap\overline B(O_0,1800)
+  \cap\bigcap_{i=1}^{n}\overline B(S_i,R_G),
+  \qquad 1000\leq R_G\leq1500.
+  \label{eq:q1-physical-region}
+\end{equation}
+由于题目只给出了 $R_G$ 的取值范围而未给出其具体数值，式~\eqref{eq:q1-physical-region} 不能在问题一中直接确定唯一的精确区域。即使只采用 $1500\ \mathrm{m}$ 的必要距离上界，接收圆周或目标圆周仍可能截去 $\Omega$ 的一部分，使新区域的边界包含圆弧。该区域仍是凸集，但一般不再是凸多边形。
+
+由 $K(R_G)\subseteq\Omega$ 可知，当前模型求得的直径 $D$ 是完整物理可行域直径的上界，因此用于衡量位置不确定性时具有保守性。但是，若要直接求解 $K(R_G)$ 的精确直径或判断其直径圆覆盖性，就不能只检查有限个直线边界交点，也不能直接套用针对凸多边形的旋转卡壳法和逐顶点判据，还必须考虑圆弧内部可能出现的极值点。
+
+这一差异会影响问题二中的第二检测点选择，以及问题三、问题四中对干扰源位置区域的更新、移动目标选择和精确定位条件判断。忽略圆弧约束可能扩大估计区域，使后续策略偏保守，并增加额外检测或移动。本阶段只明确这一建模边界及其影响，不将圆弧离散为折线，也不据此改写后续问题的模型；待后续形成适合相应决策目标的圆弧处理方法后，再统一修订。
 
 \subsection{问题二的模型}
 

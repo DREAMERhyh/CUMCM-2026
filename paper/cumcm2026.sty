@@ -15,6 +15,22 @@
 \RequirePackage{titlesec}
 \RequirePackage{fancyhdr}
 
+% Windows ctex defaults to SimSun and SimHei, neither of which exposes a
+% separate bold face.  Map requested bold Chinese text to SimHei explicitly.
+\IfFontExistsTF{SimSun}{%
+  \IfFontExistsTF{SimHei}{%
+    \setCJKmainfont[BoldFont=SimHei]{SimSun}%
+    \setCJKfamilyfont{zhsong}[BoldFont=SimHei]{SimSun}%
+    \setCJKfamilyfont{zhhei}[BoldFont=SimHei]{SimHei}%
+  }{}%
+}{}%
+
+% Section numbers in the class contain \thinspace.  Keep that spacing in the
+% printed heading, but use a plain space when hyperref creates PDF bookmarks.
+\pdfstringdefDisableCommands{%
+  \def\thinspace{ }%
+}
+
 % tabularx: X-derived wrapping columns.
 \newcolumntype{Y}{>{\centering\arraybackslash}X}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
