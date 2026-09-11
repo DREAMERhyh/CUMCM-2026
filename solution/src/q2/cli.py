@@ -43,11 +43,23 @@ def main(argv=None):
     observation = BearingObservation((x, y), args.channel, "direction", bearing)
     plan = plan_second_point(observation,
                              config=Q2Config(error_deg=args.error_deg))
-    selected = plan["selected"]
-    print(f"第二检测点：({selected['point'][0]:.3f}, {selected['point'][1]:.3f})")
-    print(f"保证接收：{'是' if selected['guaranteed_reception'] else '否'}")
-    print(f"有限场景最坏后验包围半径：{selected['worst_case_radius_m']:.3f} m")
-    print(f"预计动作时间：{selected['action_time_s']:.3f} s")
+    selected = plan["baseline"]["selected"]
+    print("离散搜索基线：")
+    print(f"  第二检测点：({selected['point'][0]:.3f}, {selected['point'][1]:.3f})")
+    print(f"  保证接收：{'是' if selected['guaranteed_reception'] else '否'}")
+    print(f"  有限场景最坏后验包围半径：{selected['worst_case_radius_m']:.3f} m")
+    print(f"  预计动作时间：{selected['action_time_s']:.3f} s")
+    print(f"  同口径选点分数：{selected['score']:.3f}")
+    continuous = plan["continuous_fim"]
+    print("连续FIM优化：")
+    if continuous["status"] == "ok":
+        fim_selected = continuous["selected"]
+        print(f"  第二检测点：({fim_selected['point'][0]:.3f}, {fim_selected['point'][1]:.3f})")
+        print(f"  鲁棒FIM指标：{continuous['robust_fim_index_per_s']:.6g}")
+        print(f"  同口径选点分数：{fim_selected['score']:.3f}")
+        print(f"  相对离散基线分差：{continuous['score_delta_vs_baseline']:+.3f}")
+    else:
+        print(f"  不可用：{continuous.get('reason', continuous['status'])}")
     print(f"候选数：{plan['candidate_count']}，保证接收候选：{plan['guaranteed_candidate_count']}")
     guaranteed = plan["candidate_regions"]["guaranteed_reception"]
     possible = plan["candidate_regions"]["possible_reception"]

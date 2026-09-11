@@ -40,6 +40,31 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         self.assertEqual(first["selected_point"], second["selected_point"])
         self.assertIn(first["selected_point"],
                       [item["point"] for item in first["candidates"]])
+        self.assertEqual(first["selected_point"],
+                         first["baseline"]["selected_point"])
+        self.assertEqual(first["continuous_fim"]["status"], "ok")
+        self.assertEqual(first["continuous_fim"]["selected_point"],
+                         second["continuous_fim"]["selected_point"])
+        self.assertAlmostEqual(
+            first["continuous_fim"]["robust_fim_index_per_s"],
+            second["continuous_fim"]["robust_fim_index_per_s"],
+        )
+        self.assertGreaterEqual(
+            first["continuous_fim"]["robust_fim_index_per_s"] + 1e-15,
+            first["continuous_fim"]["best_seed_fim_index_per_s"],
+        )
+        fim_selected = first["continuous_fim"]["selected"]
+        self.assertTrue(fim_selected["guaranteed_reception"])
+        self.assertAlmostEqual(
+            fim_selected["score"],
+            fim_selected["action_time_s"]
+            + first["config"]["uncertainty_seconds_per_metre"]
+            * fim_selected["worst_case_radius_m"],
+        )
+        self.assertAlmostEqual(
+            first["comparison"]["continuous_minus_baseline"],
+            fim_selected["score"] - first["selected"]["score"],
+        )
 
     def test_selected_is_best_guaranteed_candidate_when_available(self):
         plan = plan_second_point(self.observation)
@@ -82,6 +107,9 @@ class Q2AlgorithmTestbench(unittest.TestCase):
             plan["candidate_regions"]["guaranteed_reception"]["status"],
             "empty",
         )
+        self.assertEqual(plan["continuous_fim"]["status"], "unavailable")
+        self.assertEqual(plan["continuous_fim"]["reason"],
+                         "guaranteed_reception_region_empty")
 
     def test_non_direction_input_is_rejected(self):
         obs = BearingObservation(self.sensor, 1, "no_signal")
@@ -126,9 +154,13 @@ class Q2CliTestbench(unittest.TestCase):
             self.assertGreater(image_path.stat().st_size, 10_000)
             data = json.loads(json_path.read_text(encoding="utf-8"))
             self.assertEqual(data["method"],
-                             "set_worst_case_radius_per_action_time")
+                             "baseline_and_continuous_fim")
             self.assertEqual(len(data["selected_point"]), 2)
             self.assertIn("candidate_regions", data)
+            self.assertEqual(data["continuous_fim"]["status"], "ok")
+            self.assertIn("selected_score", data["continuous_fim"])
+            self.assertIn("离散搜索基线", process.stdout)
+            self.assertIn("连续FIM优化", process.stdout)
             self.assertTrue(data["candidates"][0]["candidate_id"].startswith("C"))
 
 

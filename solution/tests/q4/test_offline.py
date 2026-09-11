@@ -12,8 +12,8 @@ if str(SRC) not in sys.path:
 
 from q4.directional import four_sided_points, grid121, is_visible
 from q4.policy import Q4Policy
-from runtime.fake_simulator import FakeSimulator, FakeSource
 from runtime.runner import run_policy
+from sim.fake import FakeSimulator, FakeSource
 
 
 class Q4TheoryTestbench(unittest.TestCase):

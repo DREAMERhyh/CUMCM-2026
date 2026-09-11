@@ -10,6 +10,7 @@ from common.domain import (build_region_from_observations, circle_outer_planes,
 from common.models import BearingObservation
 from common.time_model import measure_cost
 from .candidates import build_candidate_regions, generate_candidates
+from .continuous_fim import optimize_continuous_fim
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,12 @@ class Q2Config:
     candidate_region_sides: int = 72
     scenario_limit: int = 8
     uncertainty_seconds_per_metre: float = 0.5
+    continuous_fim_enabled: bool = True
+    fim_samples_per_edge: int = 4
+    fim_initial_step_m: float = 200.0
+    fim_min_step_m: float = 2.0
+    fim_max_iterations: int = 120
+    fim_seed_limit: int = 10
 
 
 def _posterior_radius(region, sensor, target, error, config):
@@ -127,10 +134,68 @@ def plan_measurement(region, observations, *, current_position=None,
                                            item["point"]))
     fim_choice = max(scores, key=lambda item: (item["fim_proxy_per_s"],
                                                -item["score"]))
-    return {
-        "method": "set_worst_case_radius_per_action_time",
+    baseline = {
+        "method": "discrete_set_score",
         "selected_point": selected["point"],
         "selected": selected,
+        "candidate_count": len(scores),
+        "guaranteed_candidate_count": len(guaranteed),
+    }
+    if config.continuous_fim_enabled:
+        continuous_fim = optimize_continuous_fim(
+            region,
+            candidate_regions["guaranteed_reception"],
+            first_position=first.position,
+            current_position=current_position,
+            current_channel=current_channel,
+            target_channel=target_channel,
+            min_receive_radius=config.min_receive_radius,
+            seed_points=[item["point"] for item in (guaranteed or scores)],
+            samples_per_edge=config.fim_samples_per_edge,
+            initial_step_m=config.fim_initial_step_m,
+            min_step_m=config.fim_min_step_m,
+            max_iterations=config.fim_max_iterations,
+            seed_limit=config.fim_seed_limit,
+        )
+        if continuous_fim["status"] == "ok":
+            comparable = score_candidates(
+                region, observations, [continuous_fim["selected_point"]],
+                current_position, current_channel, target_channel, config,
+            )[0]
+            comparable["candidate_id"] = "FIM"
+            continuous_fim["selected"] = comparable
+            continuous_fim["selected_score"] = comparable["score"]
+            continuous_fim["score_delta_vs_baseline"] = (
+                comparable["score"] - selected["score"]
+            )
+    else:
+        continuous_fim = {
+            "status": "disabled",
+            "method": "continuous_position_robust_fim_pattern_search",
+            "reason": "disabled_by_config",
+            "optimality_claim": "none",
+        }
+    comparison = {
+        "score_definition": (
+            "action_time_s + uncertainty_seconds_per_metre "
+            "* worst_case_radius_m"
+        ),
+        "lower_is_better": True,
+        "baseline_score": selected["score"],
+        "continuous_fim_score": continuous_fim.get("selected_score"),
+        "continuous_minus_baseline": continuous_fim.get(
+            "score_delta_vs_baseline"
+        ),
+    }
+    return {
+        "method": "baseline_and_continuous_fim",
+        # Compatibility aliases: Q3 and existing callers keep using the old
+        # discrete set-score result unless they explicitly select the new key.
+        "selected_point": selected["point"],
+        "selected": selected,
+        "baseline": baseline,
+        "continuous_fim": continuous_fim,
+        "comparison": comparison,
         "fim_baseline_point": fim_choice["point"],
         "candidate_count": len(scores),
         "guaranteed_candidate_count": len(guaranteed),
@@ -142,7 +207,8 @@ def plan_measurement(region, observations, *, current_position=None,
             "源物理圆域用外切正多边形保守近似。",
             "保证接收域是圆交集的内近似；可能接收域是圆盘Minkowski和的外近似。",
             "最坏情形在有限边界场景和误差端点上计算，不声称连续全局最优。",
-            "FIM只作排序基准，最终选择使用集合评分。",
+            "连续FIM在测点坐标上优化，但源位置鲁棒性仍由有限边界场景近似。",
+            "连续FIM优化的是信息量替代目标；最终另用离散基线的集合评分同口径比较。",
         ],
     }
 

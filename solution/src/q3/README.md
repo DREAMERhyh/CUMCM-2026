@@ -5,3 +5,5 @@
 当前状态：【待验证】。
 
 策略未定、待对拍方案确定后补全。现有 `policy.py`、`coverage.py` 和离线测试仅作为算法原型保留，不能替代官方模拟器验收。
+
+`cli.py` 仍只运行本地 `sim.fake.FakeSimulator`。官方通信、三动作演练烟雾测试和现场日志入口位于 `src/sim/`；在人工完成 `tests/sim/verify_manual.md` 前不得把通信层本地通过理解为 Q3 策略通过。

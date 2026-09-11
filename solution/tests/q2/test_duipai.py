@@ -1,4 +1,4 @@
-"""Q2 独立对拍：核验有限候选评分、连续域包含关系和时间记账。"""
+"""Q2 独立对拍：核验离散基线、连续FIM、连续域和时间记账。"""
 
 import argparse
 import json
@@ -84,11 +84,38 @@ def check_case(case):
     check("输出声明有限场景局限",
           any("不声称连续全局最优" in text for text in plan["limitations"]),
           plan["limitations"])
+    continuous = plan["continuous_fim"]
+    if guaranteed_region["status"] == "bounded":
+        check("连续FIM正常返回", continuous["status"] == "ok", continuous)
+        if continuous["status"] == "ok":
+            point = continuous["selected_point"]
+            farthest = max(math.dist(point, source) for source in vertices)
+            check("连续FIM点保证接收",
+                  farthest <= config.min_receive_radius + 1e-6,
+                  {"point": point, "farthest": farthest})
+            selected_fim = continuous["selected"]
+            expected_score = (
+                selected_fim["action_time_s"]
+                + config.uncertainty_seconds_per_metre
+                * selected_fim["worst_case_radius_m"]
+            )
+            check("连续FIM同口径复评分",
+                  math.isclose(selected_fim["score"], expected_score,
+                               rel_tol=1e-12, abs_tol=1e-9),
+                  {"actual": selected_fim["score"],
+                   "expected": expected_score})
+            check("连续FIM不劣于最佳种子",
+                  (continuous["robust_fim_index_per_s"] + 1e-15
+                   >= continuous["best_seed_fim_index_per_s"]),
+                  continuous)
+    else:
+        check("空保证域禁用连续FIM",
+              continuous["status"] == "unavailable", continuous)
     return failures
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="对拍 Q2 有限候选规划器。")
+    parser = argparse.ArgumentParser(description="对拍 Q2 双方案规划器。")
     parser.add_argument("--dir", type=Path,
                         default=Path(__file__).with_name("data") / "random")
     args = parser.parse_args(argv)
@@ -115,8 +142,8 @@ def main(argv=None):
             print(f"  {name}: {detail}")
     if failed:
         return 1
-    print("有限候选选择、连续域和时间记账检查全部通过。")
-    print("注意：本结果不构成连续空间全局最优证明。")
+    print("有限候选选择、连续FIM可行性、连续域和时间记账检查全部通过。")
+    print("注意：连续FIM是数值近似结果，不构成原问题连续全局最优证明。")
     return 0
 
 

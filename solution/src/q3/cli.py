@@ -10,8 +10,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(code_root))
 
 from q3.policy import Q3Policy
-from runtime.fake_simulator import FakeSimulator, FakeSource
 from runtime.runner import run_policy
+from sim.fake import FakeSimulator, FakeSource
 
 
 def main(argv=None):

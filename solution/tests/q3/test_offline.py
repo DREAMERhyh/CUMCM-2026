@@ -13,9 +13,9 @@ if str(SRC) not in sys.path:
 from common.models import Action
 from q3.coverage import nearest_coverage_distance, ring7, strip_clear_points
 from q3.policy import Q3Policy
-from runtime.fake_simulator import FakeSimulator, FakeSource
-from runtime.http_client import build_request_payload
 from runtime.runner import run_policy
+from sim.fake import FakeSimulator, FakeSource
+from sim.protocol import build_request_payload
 
 
 class Q3TheoryTestbench(unittest.TestCase):

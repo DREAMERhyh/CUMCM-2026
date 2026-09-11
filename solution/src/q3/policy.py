@@ -47,7 +47,8 @@ class Q3Policy:
         self.max_refinements = max_refinements
         self.error_deg = error_deg
         self.q2_config = Q2Config(error_deg=error_deg, circle_sides=16,
-                                  scenario_limit=4)
+                                  scenario_limit=4,
+                                  continuous_fim_enabled=False)
 
     def initial_state(self):
         return Q3State()
