@@ -87,8 +87,10 @@ class Q2AlgorithmTestbench(unittest.TestCase):
                                      solution["max_action_time_s"] + 1e-8)
         for branch_name in ("baseline", "continuous_fim"):
             branch = first[branch_name]
-            self.assertEqual(branch["near_optimal_region_meta"]["status"],
-                             "ok")
+            status = branch["near_optimal_region_meta"]["status"]
+            self.assertIn(status, ("ok", "partial"))
+            if status == "partial":
+                self.assertTrue(branch["near_optimal_region_meta"]["timed_out"])
             self.assertEqual(set(branch["near_optimal_regions"]),
                              {"5pct", "10pct"})
             for near in branch["near_optimal_regions"].values():

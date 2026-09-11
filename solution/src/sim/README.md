@@ -52,10 +52,14 @@ python src/sim/cli.py --problem 3 --robot-id "参赛队号" --confirm-ready
 完整 Q3/Q4 原型会产生较多动作，必须额外写明：
 
 ```powershell
-python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --max-refinements 2 --fim-cpu-time-limit-s 6 --confirm-ready --confirm-policy
+python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 0.2 --confirm-ready --confirm-policy
 ```
 
-`--fim-cpu-time-limit-s 6` 是每次 Q2 连续 FIM 规划允许的真实 CPU 墙钟上限，不是机器狗虚拟动作时间。Q3 默认关闭近优域绘图计算，因此该时限只用于产生实际细化测点。
+`--fim-cpu-time-limit-s 10` 是每次 Q2 连续 FIM 规划允许的真实 CPU 墙钟上限，不是机器狗虚拟动作时间。Q3 默认关闭近优域绘图计算，因此该时限只用于产生实际细化测点；Q4 未显式指定时仍保持 6 s。
+
+`--rolling-cpu-time-limit-s 0.2` 是每次 Q3 总时间有限场景评价的额外真实墙钟截止。默认 `cvar` 来自独立训练种子；超时并不发送异常动作，而是使用截止前最佳完整候选或直接清除。Q4 忽略这些滚动参数并保持关闭。
+
+Q3/Q4 每次在线运行结束后，控制台会输出 `平均用时`，计算为总虚拟时间除以清除成功的信号源数；若没有清除成功的信号源，则明确显示无法计算，不进行除零。
 
 正式测试各有次数限制。必须先由人工按 `tests/sim/verify_manual.md` 完成演练核对；本程序不会操作模拟器界面，也不能判断当前选中的是演练还是正式测试。
 

@@ -10,7 +10,12 @@ class Q4Policy(Q3Policy):
         super().__init__(max_refinements=max_refinements,
                          error_deg=error_deg,
                          coverage_points=grid121(),
-                         fim_cpu_time_limit_s=fim_cpu_time_limit_s)
+                         fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+                         adaptive_refinement=False,
+                         posterior_grid=False,
+                         joint_batch_mode="off",
+                         failed_clear_remeasure_mode="off",
+                         rolling_time_mode="off")
 
     def _refinement_point(self, state, track):
         circle = track.region["minimum_enclosing_circle"]

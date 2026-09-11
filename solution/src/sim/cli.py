@@ -2,6 +2,7 @@
 
 import argparse
 from datetime import datetime
+import json
 from pathlib import Path
 import sys
 
@@ -22,6 +23,21 @@ def _default_log(problem):
     return f"output/sim/q{problem}_{stamp}.jsonl"
 
 
+def _count_successful_clears(log_path):
+    with Path(log_path).open("r", encoding="utf-8") as stream:
+        return sum(
+            1
+            for line in stream
+            if json.loads(line).get("response", {}).get("clear_result") == "success"
+        )
+
+
+def _average_time_line(virtual_time_s, source_count):
+    if source_count <= 0:
+        return "平均用时：无法计算（未清除信号源）"
+    return f"平均用时：{virtual_time_s/source_count:.6f} s/信号源"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="B题 Q3/Q4 官方模拟器接口入口；必须先由人工启动所需测试。"
@@ -37,10 +53,38 @@ def main(argv=None):
     parser.add_argument("--retry-count", type=int, default=2)
     parser.add_argument("--retry-delay-s", type=float, default=0.2)
     parser.add_argument("--max-actions", type=int)
-    parser.add_argument("--max-refinements", type=int, default=2)
     parser.add_argument(
-        "--fim-cpu-time-limit-s", type=float, default=6.0,
-        help="每次Q2连续FIM规划允许的真实墙钟秒数",
+        "--max-refinements", type=int,
+        help="每源细化上限；未指定时 Q3=5、Q4=2",
+    )
+    parser.add_argument(
+        "--fim-cpu-time-limit-s", type=float,
+        help="每次Q2连续FIM规划允许的真实墙钟秒数；未指定时Q3=10、Q4=6",
+    )
+    parser.add_argument(
+        "--joint-batch-mode",
+        choices=("off", "guaranteed", "all_active"),
+        default="guaranteed",
+        help="Q3联合批测模式；Q4忽略该参数",
+    )
+    parser.add_argument(
+        "--failed-clear-remeasure-mode",
+        choices=("off", "gated"), default="gated",
+        help="Q3清除失败复测模式；Q4忽略该参数",
+    )
+    parser.add_argument(
+        "--rolling-time-mode",
+        choices=("off", "scenario"), default="scenario",
+        help="Q3有限场景总虚拟时间滚动评价；Q4忽略该参数",
+    )
+    parser.add_argument(
+        "--rolling-cpu-time-limit-s", type=float, default=0.2,
+        help="每次Q3滚动评价的真实墙钟秒数；Q4忽略该参数",
+    )
+    parser.add_argument(
+        "--rolling-risk-metric",
+        choices=("p90", "cvar", "worst", "mean"), default="cvar",
+        help="Q3有限场景风险汇总口径；Q4忽略该参数",
     )
     parser.add_argument("--exit-safety-margin-s", type=float, default=15.0)
     parser.add_argument("--log", help="新建的逐动作 JSONL 日志路径")
@@ -57,10 +101,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not args.confirm_ready:
         parser.error("未发送任何请求：请确认模拟器接口就绪后添加 --confirm-ready。")
-    if args.max_refinements < 0:
+    if args.max_refinements is not None and args.max_refinements < 0:
         parser.error("--max-refinements 不能为负数。")
-    if args.fim_cpu_time_limit_s <= 0:
+    fim_cpu_time_limit_s = args.fim_cpu_time_limit_s
+    if fim_cpu_time_limit_s is None:
+        fim_cpu_time_limit_s = 10.0 if args.problem == 3 else 6.0
+    if fim_cpu_time_limit_s <= 0:
         parser.error("--fim-cpu-time-limit-s 必须为正数。")
+    if args.rolling_cpu_time_limit_s <= 0:
+        parser.error("--rolling-cpu-time-limit-s 必须为正数。")
     if args.mode == "policy" and not args.confirm_policy:
         parser.error("未发送任何请求：policy 模式还必须添加 --confirm-policy。")
 
@@ -68,14 +117,27 @@ def main(argv=None):
         policy = SmokePolicy()
         max_actions = args.max_actions or 10
     else:
+        q3_refinements = (5 if args.max_refinements is None
+                          else args.max_refinements)
+        q4_refinements = (2 if args.max_refinements is None
+                          else args.max_refinements)
         policy = (Q3Policy(
-                      max_refinements=args.max_refinements,
-                      fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+                      max_refinements=q3_refinements,
+                      fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+                      joint_batch_mode=args.joint_batch_mode,
+                      failed_clear_remeasure_mode=(
+                          args.failed_clear_remeasure_mode
+                      ),
+                      rolling_time_mode=args.rolling_time_mode,
+                      rolling_cpu_time_limit_s=(
+                          args.rolling_cpu_time_limit_s
+                      ),
+                      rolling_risk_metric=args.rolling_risk_metric,
                   )
                   if args.problem == 3
                   else Q4Policy(
-                      max_refinements=args.max_refinements,
-                      fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+                      max_refinements=q4_refinements,
+                      fim_cpu_time_limit_s=fim_cpu_time_limit_s,
                   ))
         max_actions = args.max_actions or (1000 if args.problem == 3 else 4000)
     log_path = args.log or _default_log(args.problem)
@@ -94,13 +156,16 @@ def main(argv=None):
             max_actions=max_actions,
             exit_safety_margin_s=args.exit_safety_margin_s,
         )
+        successful_clears = _count_successful_clears(log_path)
     except (SimulatorError, OSError, RuntimeError, ValueError) as error:
         print(f"现场运行停止：{error}", file=sys.stderr)
         print(f"若日志已创建，请保留并人工核对：{log_path}", file=sys.stderr)
         return 2
     print(f"运行结束：{summary.exit_reason}")
     print(f"动作数：{len(summary.actions)}")
+    print(f"清除成功数：{successful_clears}")
     print(f"虚拟时间：{summary.virtual_time_s:.6f} s")
+    print(_average_time_line(summary.virtual_time_s, successful_clears))
     print(f"日志：{log_path}")
     return 0
 
