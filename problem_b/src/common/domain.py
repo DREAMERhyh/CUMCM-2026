@@ -7,7 +7,7 @@ because of discretisation.
 
 import math
 
-from geometry import bearing_planes, intersect_halfplanes
+from q1.geometry import bearing_planes, intersect_halfplanes
 
 from .models import BearingObservation
 
@@ -76,4 +76,3 @@ def representative_points(vertices, limit=12):
 
 def max_vertex_distance(point, vertices):
     return max(math.dist(point, vertex) for vertex in vertices)
-

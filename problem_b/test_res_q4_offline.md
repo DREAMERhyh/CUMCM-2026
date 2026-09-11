@@ -33,4 +33,3 @@ python code/q4/cli.py --output output/q4_offline/demo.json
 - 真实RPC吞吐能否承受大规模扫描；
 - 自适应跳点、频道排序和局部复核能节省多少时间；
 - 正式Q4清除率和平均定位清除时间。
-

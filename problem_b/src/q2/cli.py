@@ -6,7 +6,8 @@ from pathlib import Path
 import sys
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    code_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(code_root))
 
 from common.models import BearingObservation
 from q2.planner import Q2Config, plan_second_point
@@ -45,9 +46,13 @@ def main(argv=None):
     selected = plan["selected"]
     print(f"第二检测点：({selected['point'][0]:.3f}, {selected['point'][1]:.3f})")
     print(f"保证接收：{'是' if selected['guaranteed_reception'] else '否'}")
-    print(f"最坏后验包围半径：{selected['worst_case_radius_m']:.3f} m")
+    print(f"有限场景最坏后验包围半径：{selected['worst_case_radius_m']:.3f} m")
     print(f"预计动作时间：{selected['action_time_s']:.3f} s")
     print(f"候选数：{plan['candidate_count']}，保证接收候选：{plan['guaranteed_candidate_count']}")
+    guaranteed = plan["candidate_regions"]["guaranteed_reception"]
+    possible = plan["candidate_regions"]["possible_reception"]
+    print(f"连续保证接收域：{guaranteed['status']}，面积 {guaranteed['area_m2']:.3f} m^2")
+    print(f"连续可能接收域：{possible['status']}，外近似面积 {possible['area_m2']:.3f} m^2")
 
     if args.result_json:
         path = Path(args.result_json)
@@ -65,4 +70,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

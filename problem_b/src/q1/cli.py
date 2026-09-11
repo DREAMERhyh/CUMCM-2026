@@ -6,8 +6,13 @@ import math
 from pathlib import Path
 import sys
 
-from bearing_plot import plot_bearings, validate_inputs
-from geometry import localize
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from q1.bearing_plot import plot_bearings, validate_inputs
+    from q1.geometry import localize
+else:
+    from .bearing_plot import plot_bearings, validate_inputs
+    from .geometry import localize
 
 DEMO_POINTS = [(-600, -300), (850, -250), (-200, 1000)]
 DEMO_BEARINGS = [35.89, 139.44, 300.56]

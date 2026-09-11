@@ -1,4 +1,4 @@
-"""Python canvas for supplied bearings. No localization or simulation.
+"""B-Q1 Python canvas for supplied bearings. No localization or simulation.
 
 Public API: plot_bearings(detector_points, bearings_deg, source=None).
 All bearings are already valid observations. Source truth is optional artwork.

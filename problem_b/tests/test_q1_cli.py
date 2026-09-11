@@ -9,7 +9,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CLI = ROOT / "code" / "plot_cli.py"
+CLI = ROOT / "code" / "q1" / "cli.py"
 
 
 class Q1CliTestbench(unittest.TestCase):

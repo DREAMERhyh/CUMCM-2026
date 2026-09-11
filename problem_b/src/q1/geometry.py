@@ -1,4 +1,4 @@
-"""Pure bearing geometry. No simulator ground truth or rendering dependencies.
+"""B-Q1 pure bearing geometry. No simulator ground truth or rendering dependencies.
 
 Half-planes are normalized (a, b, c), meaning a*x + b*y <= c.
 Region construction uses auditable intersection enumeration; polygon diameter

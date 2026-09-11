@@ -7,8 +7,9 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from environment import calculate, demo, generate, measure, validate_scene
-from geometry import bearing_planes, contains, diameter, intersect_halfplanes, localize
+from legacy.environment import calculate, demo, generate, measure, validate_scene
+from q1.geometry import (bearing_planes, contains, diameter,
+                         intersect_halfplanes, localize)
 
 
 class GeometryTests(unittest.TestCase):

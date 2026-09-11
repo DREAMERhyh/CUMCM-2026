@@ -29,22 +29,28 @@
 
 **Confirmed:**
 
-- `code/geometry.py` 已整合可配置误差扇区、交点枚举、凸包、空/无界/有界分类、旋转卡壳主算法、全点对 oracle、直径圆覆盖判定和最小包围圆。
-- `code/plot_cli.py` 已成为实测示向度 Q1 入口，可输出顶点、直径、覆盖结论、逐次收缩表、JSON 和图形。
-- `code/bearing_plot.py` 已显示全局测向几何、定位区域局部放大、直径及直径圆。
+- `code/q1/geometry.py` 已整合可配置误差扇区、交点枚举、凸包、空/无界/有界分类、旋转卡壳主算法、全点对 oracle、直径圆覆盖判定和最小包围圆。
+- `code/q1/cli.py` 已成为实测示向度 Q1 入口，可输出顶点、直径、覆盖结论、逐次收缩表、JSON 和图形。
+- `code/q1/bearing_plot.py` 已显示全局测向几何、定位区域局部放大、直径及直径圆。
 - 旧浏览器环境可展示合成场景的定位区域，但不是当前实测 Q1 的统一入口。
 - 新增两组 testbench；当前33项测试全部通过，其中旋转卡壳与全点对在2000个固定种子随机凸包上结果一致，单观测无界 CLI 分支也已端到端通过。
 - `code/common/` 已提供共享数据模型、物理圆域保守外包和官方虚拟时间模型。
-- `code/q2/` 已完成有限候选、集合最坏半径评分、FIM基准、CLI、JSON和可视化；固定示例生成45个候选，其中11个保证处于1000米接收范围。
+- `code/q2/` 已完成连续保证/可能接收候选域、46个离散候选、有限场景最坏半径评分、FIM基准、CLI、JSON和可视化；固定示例中12个候选保证处于1000米接收范围。
 - `code/q3/` 已完成7点覆盖、228点有限清除保底和全向源离线状态机。
 - `code/q4/` 已在Q3状态机上完成121点定向覆盖和四方向局部复核。
 - `code/runtime/` 已完成同步策略执行器、本地规则模拟器及不自动启动测试的HTTP适配器。
-- 最终Q1至Q4共51项测试全部通过；Q2图形已目视检查。
+- 最终Q1至Q4共52项测试全部通过；新版Q2图形已目视检查。
 - `快速上手指南.md` 已完成。
 
-**Current assessment:** Q1/Q2本地实现与验收完成；Q3/Q4离线实现与理论验收完成。
+**Current assessment:** Q1已迁入 `code/q1/` 且本地实现完整；Q2已补齐连续接收候选域、离散选点、图形和本地testbench；Q3/Q4完成离线原型与理论覆盖检查，尚未达到正式模拟器运行与提交状态。
 
-**Main issue:** Q3/Q4 缺少官方模拟器，只能完成 offline 验证。
+**Main issues:**
+
+- Q2所谓最坏后验半径只覆盖有限代表源点和三个误差端点，必须保持“有限场景”表述，并用批量合成案例补充策略效果比较。
+- Q3/Q4运行器未使用 `/enter` 的 `remaining_real_duration_s` 建立现实截止时间，也未预留 `/exit` 时间。
+- Q3/Q4动作日志仅保存在内存，CLI结束时才整体写JSON；需要逐动作落盘、刷新和异常保留，并记录程序运行时间。
+- 当前没有正式/演练专用入口、案例编码与表1统计汇总，也没有官方模拟器协议、吞吐、10至16源案例和异常恢复测试。
+- Q3/Q4仍需各3次正式测试、原文件名导出的6份加密日志及论文表1数据；这些不能由离线测试替代。
 
 ## 5. Architecture / Mental Model
 
@@ -57,16 +63,22 @@ Q1 geometry（纯示向区域）
   -> runtime（FakeSimulator / HttpRobotClient / 串行runner）
 ```
 
+**Interface notes:** Q1的推荐Python入口是 `q1.analyze_q1`，底层为 `q1.geometry.localize`，CLI为 `code/q1/cli.py`；Q2由 `q2.__init__` 导出 `plan_second_point` 和供Q3复用的 `plan_measurement`；Q3/Q4分别导出 `Q3Policy`/`Q4Policy`，统一通过 `runtime.runner.run_policy(policy, client)` 驱动。Q4继承Q3，只替换全局覆盖点和局部复核点。默认Q3会在细化阶段调用Q2，Q2再调用Q1几何内核；但Q3/Q4的离线CLI均显式设置 `max_refinements=0`，演示运行不会覆盖这条嵌套调用链。当前 `code/` 需加入 `PYTHONPATH`，且 `runtime.__init__` 未导出公共符号。
+
+**Legacy / optional paths:** `code/legacy/` 是旧合成浏览器实验链，不在当前Q1至Q4正式调用链上；Q1参考真值标记、Q2 FIM基准、全点对直径oracle、FakeSimulator及若干覆盖检查函数不是正式运行必需，但分别承担解释或testbench作用，清理提交包时应与生产入口分层而非直接删除。
+
 ## 6. Important Files
 
 | File | Purpose | Important notes |
 |---|---|---|
-| `code/geometry.py` | Q1 纯几何内核 | 不得依赖真值或显示边界 |
-| `code/plot_cli.py` | 实测示向度命令行入口 | Q1 统一入口 |
-| `code/bearing_plot.py` | Q1 图形输出 | 显示区域、直径和覆盖圆 |
+| `code/q1/geometry.py` | Q1 纯几何内核 | 不得依赖真值或显示边界 |
+| `code/q1/cli.py` | 实测示向度命令行入口 | Q1 统一入口 |
+| `code/q1/bearing_plot.py` | Q1 图形输出 | 显示区域、直径和覆盖圆 |
 | `code/tests/test_geometry.py` | 原有回归测试 | 保持兼容 |
 | `code/tests/test_q1_algorithms.py` | 算法 testbench | 随机 oracle、解析反例、误差裕量 |
 | `code/tests/test_q1_cli.py` | 端到端 testbench | CLI、JSON、PNG、SVG 和非法输入 |
+| `code/q1/testbench/gen_cases.py` | Q1 测试数据生成 | 确定性种子、落盘 JSON |
+| `code/q1/testbench/duipai.py` | Q1 对拍核验 | 与全点对等独立 oracle 交叉验证 |
 | `code/common/` | Q2至Q4共享内核 | 物理先验采用保守外包 |
 | `code/q2/` | 第二测点算法与图形 | 完整本地testbench |
 | `code/q3/` | 全向搜索清除策略 | 当前仅offline验收 |
@@ -110,7 +122,7 @@ Q1 geometry（纯示向区域）
 
 **Reason:** Q3复用Q2测点规划，Q4复用Q3状态机；物理先验、计时和协议必须保持一处定义。
 
-**Evidence/Result:** 51项全量回归通过，Q1原有33项无回归。
+**Evidence/Result:** 52项全量回归通过，Q1原有33项无回归。
 
 **Implication:** 官方模拟器接入只替换客户端，不改策略接口；Q3/Q4在接入前均标记offline。
 
@@ -124,11 +136,14 @@ Q1 geometry（纯示向区域）
 - [x] CLI 文本、JSON、PNG/SVG、有界与无界分支端到端测试
 - [x] JavaScript 兼容性回归：`node --check` 通过
 - [x] `test_res_q1.md` 完成并与实际输出一致
-- [x] Q2算法、CLI、JSON、PNG及8项专用测试
+- [x] Q2连续域、算法、CLI、JSON、PNG及9项专用测试
 - [x] Q3覆盖、计时、幂等、负载和状态机6项offline测试
 - [x] Q4定向覆盖、局部证书和状态机4项offline测试
-- [x] Q1至Q4全量51项测试通过，最终复跑29.066秒
+- [x] Q1至Q4全量52项测试通过；2026-09-11本轮复跑耗时35.674秒
 - [ ] 官方模拟器Q3/Q4演练与正式测试
+- [x] Q2连续候选区域表达
+- [ ] Q2批量策略效果对照验证
+- [ ] 现实截止控制、逐动作日志、程序运行时间和表1汇总
 
 ## 9. Environment
 
@@ -138,9 +153,9 @@ Q1 geometry（纯示向区域）
 
 ## 10. Current Working Set
 
-- Files currently being changed: 本轮代码、验收记录和指导书已完成。
-- Immediate issue: 官方模拟器尚未接入。
-- Next check: 接入后先在演练模式核对协议、真实RPC吞吐和日志，再优化Q3/Q4调度。
+- Files currently being changed: Q1目录迁移、Q2连续域、验收记录和指导书已完成。
+- Immediate issue: Q2若写入论文仍应补批量策略效果对照；工程下一主线是Q3/Q4正式运行层（现实截止、流式日志、统计与安全退出）。
+- Next check: 使用官方模拟器演练模式核对协议、真实RPC吞吐和日志大小，再优化Q3/Q4调度。
 
 ## 11. Next Actions
 
@@ -150,11 +165,15 @@ Q1 geometry（纯示向区域）
 - [x] 完成Q2算法、可视化、testbench和 `test_res_q2.md`。
 - [x] 完成Q3/Q4离线实现及各自offline验收记录。
 - [x] 完成本科生 `快速上手指南.md`。
-- [ ] 接入官方模拟器并追加Q3/Q4真实演练证据。
+- [x] 补Q2第二检测点连续接收候选域和清晰图例。
+- [ ] 补Q2批量合成对照实验。
+- [ ] 补Q3/Q4正式运行入口、`remaining_real_duration_s`截止控制、逐动作日志和表1统计。
+- [ ] 扩充10/13/16源、接收半径边界、定向边界及协议异常testbench。
+- [ ] 接入官方模拟器并追加Q3/Q4真实演练证据；演练稳定后各完成3次正式测试并保留原名日志。
 
 ## 12. Context Handoff Summary
 
-Q1和Q2的本地实现、图形、CLI和验收记录已完成；Q3/Q4共用一套有限状态机，已完成覆盖证书、本地规则回放和offline测试。最终51项测试通过，Q1原33项无回归。官方模拟器仍未接入，后续第一步是在演练模式验证 `runtime/http_client.py`、RPC吞吐和真实反馈，不得把当前离线时间当正式成绩。
+Q1已集中到 `code/q1/`，外部调用改为 `q1.*`。Q2已输出连续保证接收域（安全内近似）和可能接收域（保守外近似），并用46个离散候选做有限场景评分；固定示例12个保证候选，最终点约 `(4.172,-96.457)`。Q3/Q4共用有限状态机并通过offline测试，但正式运行层仍缺现实截止、流式日志、程序运行时间/案例编码统计、安全退出和官方演练。当前工作树52项测试通过（2026-09-11复跑35.674秒）；不得把离线时间当正式成绩。
 
 ## 13. Decision / Progress Log
 
@@ -169,3 +188,7 @@ Q1和Q2的本地实现、图形、CLI和验收记录已完成；Q3/Q4共用一�
 `2026-09-11 02:45 — 用户确认共享工程、分题目录方案，要求依次完成Q2、Q3/Q4 offline测试和本科生指导书，并禁止本轮使用Git。`
 
 `2026-09-11 — 完成Q2算法与图形、Q3/Q4离线状态机、共享runtime及四份分题验收记录；最终51项测试通过。`
+
+`2026-09-11 10:55 — 对照B题题面、模拟器附件与2026论文格式规范复审：51项测试复跑通过（52.252秒），但确认Q2连续候选域、Q3/Q4现实截止与逐动作日志、正式入口/统计及官方演练仍是提交前缺口。`
+
+`2026-09-11 11:26 — Q1统一迁入code/q1并修正Q2/Q3/Q4和测试引用；Q2补连续保证/可能接收域、稳定候选编号与时间分解，52项全量测试通过并完成图形目视检查。`

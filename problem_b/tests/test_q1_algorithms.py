@@ -8,10 +8,10 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from geometry import (bearing_planes, contains, diameter_bruteforce,
-                      diameter_calipers, hull, intersect_halfplanes, localize,
-                      minimum_enclosing_circle)
-from plot_cli import analyze_q1, DEMO_BEARINGS, DEMO_POINTS
+from q1.geometry import (bearing_planes, contains, diameter_bruteforce,
+                         diameter_calipers, hull, intersect_halfplanes,
+                         localize, minimum_enclosing_circle)
+from q1.cli import analyze_q1, DEMO_BEARINGS, DEMO_POINTS
 
 
 class Q1AlgorithmTestbench(unittest.TestCase):

@@ -12,7 +12,7 @@ if str(CODE) not in sys.path:
 
 from common.domain import build_region_from_observations
 from common.models import BearingObservation
-from geometry import contains
+from q1.geometry import contains
 from q2.planner import Q2Config, plan_second_point
 
 
@@ -47,6 +47,26 @@ class Q2AlgorithmTestbench(unittest.TestCase):
                        -item["fim_proxy_per_s"], item["point"]))
         self.assertEqual(plan["selected_point"], expected["point"])
 
+    def test_continuous_candidate_regions_have_auditable_bounds(self):
+        plan = plan_second_point(self.observation)
+        regions = plan["candidate_regions"]
+        guaranteed = regions["guaranteed_reception"]
+        possible = regions["possible_reception"]
+        self.assertEqual(guaranteed["status"], "bounded")
+        self.assertEqual(possible["status"], "bounded")
+        self.assertEqual(guaranteed["approximation"]["relation_to_exact_region"],
+                         "inner")
+        self.assertEqual(possible["approximation"]["relation_to_exact_region"],
+                         "outer")
+        for sensor in guaranteed["vertices"]:
+            self.assertLessEqual(
+                max(math.dist(sensor, source)
+                    for source in plan["region"]["vertices"]),
+                plan["config"]["min_receive_radius"]+1e-6,
+            )
+        for source in plan["region"]["vertices"]:
+            self.assertTrue(_inside_convex(possible["vertices"], source))
+
     def test_no_guaranteed_candidate_falls_back_without_crash(self):
         plan = plan_second_point(
             self.observation,
@@ -55,6 +75,10 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         )
         self.assertEqual(plan["guaranteed_candidate_count"], 0)
         self.assertFalse(plan["selected"]["guaranteed_reception"])
+        self.assertEqual(
+            plan["candidate_regions"]["guaranteed_reception"]["status"],
+            "empty",
+        )
 
     def test_non_direction_input_is_rejected(self):
         obs = BearingObservation(self.sensor, 1, "no_signal")
@@ -67,6 +91,8 @@ class Q2AlgorithmTestbench(unittest.TestCase):
             self.assertTrue(math.isfinite(item["score"]))
             self.assertGreaterEqual(item["action_time_s"], 5.0)
             self.assertGreaterEqual(item["worst_case_radius_m"], 0.0)
+            self.assertAlmostEqual(item["action_time_s"],
+                                   item["time_breakdown"]["total_s"])
 
     def test_selected_measurement_keeps_compatible_truth_and_contracts(self):
         plan = plan_second_point(self.observation)
@@ -99,6 +125,18 @@ class Q2CliTestbench(unittest.TestCase):
             self.assertEqual(data["method"],
                              "set_worst_case_radius_per_action_time")
             self.assertEqual(len(data["selected_point"]), 2)
+            self.assertIn("candidate_regions", data)
+            self.assertTrue(data["candidates"][0]["candidate_id"].startswith("C"))
+
+
+def _inside_convex(polygon, point, tolerance=1e-6):
+    signs = []
+    for first, second in zip(polygon, polygon[1:]+polygon[:1]):
+        cross = ((second[0]-first[0])*(point[1]-first[1])
+                 -(second[1]-first[1])*(point[0]-first[0]))
+        if abs(cross) > tolerance:
+            signs.append(cross > 0)
+    return not signs or all(sign == signs[0] for sign in signs)
 
 
 if __name__ == "__main__":

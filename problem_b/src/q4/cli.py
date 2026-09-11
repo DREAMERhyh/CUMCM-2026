@@ -6,7 +6,8 @@ from pathlib import Path
 import sys
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    code_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(code_root))
 
 from q4.policy import Q4Policy
 from runtime.fake_simulator import FakeSimulator, FakeSource
@@ -35,4 +36,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

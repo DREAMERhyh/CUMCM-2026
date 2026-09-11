@@ -3,13 +3,13 @@
 from dataclasses import asdict, dataclass
 import math
 
-from geometry import bearing_planes, intersect_halfplanes
+from q1.geometry import bearing_planes, intersect_halfplanes
 
 from common.domain import (build_region_from_observations, circle_outer_planes,
                            max_vertex_distance, representative_points)
 from common.models import BearingObservation
 from common.time_model import measure_cost
-from .candidates import generate_candidates
+from .candidates import build_candidate_regions, generate_candidates
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,7 @@ class Q2Config:
     min_receive_radius: float = 1000.0
     max_receive_radius: float = 1500.0
     circle_sides: int = 24
+    candidate_region_sides: int = 72
     scenario_limit: int = 8
     uncertainty_seconds_per_metre: float = 0.5
 
@@ -82,6 +83,7 @@ def score_candidates(region, observations, candidates, current_position,
             "guaranteed_reception": guaranteed,
             "worst_case_radius_m": worst_radius,
             "action_time_s": timing.total_s,
+            "time_breakdown": timing.as_dict(),
             "score": score,
             "fim_proxy_per_s": _fim_proxy(sensor, observations[0].position,
                                              nominal, timing.total_s),
@@ -100,11 +102,24 @@ def plan_measurement(region, observations, *, current_position=None,
     current_position = tuple(current_position or observations[-1].position)
     target_channel = target_channel or first.channel
     current_channel = current_channel or target_channel
-    candidates = generate_candidates(region, current_position,
-                                     first.bearing_deg)
+    candidate_regions = build_candidate_regions(
+        region,
+        min_receive_radius=config.min_receive_radius,
+        max_receive_radius=config.max_receive_radius,
+        circle_sides=config.candidate_region_sides,
+    )
+    candidates = generate_candidates(
+        region, current_position, first.bearing_deg,
+        guaranteed_region=candidate_regions["guaranteed_reception"],
+    )
     scores = score_candidates(region, observations, candidates,
                               current_position, current_channel,
                               target_channel, config)
+    scores = sorted(scores, key=lambda item: (item["score"],
+                                               -item["fim_proxy_per_s"],
+                                               item["point"]))
+    for index, item in enumerate(scores, 1):
+        item["candidate_id"] = f"C{index:02d}"
     guaranteed = [item for item in scores if item["guaranteed_reception"]]
     pool = guaranteed or scores
     selected = min(pool, key=lambda item: (item["score"],
@@ -119,11 +134,13 @@ def plan_measurement(region, observations, *, current_position=None,
         "fim_baseline_point": fim_choice["point"],
         "candidate_count": len(scores),
         "guaranteed_candidate_count": len(guaranteed),
-        "candidates": sorted(scores, key=lambda item: item["score"]),
+        "candidates": scores,
+        "candidate_regions": candidate_regions,
         "region": region,
         "config": asdict(config),
         "limitations": [
-            "圆域用外切正多边形保守近似。",
+            "源物理圆域用外切正多边形保守近似。",
+            "保证接收域是圆交集的内近似；可能接收域是圆盘Minkowski和的外近似。",
             "最坏情形在有限边界场景和误差端点上计算，不声称连续全局最优。",
             "FIM只作排序基准，最终选择使用集合评分。",
         ],

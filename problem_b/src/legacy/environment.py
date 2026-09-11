@@ -7,8 +7,14 @@ simulator's error distribution. The solver never receives source truth.
 import hashlib
 import math
 import random
+from pathlib import Path
+import sys
 
-from geometry import contains, localize
+CODE_ROOT = Path(__file__).resolve().parents[1]
+if str(CODE_ROOT) not in sys.path:
+    sys.path.insert(0, str(CODE_ROOT))
+
+from q1.geometry import contains, localize
 
 DOMAIN_RADIUS = 1800.0
 
