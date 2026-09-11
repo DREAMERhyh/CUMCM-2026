@@ -35,4 +35,3 @@ python code/q3/cli.py --output output/q3_offline/demo.json
 - 10至16个源的官方随机案例；
 - 三次演练或正式测试的清除比例与平均定位清除时间；
 - 真实RPC吞吐和20分钟程序运行约束。
-

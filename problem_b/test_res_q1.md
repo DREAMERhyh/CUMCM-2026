@@ -31,11 +31,11 @@
 
 ```powershell
 python -B -m unittest discover -s code/tests -v
-node --check code/visualization/app.js
-python -B code/plot_cli.py --demo --no-show `
+node --check code/legacy/visualization/app.js
+python -B code/q1/cli.py --demo --no-show `
   --output output/q1_demo.png `
   --result-json output/q1_demo.json
-python -B code/plot_cli.py --demo --no-show --output output/q1_demo.svg
+python -B code/q1/cli.py --demo --no-show --output output/q1_demo.svg
 ```
 
 ## 3. 自动化测试总结果
@@ -54,7 +54,7 @@ OK
 |`code/tests/test_q1_algorithms.py`|7|旋转卡壳、全点对 oracle、最小包围圆、反例、误差裕量、逐次收缩|全部通过|
 |`code/tests/test_q1_cli.py`|4|CLI、JSON、PNG、SVG、无界输入、非法输入|全部通过|
 
-`node --check code/visualization/app.js` 返回码为0且无错误输出，说明新增几何结果字段没有破坏旧浏览器脚本的语法兼容性；这不等同于完整浏览器交互验收。
+`node --check code/legacy/visualization/app.js` 返回码为0且无错误输出，说明新增几何结果字段没有破坏旧浏览器脚本的语法兼容性；这不等同于完整浏览器交互验收。
 
 ## 4. 几何算法验证
 
@@ -168,8 +168,22 @@ PNG 已进行目视核验：坐标轴、三组测向、背景圆、局部放大�
 - 几何计算使用普通双精度和显式容差，不是任意病态输入的精确算术证明；极端近平行或尺度差异巨大的输入仍应高精度复核。
 - 半平面交采用便于审查的 `O(m³)` 小规模枚举基线；适合 Q1 的少量观测，但不是大规模最优实现。
 - 最小包围圆采用二点/三点支撑圆穷举，最坏 `O(n⁴)`，定位多边形顶点很少时可接受。
-- 旧浏览器界面本次只做 JavaScript 语法回归；当前正式 Q1 验收入口是 `code/plot_cli.py`。
+- 旧浏览器界面本次只做 JavaScript 语法回归；当前正式 Q1 验收入口是 `code/q1/cli.py`。
 
 ## 9. 验收结论
 
 当前实现满足 B-Q1 的可运行交付要求：输入实测示向度后，可以独立得到定位区域、直径、直径端点及直径圆覆盖结论；主算法有独立 oracle 和随机 testbench，数学反例、退化状态、数值导出和图形端到端流程均有自动化证据。上述限制已明确记录，不影响普通题目尺度下的 Q1 验收。
+
+## 10. Q1 测试数据与对拍
+
+Q1 专用测试数据生成与对拍工具位于 `code/q1/testbench/`，不属于正式求解链：
+
+```powershell
+python -B code/q1/testbench/gen_cases.py --out output/q1_cases --seed 20260911 --count-per-config 20
+python -B code/q1/testbench/duipai.py --dir output/q1_cases
+```
+
+- `gen_cases.py` 按基准种子确定性生成用例：检测点数 1/2/3/4/6/10，误差档 uniform/endpoints(±1)/mixed，每档 20 例，共 360 例，写入 `output/q1_cases/`（每例一个 JSON 加 `manifest.json`）。每例含仅用于校验的真值源、接收半径和逐点真实误差。
+- `duipai.py` 只把检测点坐标与实测示向度交给求解器，再用独立 oracle 交叉验证：真值源位于区域内、直径等于全点对 oracle、直径圆覆盖结论与直接顶点复算一致、最小包围圆满足 `D/2≤r≤D/sqrt(3)`、顶点为严格逆时针凸包、逐次加观测直径不增、单观测无界等。
+
+当前结果：360 例、9582 项检查、0 失败，区域状态分布 `{unbounded:62, bounded:298}`。用同一基准种子重新生成用例后逐文件 SHA-256 比对，361 个文件字节一致；对新生成目录复跑对拍结果相同。

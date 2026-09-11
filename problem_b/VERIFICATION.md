@@ -11,7 +11,7 @@
 - 不变量：显示范围不影响真实直径；整体平移不改变直径；新增相容观测后有界区域直径不增；求解器不读取源真值。
 - 端到端：实测坐标及示向度输入、文本结果、JSON、PNG、SVG、非法输入拒绝均通过。
 - 1°/1.005°敏感性：放宽误差界后可行区域没有缩小，示例直径由43.542596530 m增至43.760465680 m。
-- `node --check code/visualization/app.js`：通过。
+- `node --check code/legacy/visualization/app.js`：通过。
 - `output/q1_demo.png`：完成目视核验；全局几何、局部定位区域、直径、直径圆和图例清晰，无裁切或重叠。
 
 ## Q1 结论核验
@@ -23,7 +23,7 @@
 
 ## Q2至Q4核验摘要
 
-- Q2：保守物理区域、有限候选、最坏后验半径评分、FIM基准、CLI、JSON和PNG均有专用testbench。
+- Q2：连续保证/可能接收候选域、有限候选、有限场景最坏后验半径评分、FIM基准、CLI、JSON和PNG均有专用testbench。
 - Q3 offline：7点全向覆盖、228点有限清除保底、199秒计时例、幂等请求、协议负载和状态机有限终止已检查。
 - Q4 offline：121点任意方向覆盖、四方向局部证书和定向状态机有限终止已检查。
 - Q3/Q4尚无官方演练日志、真实RPC吞吐或正式测试成绩。
@@ -34,11 +34,11 @@
 
 ```powershell
 python -B -m unittest discover -s code/tests -v
-node --check code/visualization/app.js
-python -B code/plot_cli.py --demo --no-show `
+node --check code/legacy/visualization/app.js
+python -B code/q1/cli.py --demo --no-show `
   --output output/q1_demo.png `
   --result-json output/q1_demo.json
-python -B code/plot_cli.py --demo --no-show --output output/q1_demo.svg
+python -B code/q1/cli.py --demo --no-show --output output/q1_demo.svg
 ```
 
 ## 已知限制

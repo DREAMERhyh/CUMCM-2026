@@ -12,7 +12,7 @@ Q1输入若干检测点坐标及同一干扰源在这些点的实测示向度，
 
 ```powershell
 python -m pip install -r requirements.txt
-python code/plot_cli.py
+python code/q1/cli.py
 ```
 
 交互模式依次输入检测点数、每个点的 `x y 示向度`，以及可选参考源坐标。示向度范围为 `[0,360)`；正东为 0°，正北为 90°。
@@ -20,15 +20,15 @@ python code/plot_cli.py
 也可直接使用命令行：
 
 ```powershell
-python code/plot_cli.py --demo
+python code/q1/cli.py --demo
 
-python code/plot_cli.py `
+python code/q1/cli.py `
   --point -600 -300 35.89 `
   --point 850 -250 139.44 `
   --point -200 1000 300.56 `
   --source 220 280
 
-python code/plot_cli.py --demo --no-show `
+python code/q1/cli.py --demo --no-show `
   --output output/q1_demo.png `
   --result-json output/q1_demo.json
 ```
@@ -38,7 +38,7 @@ python code/plot_cli.py --demo --no-show `
 题面默认误差界为 ±1°。若需要评估接口两位小数舍入的保守裕量，可另跑：
 
 ```powershell
-python code/plot_cli.py --demo --error-deg 1.005 --no-show --output output/q1_demo_margin.svg
+python code/q1/cli.py --demo --error-deg 1.005 --no-show --output output/q1_demo_margin.svg
 ```
 
 1.005°只是工程敏感性参数，不是题面新增的误差分布。
@@ -78,7 +78,7 @@ cross(u(theta+epsilon), q-s) <= 0
 ## Python 接口
 
 ```python
-from plot_cli import analyze_q1
+from q1 import analyze_q1
 
 result = analyze_q1(
     points=[(-600, -300), (850, -250), (-200, 1000)],
@@ -93,7 +93,7 @@ print(region["diameter"], region["diameter_pair"])
 print(region["diameter_circle"]["covers"])
 ```
 
-更底层的独立函数位于 `code/geometry.py`：
+更底层的独立函数位于 `code/q1/geometry.py`：
 
 - `bearing_planes`：示向度转正向半平面；
 - `intersect_halfplanes`：区域分类与顶点恢复；
@@ -115,21 +115,18 @@ problem_b/
   test_res_q3_offline.md          Q3离线验收结果
   test_res_q4_offline.md          Q4离线验收结果
   code/
-    geometry.py                   Q1 几何内核
+    q1/                           Q1 几何、CLI、绘图与对拍工具
     common/                       Q2至Q4共享模型、物理区域和计时
     q2/                           第二测点规划、CLI与图形
     q3/                           全向搜索与清除策略
     q4/                           定向源增量策略
     runtime/                      HTTP适配、本地规则模型和执行器
-    bearing_plot.py               Matplotlib 全局图与局部放大图
-    plot_cli.py                   实测示向度统一入口
-    environment.py                旧合成环境，仅用于回归核验
-    server.py                     旧浏览器实验服务器
-    visualization/                旧浏览器界面
+    legacy/                       旧合成环境和浏览器实验，仅用于回归核验
     tests/
       test_geometry.py            原有几何与合成环境回归
       test_q1_algorithms.py       Q1 算法 testbench
       test_q1_cli.py              CLI/JSON/PNG/SVG 端到端 testbench
+      test_q2.py                  Q2 连续域、选点、CLI和图形 testbench
 ```
 
 ## 验收
@@ -138,8 +135,8 @@ problem_b/
 
 ```powershell
 python -B -m unittest discover -s code/tests -v
-node --check code/visualization/app.js
-python code/plot_cli.py --demo --no-show --output output/q1_demo.png --result-json output/q1_demo.json
+node --check code/legacy/visualization/app.js
+python code/q1/cli.py --demo --no-show --output output/q1_demo.png --result-json output/q1_demo.json
 ```
 
 实际结果和边界分别见 [`test_res_q1.md`](test_res_q1.md)、[`test_res_q2.md`](test_res_q2.md)、[`test_res_q3_offline.md`](test_res_q3_offline.md) 和 [`test_res_q4_offline.md`](test_res_q4_offline.md)。
