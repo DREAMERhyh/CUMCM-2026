@@ -1,0 +1,31 @@
+{
+  "case_id": "boundary_42_0016",
+  "mode": "boundary",
+  "input": {
+    "detector_points": [
+      [
+        847.27871664,
+        784.508818781
+      ],
+      [
+        865.008210031,
+        540.517119599
+      ]
+    ],
+    "bearings_deg": [
+      15.0,
+      31.0
+    ],
+    "error_deg": 1.0
+  },
+  "oracle": {
+    "source_position": [
+      1526.485725033,
+      953.854145701
+    ],
+    "bearing_errors_deg": [
+      1.0,
+      -1.0
+    ]
+  }
+}

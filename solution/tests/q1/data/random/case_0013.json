@@ -1,0 +1,25 @@
+{
+  "case_id": "random_42_0012",
+  "mode": "random",
+  "input": {
+    "detector_points": [
+      [
+        271.712500273,
+        1398.716496405
+      ]
+    ],
+    "bearings_deg": [
+      354.80605645
+    ],
+    "error_deg": 1.0
+  },
+  "oracle": {
+    "source_position": [
+      1117.571703037,
+      1308.142469171
+    ],
+    "bearing_errors_deg": [
+      0.91796083
+    ]
+  }
+}

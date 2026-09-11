@@ -1,0 +1,37 @@
+{
+  "case_id": "adversarial_42_0021",
+  "mode": "adversarial",
+  "input": {
+    "detector_points": [
+      [
+        -900.0,
+        28.7
+      ],
+      [
+        -830.0,
+        28.9
+      ],
+      [
+        -760.0,
+        29.1
+      ]
+    ],
+    "bearings_deg": [
+      359.016835194,
+      0.006024793,
+      0.993496506
+    ],
+    "error_deg": 1.0
+  },
+  "oracle": {
+    "source_position": [
+      121.0,
+      29.0
+    ],
+    "bearing_errors_deg": [
+      -1.0,
+      0.0,
+      1.0
+    ]
+  }
+}

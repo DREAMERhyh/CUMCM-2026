@@ -1,7 +1,7 @@
 {
   "mode": "adversarial",
   "seed": 42,
-  "total": 8,
+  "total": 24,
   "cases": [
     "case_0001.json",
     "case_0002.json",
@@ -10,6 +10,22 @@
     "case_0005.json",
     "case_0006.json",
     "case_0007.json",
-    "case_0008.json"
+    "case_0008.json",
+    "case_0009.json",
+    "case_0010.json",
+    "case_0011.json",
+    "case_0012.json",
+    "case_0013.json",
+    "case_0014.json",
+    "case_0015.json",
+    "case_0016.json",
+    "case_0017.json",
+    "case_0018.json",
+    "case_0019.json",
+    "case_0020.json",
+    "case_0021.json",
+    "case_0022.json",
+    "case_0023.json",
+    "case_0024.json"
   ]
 }
