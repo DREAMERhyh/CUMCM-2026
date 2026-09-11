@@ -48,6 +48,14 @@ python src/sim/cli.py --problem 3 --robot-id "202601101010" --confirm-ready
 
 确认后才能使用 `--mode policy --confirm-policy`。任何 HTTP错误、`accepted=false`、连接中断、协议校验错误或本地策略异常都应立即停止，保留本地 JSONL 和模拟器日志，不要换 request_id 盲目重发不确定动作。
 
+Q3 当前与离线演练对齐的完整策略命令为：
+
+```powershell
+python src/sim/cli.py --problem 3 --mode policy --robot-id "202601101010" --max-refinements 2 --fim-cpu-time-limit-s 6 --confirm-ready --confirm-policy
+```
+
+其中 6 s 是每次规划的真实墙钟上限；默认仍有 15 s 退出安全余量。运行前检查日志目标不存在，并确认界面仍为 Q3 演练测试。
+
 ## 五 正式测试门禁
 
 正式测试须由队员另行决定。只有 Q3/Q4 策略本身完成审查、两类演练结果与日志均核对通过、动作量和结束行为符合预期后，才考虑正式测试。接口烟雾测试通过本身不能证明定位与清除策略正确。

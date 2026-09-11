@@ -38,10 +38,14 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         first = plan_second_point(self.observation)
         second = plan_second_point(self.observation)
         self.assertEqual(first["selected_point"], second["selected_point"])
-        self.assertIn(first["selected_point"],
+        self.assertIn(first["selected_point"], [
+            first["baseline"]["selected_point"],
+            first["continuous_fim"]["selected_point"],
+        ])
+        self.assertIn(first["baseline"]["selected_point"],
                       [item["point"] for item in first["candidates"]])
         self.assertEqual(first["selected_point"],
-                         first["baseline"]["selected_point"])
+                         first[first["recommendation_source"]]["selected_point"])
         self.assertEqual(first["continuous_fim"]["status"], "ok")
         self.assertEqual(first["continuous_fim"]["selected_point"],
                          second["continuous_fim"]["selected_point"])
@@ -63,8 +67,39 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         )
         self.assertAlmostEqual(
             first["comparison"]["continuous_minus_baseline"],
-            fim_selected["score"] - first["selected"]["score"],
+            fim_selected["score"] - first["baseline"]["selected"]["score"],
         )
+        self.assertLessEqual(
+            first["selected"]["worst_case_radius_m"],
+            first["baseline"]["selected"]["worst_case_radius_m"] + 1e-9,
+        )
+        self.assertTrue(first["pareto_front"])
+        for candidate in first["pareto_front"]:
+            self.assertFalse(any(
+                other["action_time_s"] <= candidate["action_time_s"] + 1e-9
+                and other["worst_case_radius_m"]
+                < candidate["worst_case_radius_m"] - 1e-9
+                for other in first["pareto_front"]
+            ))
+        for solution in first["continuous_fim"]["budget_solutions"]:
+            if solution["status"] == "ok":
+                self.assertLessEqual(solution["action_time_s"],
+                                     solution["max_action_time_s"] + 1e-8)
+        for branch_name in ("baseline", "continuous_fim"):
+            branch = first[branch_name]
+            self.assertEqual(branch["near_optimal_region_meta"]["status"],
+                             "ok")
+            self.assertEqual(set(branch["near_optimal_regions"]),
+                             {"5pct", "10pct"})
+            for near in branch["near_optimal_regions"].values():
+                self.assertGreaterEqual(near["qualified_sample_count"], 1)
+                for component in near["components"]:
+                    for point in component["vertices"]:
+                        self.assertTrue(_inside_convex(
+                            first["candidate_regions"]
+                            ["guaranteed_reception"]["vertices"],
+                            point,
+                        ))
 
     def test_selected_is_best_guaranteed_candidate_when_available(self):
         plan = plan_second_point(self.observation)
@@ -73,7 +108,7 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         self.assertTrue(guaranteed)
         expected = min(guaranteed, key=lambda item: (item["score"],
                        -item["fim_proxy_per_s"], item["point"]))
-        self.assertEqual(plan["selected_point"], expected["point"])
+        self.assertEqual(plan["baseline"]["selected_point"], expected["point"])
 
     def test_continuous_candidate_regions_have_auditable_bounds(self):
         plan = plan_second_point(self.observation)
@@ -154,13 +189,16 @@ class Q2CliTestbench(unittest.TestCase):
             self.assertGreater(image_path.stat().st_size, 10_000)
             data = json.loads(json_path.read_text(encoding="utf-8"))
             self.assertEqual(data["method"],
-                             "baseline_and_continuous_fim")
+                             "time_budgeted_fim_pareto_hybrid")
             self.assertEqual(len(data["selected_point"]), 2)
             self.assertIn("candidate_regions", data)
             self.assertEqual(data["continuous_fim"]["status"], "ok")
             self.assertIn("selected_score", data["continuous_fim"])
             self.assertIn("离散搜索基线", process.stdout)
             self.assertIn("连续FIM优化", process.stdout)
+            self.assertIn("Pareto安全裁决", process.stdout)
+            self.assertIn("near_optimal_regions", data["baseline"])
+            self.assertIn("near_optimal_regions", data["continuous_fim"])
             self.assertTrue(data["candidates"][0]["candidate_id"].startswith("C"))
 
 

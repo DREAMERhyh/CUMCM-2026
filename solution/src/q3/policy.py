@@ -42,13 +42,17 @@ class Q3State:
 
 class Q3Policy:
     def __init__(self, *, max_refinements=2, error_deg=1.005,
-                 coverage_points=None):
+                 coverage_points=None, fim_cpu_time_limit_s=6.0):
+        if fim_cpu_time_limit_s <= 0:
+            raise ValueError("FIM真实计算时限必须为正数。")
         self.coverage_points = list(coverage_points or ring7())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
         self.q2_config = Q2Config(error_deg=error_deg, circle_sides=16,
                                   scenario_limit=4,
-                                  continuous_fim_enabled=False)
+                                  continuous_fim_enabled=True,
+                                  fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+                                  near_optimal_region_mode="off")
 
     def initial_state(self):
         return Q3State()

@@ -9,10 +9,53 @@ plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
 
 
+def _draw_near_regions(axis, branch, color, *, with_labels=False,
+                       label_prefix=""):
+    boundaries = []
+    near_regions = branch.get("near_optimal_regions", {})
+    for key, linestyle, alpha in (("10pct", "--", 0.10),
+                                  ("5pct", "-", 0.22)):
+        near = near_regions.get(key, {})
+        boundaries.extend(near.get("boundary_points", []))
+        for component_index, component in enumerate(
+                near.get("components", [])):
+            vertices = component.get("vertices", [])
+            if len(vertices) < 3:
+                continue
+            axis.add_patch(Polygon(
+                vertices, closed=True, facecolor=color, edgecolor=color,
+                linestyle=linestyle, linewidth=1.5, alpha=alpha,
+                label=(f"{label_prefix}{'5' if key == '5pct' else '10'}%近优域"
+                       if with_labels and component_index == 0 else None),
+            ))
+    return boundaries
+
+
+def _draw_region_inset(parent, branch, color, marker, title, bounds):
+    inset = parent.inset_axes(bounds)
+    points = _draw_near_regions(inset, branch, color)
+    center = branch["selected_point"]
+    inset.scatter([center[0]], [center[1]], marker=marker, s=42,
+                  color=color, edgecolor="white", linewidth=0.5, zorder=3)
+    points = points + [center]
+    if points:
+        xs, ys = [point[0] for point in points], [point[1] for point in points]
+        span = max(max(xs)-min(xs), max(ys)-min(ys), 20.0)
+        margin = 0.18*span
+        inset.set_xlim(min(xs)-margin, max(xs)+margin)
+        inset.set_ylim(min(ys)-margin, max(ys)+margin)
+    inset.set_aspect("equal", adjustable="box")
+    inset.set_title(title, fontsize=7)
+    inset.tick_params(labelsize=6)
+    inset.grid(alpha=0.15)
+
+
 def plot_plan(plan, *, output=None, show=True):
     region = plan["region"]
     candidates = plan["candidates"]
-    selected = plan["selected_point"]
+    recommended = plan["selected_point"]
+    baseline = plan["baseline"]
+    selected = baseline["selected_point"]
     vertices = region["vertices"]
     candidate_regions = plan["candidate_regions"]
 
@@ -31,6 +74,15 @@ def plot_plan(plan, *, output=None, show=True):
         ax.add_patch(Polygon(guaranteed["vertices"], closed=True,
                              facecolor="#52b788", edgecolor="#2d6a4f",
                              alpha=0.25, label="保证接收域（连续内近似）"))
+    region_styles = [
+        (baseline, "#d62828", "离散"),
+        (continuous, "#277da1", "连续FIM"),
+    ]
+    for branch, color, label_prefix in region_styles:
+        if branch.get("status", "ok") != "ok":
+            continue
+        _draw_near_regions(ax, branch, color, with_labels=True,
+                           label_prefix=label_prefix)
     ax.add_patch(Polygon(vertices, closed=True, facecolor="#8ecae6",
                          edgecolor="#126782", alpha=0.35,
                          label="第一观测后的源位置域"))
@@ -49,6 +101,9 @@ def plot_plan(plan, *, output=None, show=True):
                    label="连续FIM结果")
         ax.plot([selected[0], fim_point[0]], [selected[1], fim_point[1]],
                 linestyle="--", linewidth=1.0, color="#6c757d", alpha=0.7)
+    ax.scatter([recommended[0]], [recommended[1]], marker="o", s=180,
+               facecolors="none", edgecolors="#111111", linewidth=2.0,
+               label=f"最终推荐（{plan['recommendation_source']}）")
     ax.set_aspect("equal", adjustable="datalim")
     ax.set_xlabel("x / m")
     ax.set_ylabel("y / m")
@@ -57,27 +112,51 @@ def plot_plan(plan, *, output=None, show=True):
     ax.legend(fontsize=9)
     fig.colorbar(scatter, ax=ax, label="综合分数", pad=0.02,
                  fraction=0.045)
+    if baseline.get("near_optimal_regions"):
+        _draw_region_inset(ax, baseline, "#d62828", "*", "离散近优域局部",
+                           [0.53, 0.04, 0.20, 0.24])
+    if (continuous.get("status") == "ok"
+            and continuous.get("near_optimal_regions")):
+        _draw_region_inset(ax, continuous, "#277da1", "D",
+                           "连续FIM近优域局部", [0.76, 0.04, 0.20, 0.24])
 
-    labels = ["离散搜索"]
-    values_to_compare = [plan["baseline"]["selected"]["score"]]
-    colors = ["#d62828"]
+    pareto = plan.get("pareto_front", [])
+    if pareto:
+        pareto = sorted(pareto, key=lambda item: item["action_time_s"])
+        compare_ax.plot([item["action_time_s"] for item in pareto],
+                        [item["worst_case_radius_m"] for item in pareto],
+                        color="#6c757d", linewidth=1.2, alpha=0.8)
+        compare_ax.scatter([item["action_time_s"] for item in pareto],
+                           [item["worst_case_radius_m"] for item in pareto],
+                           color="#6c757d", s=35, label="Pareto候选")
+    base_selected = baseline["selected"]
+    compare_ax.scatter([base_selected["action_time_s"]],
+                       [base_selected["worst_case_radius_m"]], marker="*",
+                       s=170, color="#d62828", label="离散结果")
+    compare_ax.annotate(
+        f"J={base_selected['score']:.2f}",
+        (base_selected["action_time_s"],
+         base_selected["worst_case_radius_m"]),
+        xytext=(5, -14), textcoords="offset points", fontsize=8,
+        color="#9d0208",
+    )
     if continuous.get("status") == "ok":
-        labels.append("连续FIM")
-        values_to_compare.append(continuous["selected_score"])
-        colors.append("#277da1")
-    bars = compare_ax.bar(labels, values_to_compare, color=colors,
-                          width=0.62)
-    compare_ax.set_ylabel("同口径选点分数 / s")
-    compare_ax.set_title("最终结果评分对比\n（越低越好）")
-    compare_ax.grid(axis="y", alpha=0.2)
-    compare_ax.tick_params(axis="x", labelrotation=15)
-    for bar, value in zip(bars, values_to_compare):
+        fim_selected = continuous["selected"]
+        compare_ax.scatter([fim_selected["action_time_s"]],
+                           [fim_selected["worst_case_radius_m"]], marker="D",
+                           s=75, color="#277da1", label="连续FIM结果")
         compare_ax.annotate(
-            f"{value:.2f}",
-            (bar.get_x() + bar.get_width() / 2.0, bar.get_height()),
-            xytext=(0, 4), textcoords="offset points", ha="center", va="bottom",
-            fontsize=9,
+            f"J={fim_selected['score']:.2f}",
+            (fim_selected["action_time_s"],
+             fim_selected["worst_case_radius_m"]),
+            xytext=(5, 6), textcoords="offset points", fontsize=8,
+            color="#16425b",
         )
+    compare_ax.set_xlabel("虚拟动作时间 / s")
+    compare_ax.set_ylabel("最坏后验包围半径 / m")
+    compare_ax.set_title("时间—定位效果 Pareto 前沿\n（越靠左下越好）")
+    compare_ax.grid(alpha=0.2)
+    compare_ax.legend(fontsize=8)
 
     top = candidates[:min(15, len(candidates))]
     score_ax.barh(range(len(top)), [item["worst_case_radius_m"] for item in top],

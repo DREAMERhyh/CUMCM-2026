@@ -8,6 +8,7 @@ continuous minimax problem.
 """
 
 import math
+import time
 
 from common.time_model import measure_cost
 
@@ -121,18 +122,32 @@ def optimize_continuous_fim(source_region, guaranteed_region, *,
                             min_receive_radius=1000.0, seed_points=(),
                             samples_per_edge=4, initial_step_m=200.0,
                             min_step_m=2.0, max_iterations=120,
-                            seed_limit=10):
-    """Optimize the robust FIM surrogate over continuous detector coordinates."""
+                            seed_limit=10, action_time_limits_s=(),
+                            cpu_time_limit_s=None):
+    """Optimize robust FIM for one or more absolute action-time limits.
+
+    All budgets share the same deterministic scenarios and evaluation cache.
+    ``cpu_time_limit_s`` is a wall-clock safety cutoff; when reached, every
+    budget still returns its best feasible seed or incumbent and marks the
+    overall result as timed out.
+    """
     if source_region.get("status") != "bounded":
         raise ValueError("连续FIM优化需要有界源位置区域。")
     if samples_per_edge < 1 or initial_step_m <= 0 or min_step_m <= 0:
         raise ValueError("连续FIM搜索参数不合法。")
     if max_iterations < 1 or seed_limit < 1:
         raise ValueError("连续FIM迭代数和种子数至少为1。")
+    if cpu_time_limit_s is not None and cpu_time_limit_s <= 0:
+        raise ValueError("连续FIM CPU时间上限必须为正数。")
+    limits = sorted({float(value) for value in action_time_limits_s})
+    if any(not math.isfinite(value) or value < 5.0 for value in limits):
+        raise ValueError("连续FIM动作时间预算必须是至少5秒的有限数。")
+    if not limits:
+        limits = [None]
     if guaranteed_region.get("status") != "bounded":
         return {
             "status": "unavailable",
-            "method": "continuous_position_robust_fim_pattern_search",
+            "method": "time_budgeted_continuous_robust_fim_pattern_search",
             "reason": "guaranteed_reception_region_empty",
             "optimality_claim": "none",
         }
@@ -154,6 +169,11 @@ def optimize_continuous_fim(source_region, guaranteed_region, *,
         }
 
     cache = {}
+    started = time.perf_counter()
+
+    def out_of_time():
+        return (cpu_time_limit_s is not None
+                and time.perf_counter() - started >= cpu_time_limit_s)
 
     def evaluate(raw_point):
         point = project_to_polygon(raw_point, feasible_vertices)
@@ -218,58 +238,120 @@ def optimize_continuous_fim(source_region, guaranteed_region, *,
                 -item["point"][0], -item["point"][1])
 
     evaluated.sort(key=rank_key, reverse=True)
-    best_seed = evaluated[0]
-    starts = evaluated[:seed_limit]
     directions = [
         (math.cos(2.0 * math.pi * index / 16.0),
          math.sin(2.0 * math.pi * index / 16.0))
         for index in range(16)
     ]
-    best = best_seed
     total_iterations = 0
-    for start in starts:
-        current = start
-        step = initial_step_m
-        iterations = 0
-        while step >= min_step_m and iterations < max_iterations:
-            iterations += 1
-            total_iterations += 1
-            neighbours = []
-            for dx, dy in directions:
-                trial = evaluate((current["point"][0] + step * dx,
-                                  current["point"][1] + step * dy))
-                if trial is not None:
-                    neighbours.append(trial)
-            candidate = max(neighbours + [current], key=rank_key)
-            if (candidate["robust_fim_index_per_s"]
-                    > current["robust_fim_index_per_s"] + 1e-15):
-                current = candidate
-            else:
-                step /= 2.0
-        if rank_key(current) > rank_key(best):
-            best = current
+    budget_solutions = []
+    timed_out = False
+    for limit in limits:
+        allowed = [item for item in evaluated
+                   if limit is None or item["action_time_s"] <= limit + 1e-9]
+        if not allowed:
+            budget_solutions.append({
+                "status": "unavailable",
+                "max_action_time_s": limit,
+                "reason": "no_feasible_seed_within_time_budget",
+            })
+            continue
+        best_seed = max(allowed, key=rank_key)
+        starts = sorted(allowed, key=rank_key, reverse=True)[:seed_limit]
+        best = best_seed
+        iterations_for_budget = 0
+        for start in starts:
+            current = start
+            step = initial_step_m
+            iterations = 0
+            while step >= min_step_m and iterations < max_iterations:
+                if out_of_time():
+                    timed_out = True
+                    break
+                iterations += 1
+                iterations_for_budget += 1
+                total_iterations += 1
+                neighbours = []
+                for dx, dy in directions:
+                    if out_of_time():
+                        timed_out = True
+                        break
+                    trial = evaluate((current["point"][0] + step * dx,
+                                      current["point"][1] + step * dy))
+                    if (trial is not None
+                            and (limit is None
+                                 or trial["action_time_s"] <= limit + 1e-9)):
+                        neighbours.append(trial)
+                candidate = max(neighbours + [current], key=rank_key)
+                if (candidate["robust_fim_index_per_s"]
+                        > current["robust_fim_index_per_s"] + 1e-15):
+                    current = candidate
+                else:
+                    step /= 2.0
+            if rank_key(current) > rank_key(best):
+                best = current
+            if timed_out:
+                break
+        budget_solutions.append({
+            "status": "ok",
+            "max_action_time_s": limit,
+            "selected_point": best["point"],
+            "robust_fim_index_per_s": best["robust_fim_index_per_s"],
+            "worst_case_source": best["worst_case_source"],
+            "action_time_s": best["action_time_s"],
+            "time_breakdown": best["time_breakdown"],
+            "max_source_distance_m": best["max_source_distance_m"],
+            "best_seed_fim_index_per_s": best_seed[
+                "robust_fim_index_per_s"
+            ],
+            "optimized_start_count": len(starts),
+            "iteration_count": iterations_for_budget,
+        })
+
+    available = [item for item in budget_solutions if item["status"] == "ok"]
+    if not available:
+        return {
+            "status": "unavailable",
+            "method": "time_budgeted_continuous_robust_fim_pattern_search",
+            "reason": "no_feasible_time_budget",
+            "budget_solutions": budget_solutions,
+            "timed_out": timed_out,
+            "cpu_wall_time_s": time.perf_counter() - started,
+            "optimality_claim": "none",
+        }
+    best = max(available, key=lambda item: (
+        item["robust_fim_index_per_s"], -item["action_time_s"],
+        -item["selected_point"][0], -item["selected_point"][1]
+    ))
 
     return {
         "status": "ok",
-        "method": "continuous_position_robust_fim_pattern_search",
-        "selected_point": best["point"],
+        "method": "time_budgeted_continuous_robust_fim_pattern_search",
+        "selected_point": best["selected_point"],
         "robust_fim_index_per_s": best["robust_fim_index_per_s"],
         "worst_case_source": best["worst_case_source"],
         "action_time_s": best["action_time_s"],
         "time_breakdown": best["time_breakdown"],
         "max_source_distance_m": best["max_source_distance_m"],
-        "best_seed_fim_index_per_s": best_seed["robust_fim_index_per_s"],
+        "best_seed_fim_index_per_s": best["best_seed_fim_index_per_s"],
         "scenario_count": len(scenarios),
         "seed_count": len(evaluated),
-        "optimized_start_count": len(starts),
+        "optimized_start_count": sum(
+            item.get("optimized_start_count", 0) for item in available
+        ),
         "evaluation_count": len(cache),
         "iteration_count": total_iterations,
+        "budget_solutions": budget_solutions,
+        "timed_out": timed_out,
+        "cpu_wall_time_s": time.perf_counter() - started,
         "search_parameters": {
             "samples_per_edge": samples_per_edge,
             "initial_step_m": initial_step_m,
             "minimum_step_m": min_step_m,
             "max_iterations_per_start": max_iterations,
             "seed_limit": seed_limit,
+            "action_time_limits_s": limits,
+            "cpu_time_limit_s": cpu_time_limit_s,
         },
         "optimality_claim": "numerical_near_global_for_fim_surrogate",
     }

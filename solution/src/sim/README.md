@@ -52,8 +52,10 @@ python src/sim/cli.py --problem 3 --robot-id "参赛队号" --confirm-ready
 完整 Q3/Q4 原型会产生较多动作，必须额外写明：
 
 ```powershell
-python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --confirm-ready --confirm-policy
+python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --max-refinements 2 --fim-cpu-time-limit-s 6 --confirm-ready --confirm-policy
 ```
+
+`--fim-cpu-time-limit-s 6` 是每次 Q2 连续 FIM 规划允许的真实 CPU 墙钟上限，不是机器狗虚拟动作时间。Q3 默认关闭近优域绘图计算，因此该时限只用于产生实际细化测点。
 
 正式测试各有次数限制。必须先由人工按 `tests/sim/verify_manual.md` 完成演练核对；本程序不会操作模拟器界面，也不能判断当前选中的是演练还是正式测试。
 

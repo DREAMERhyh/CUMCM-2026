@@ -2,6 +2,7 @@
 
 from dataclasses import asdict, dataclass
 import math
+import time
 
 from q1.geometry import bearing_planes, intersect_halfplanes
 
@@ -11,6 +12,7 @@ from common.models import BearingObservation
 from common.time_model import measure_cost
 from .candidates import build_candidate_regions, generate_candidates
 from .continuous_fim import optimize_continuous_fim
+from .near_optimal import build_near_optimal_regions, local_sample_points
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,13 @@ class Q2Config:
     fim_min_step_m: float = 2.0
     fim_max_iterations: int = 120
     fim_seed_limit: int = 10
+    fim_extra_time_budgets_s: tuple = (15.0, 30.0, 60.0)
+    fim_execution_extra_time_s: float = 30.0
+    fim_cpu_time_limit_s: float = 8.0
+    near_optimal_region_mode: str = "online"
+    near_optimal_region_cpu_limit_s: float = 5.0
+    near_optimal_time_slack_s: float = 10.0
+    near_optimal_tolerances: tuple = (0.05, 0.10)
 
 
 def _posterior_radius(region, sensor, target, error, config):
@@ -98,9 +107,95 @@ def score_candidates(region, observations, candidates, current_position,
     return scores
 
 
+def _pareto_front(items):
+    """Return points not dominated in both action time and posterior radius."""
+    ordered = sorted(items, key=lambda item: (
+        item["action_time_s"], item["worst_case_radius_m"], item["point"]
+    ))
+    front = []
+    best_radius = float("inf")
+    for item in ordered:
+        if item["worst_case_radius_m"] < best_radius - 1e-9:
+            front.append(item)
+            best_radius = item["worst_case_radius_m"]
+    return front
+
+
+def _near_optimal_outputs(region, observations, candidate_region, branches,
+                          current_position, current_channel, target_channel,
+                          first, config):
+    mode = config.near_optimal_region_mode
+    if mode == "off" or candidate_region.get("status") != "bounded":
+        status = "disabled" if mode == "off" else "unavailable"
+        for branch in branches:
+            branch["near_optimal_regions"] = {}
+            branch["near_optimal_region_meta"] = {
+                "status": status,
+                "mode": mode,
+                "reason": ("disabled_by_config" if mode == "off"
+                           else "guaranteed_reception_region_empty"),
+            }
+        return {"status": status, "evaluated_point_count": 0,
+                "cpu_wall_time_s": 0.0}
+
+    started = time.perf_counter()
+    deadline = started + config.near_optimal_region_cpu_limit_s
+    feasible_vertices = candidate_region["vertices"]
+    points_by_branch = {
+        branch["method"]: local_sample_points(
+            branch["selected_point"], feasible_vertices, mode=mode
+        )
+        for branch in branches
+    }
+    cache = {}
+    timed_out = False
+    max_length = max(len(points) for points in points_by_branch.values())
+    for index in range(max_length):
+        for points in points_by_branch.values():
+            if index >= len(points):
+                continue
+            if time.perf_counter() >= deadline:
+                timed_out = True
+                break
+            point = points[index]
+            key = round(point[0], 8), round(point[1], 8)
+            if key not in cache:
+                cache[key] = score_candidates(
+                    region, observations, [point], current_position,
+                    current_channel, target_channel, config,
+                )[0]
+        if timed_out:
+            break
+
+    for branch in branches:
+        reference = branch["selected"]
+        key = round(reference["point"][0], 8), round(reference["point"][1], 8)
+        cache[key] = reference
+        samples = [cache[(round(point[0], 8), round(point[1], 8))]
+                   for point in points_by_branch[branch["method"]]
+                   if (round(point[0], 8), round(point[1], 8)) in cache]
+        result = build_near_optimal_regions(
+            reference, samples,
+            first_position=first.position,
+            first_bearing_deg=first.bearing_deg,
+            tolerances=config.near_optimal_tolerances,
+            time_slack_s=config.near_optimal_time_slack_s,
+            mode=mode, timed_out=timed_out,
+        )
+        branch["near_optimal_regions"] = result.pop("regions")
+        branch["near_optimal_region_meta"] = result
+    return {
+        "status": "partial" if timed_out else "ok",
+        "evaluated_point_count": len(cache),
+        "cpu_wall_time_s": time.perf_counter() - started,
+        "timed_out": timed_out,
+    }
+
+
 def plan_measurement(region, observations, *, current_position=None,
                      current_channel=None, target_channel=None,
                      config=Q2Config()):
+    planning_started = time.perf_counter()
     observations = list(observations)
     directions = [obs for obs in observations if obs.result == "direction"]
     if not directions:
@@ -142,6 +237,10 @@ def plan_measurement(region, observations, *, current_position=None,
         "guaranteed_candidate_count": len(guaranteed),
     }
     if config.continuous_fim_enabled:
+        action_time_limits = [
+            selected["action_time_s"] + extra
+            for extra in config.fim_extra_time_budgets_s
+        ]
         continuous_fim = optimize_continuous_fim(
             region,
             candidate_regions["guaranteed_reception"],
@@ -156,18 +255,75 @@ def plan_measurement(region, observations, *, current_position=None,
             min_step_m=config.fim_min_step_m,
             max_iterations=config.fim_max_iterations,
             seed_limit=config.fim_seed_limit,
+            action_time_limits_s=action_time_limits,
+            cpu_time_limit_s=config.fim_cpu_time_limit_s,
         )
         if continuous_fim["status"] == "ok":
-            comparable = score_candidates(
-                region, observations, [continuous_fim["selected_point"]],
+            solutions = [item for item in continuous_fim["budget_solutions"]
+                         if item["status"] == "ok"]
+            unique_points = {}
+            for item in solutions:
+                point = tuple(item["selected_point"])
+                unique_points[(round(point[0], 8), round(point[1], 8))] = point
+            rescored = score_candidates(
+                region, observations, list(unique_points.values()),
                 current_position, current_channel, target_channel, config,
-            )[0]
-            comparable["candidate_id"] = "FIM"
+            )
+            by_point = {(round(item["point"][0], 8),
+                         round(item["point"][1], 8)): item
+                        for item in rescored}
+            fim_candidates = []
+            for index, solution in enumerate(solutions, 1):
+                key = (round(solution["selected_point"][0], 8),
+                       round(solution["selected_point"][1], 8))
+                comparable = dict(by_point[key])
+                comparable["candidate_id"] = f"FIM-T{index:02d}"
+                comparable["max_action_time_s"] = solution[
+                    "max_action_time_s"
+                ]
+                comparable["robust_fim_index_per_s"] = solution[
+                    "robust_fim_index_per_s"
+                ]
+                fim_candidates.append(comparable)
+                solution["set_evaluation"] = comparable
+            execution_limit = (selected["action_time_s"]
+                               + config.fim_execution_extra_time_s)
+            executable = [item for item in fim_candidates
+                          if item["action_time_s"] <= execution_limit + 1e-9]
+            executable = executable or fim_candidates
+            comparable = min(executable, key=lambda item: (
+                item["worst_case_radius_m"], item["action_time_s"],
+                -item["robust_fim_index_per_s"], item["point"]
+            ))
+            continuous_fim["fim_surrogate_best_point"] = continuous_fim[
+                "selected_point"
+            ]
+            continuous_fim["fim_surrogate_best_index_per_s"] = (
+                continuous_fim["robust_fim_index_per_s"]
+            )
+            continuous_fim["selected_point"] = comparable["point"]
+            continuous_fim["robust_fim_index_per_s"] = comparable[
+                "robust_fim_index_per_s"
+            ]
+            selected_solution = min(
+                solutions,
+                key=lambda item: abs(item["max_action_time_s"]
+                                     - comparable["max_action_time_s"]),
+            )
+            continuous_fim["best_seed_fim_index_per_s"] = selected_solution[
+                "best_seed_fim_index_per_s"
+            ]
             continuous_fim["selected"] = comparable
             continuous_fim["selected_score"] = comparable["score"]
             continuous_fim["score_delta_vs_baseline"] = (
                 comparable["score"] - selected["score"]
             )
+            continuous_fim["radius_delta_vs_baseline_m"] = (
+                comparable["worst_case_radius_m"]
+                - selected["worst_case_radius_m"]
+            )
+            continuous_fim["execution_action_time_limit_s"] = execution_limit
+            continuous_fim["candidates"] = fim_candidates
     else:
         continuous_fim = {
             "status": "disabled",
@@ -175,6 +331,26 @@ def plan_measurement(region, observations, *, current_position=None,
             "reason": "disabled_by_config",
             "optimality_claim": "none",
         }
+    choice_items = [{**selected, "source": "baseline"}]
+    if continuous_fim.get("status") == "ok":
+        choice_items.extend({**item, "source": "continuous_fim"}
+                            for item in continuous_fim["candidates"])
+    pareto_front = _pareto_front(choice_items)
+    final_pool = [choice_items[0]]
+    if continuous_fim.get("status") == "ok":
+        final_pool.append({**continuous_fim["selected"],
+                           "source": "continuous_fim"})
+    recommended = min(final_pool, key=lambda item: (
+        item["worst_case_radius_m"], item["action_time_s"], item["point"]
+    ))
+    branches_for_regions = [baseline]
+    if continuous_fim.get("status") == "ok":
+        branches_for_regions.append(continuous_fim)
+    near_optimal_summary = _near_optimal_outputs(
+        region, observations,
+        candidate_regions["guaranteed_reception"], branches_for_regions,
+        current_position, current_channel, target_channel, first, config,
+    )
     comparison = {
         "score_definition": (
             "action_time_s + uncertainty_seconds_per_metre "
@@ -186,15 +362,22 @@ def plan_measurement(region, observations, *, current_position=None,
         "continuous_minus_baseline": continuous_fim.get(
             "score_delta_vs_baseline"
         ),
+        "baseline_worst_case_radius_m": selected["worst_case_radius_m"],
+        "continuous_fim_worst_case_radius_m": (
+            continuous_fim.get("selected", {}).get("worst_case_radius_m")
+        ),
+        "continuous_minus_baseline_radius_m": continuous_fim.get(
+            "radius_delta_vs_baseline_m"
+        ),
     }
     return {
-        "method": "baseline_and_continuous_fim",
-        # Compatibility aliases: Q3 and existing callers keep using the old
-        # discrete set-score result unless they explicitly select the new key.
-        "selected_point": selected["point"],
-        "selected": selected,
+        "method": "time_budgeted_fim_pareto_hybrid",
+        "selected_point": recommended["point"],
+        "selected": recommended,
+        "recommendation_source": recommended["source"],
         "baseline": baseline,
         "continuous_fim": continuous_fim,
+        "pareto_front": pareto_front,
         "comparison": comparison,
         "fim_baseline_point": fim_choice["point"],
         "candidate_count": len(scores),
@@ -203,12 +386,15 @@ def plan_measurement(region, observations, *, current_position=None,
         "candidate_regions": candidate_regions,
         "region": region,
         "config": asdict(config),
+        "near_optimal_region_summary": near_optimal_summary,
+        "planning_cpu_wall_time_s": time.perf_counter() - planning_started,
         "limitations": [
             "源物理圆域用外切正多边形保守近似。",
             "保证接收域是圆交集的内近似；可能接收域是圆盘Minkowski和的外近似。",
             "最坏情形在有限边界场景和误差端点上计算，不声称连续全局最优。",
             "连续FIM在测点坐标上优化，但源位置鲁棒性仍由有限边界场景近似。",
             "连续FIM优化的是信息量替代目标；最终另用离散基线的集合评分同口径比较。",
+            "5%/10%近优域是已验证局部采样点凸包的绘图近似，不是连续置信区域或严格子水平集证书。",
         ],
     }
 

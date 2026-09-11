@@ -13,8 +13,10 @@
 3. 从首测方向、区域中心和保证域中心等位置生成有限候选。
 4. 对有限源位置及误差样本模拟第二次观测，计算最坏后验半径。
 5. 离散基线在保证接收候选中最小化“动作时间 + 不确定半径折算”；若该集合为空则回退到全部候选。
-6. 连续 FIM 方法在保证接收多边形中用多起点投影模式搜索最大化“最差边界场景的两示向 FIM / 动作时间”。
-7. 把连续 FIM 选点送回基线评分器复算，在同一单位下并排输出两个最终分数。
+6. 连续 FIM 方法在离散基线动作时间再增加 15/30/60 s 的三档预算下，分别搜索“最差边界场景的两示向 FIM / 动作时间”。
+7. 把三档连续候选送回集合评分器，统一计算最坏后验半径和动作时间；在允许多 30 s 的执行预算内，按“半径优先、时间次之”选连续代表点。
+8. 将离散点、连续点和其他分时限候选组成 `T-R` Pareto 前沿；顶层推荐点保证不会比离散基线的有限场景最坏半径更差。
+9. 在两个代表点附近采样，输出并绘制 5%/10% 近优域，作为题目“选取区间”的可审计近似。
 
 | 算法步骤 / 数学关系 | 对应函数 | 说明 |
 |---|---|---|
@@ -37,12 +39,13 @@ first = BearingObservation((-600.0, -300.0), 1, "direction", 35.89)
 plan = plan_second_point(first)
 print(plan["baseline"]["selected_point"], plan["baseline"]["selected"]["score"])
 print(plan["continuous_fim"]["selected_point"], plan["continuous_fim"]["selected_score"])
+print(plan["recommendation_source"], plan["selected_point"])
 ```
 
 字段、配置和返回结构见 [API.md](API.md)。绘图演示：
 
 ```powershell
-python src/q2/cli.py --demo --no-show --output output/q2.png --result-json output/q2.json
+python src/q2/cli.py --demo --no-show --region-mode online --output output/q2.png --result-json output/q2.json
 ```
 
 ## 测试与局限
@@ -54,6 +57,6 @@ python tests/q2/test_duipai.py --dir tests/q2/data/random
 python -B tests/q2/benchmark_200.py --count 200 --seed 20260911 --workers 16
 ```
 
-200 例配对结果及指标选择讨论见 `tests/q2/analysis/q2_200_case_comparison.md`。该试验建议 Q2 以最坏后验半径为主指标、动作时间为次级指标，并把 FIM 作为候选生成器而非最终裁决器；当前规划器暂时仍并列返回两种结果，尚未自动执行混合裁决。
+200 例配对结果及指标选择讨论见 `tests/q2/analysis/q2_200_case_comparison.md`。规划器以最坏后验半径为主指标、动作时间为次级指标；FIM 负责生成候选，最终由统一集合评分和 Pareto 规则裁决。
 
-人工验收必须按 `tests/q2/verify_manual.md` 执行。旧 `selected_point` 仍是离散基线，避免影响 Q3；新结果在 `continuous_fim`。连续 FIM 虽然不再把测点限制在离散网格，但源域最坏情形和数值搜索仍是有限近似，不能写成原问题连续空间全局最优证明。圆域使用可审计的正多边形近似，官方模拟器协议仍待补充。
+人工验收必须按 `tests/q2/verify_manual.md` 执行。离散结果在 `baseline.selected_point`，连续结果在 `continuous_fim.selected_point`，顶层 `selected_point` 是供 Q3/Q4 使用的推荐点。`--region-mode online` 适合现场，`offline` 用较密采样生成论文图，`off` 用于只比较选点。5%/10% 近优域是局部采样凸包近似，不是统计置信区间或连续证书。连续 FIM、源域最坏情形和圆域都仍含有限近似，不能写成原问题连续空间全局最优证明。

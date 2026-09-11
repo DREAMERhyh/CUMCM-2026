@@ -44,8 +44,10 @@ def check_case(case):
     oracle = min(pool, key=lambda item: (item["score"],
                                          -item["fim_proxy_per_s"],
                                          item["point"]))
-    check("有限候选池选择", plan["selected_point"] == oracle["point"],
-          {"selected": plan["selected_point"], "oracle": oracle["point"]})
+    check("离散有限候选池选择",
+          plan["baseline"]["selected_point"] == oracle["point"],
+          {"selected": plan["baseline"]["selected_point"],
+           "oracle": oracle["point"]})
 
     vertices = plan["region"]["vertices"]
     for item in candidates:
@@ -108,6 +110,36 @@ def check_case(case):
                   (continuous["robust_fim_index_per_s"] + 1e-15
                    >= continuous["best_seed_fim_index_per_s"]),
                   continuous)
+            check("执行时间满足预算",
+                  selected_fim["action_time_s"]
+                  <= continuous["execution_action_time_limit_s"] + 1e-7,
+                  {"actual": selected_fim["action_time_s"],
+                   "limit": continuous["execution_action_time_limit_s"]})
+            check("最终推荐半径不劣于离散基线",
+                  plan["selected"]["worst_case_radius_m"]
+                  <= plan["baseline"]["selected"]["worst_case_radius_m"]
+                  + 1e-9,
+                  {"recommended": plan["selected"]["worst_case_radius_m"],
+                   "baseline": plan["baseline"]["selected"]
+                   ["worst_case_radius_m"]})
+            check("最终推荐来源一致",
+                  plan["selected_point"]
+                  == plan[plan["recommendation_source"]]["selected_point"],
+                  {"source": plan["recommendation_source"],
+                   "selected": plan["selected_point"]})
+            check("Pareto前沿非空", bool(plan["pareto_front"]),
+                  plan["pareto_front"])
+            for branch_name in ("baseline", "continuous_fim"):
+                branch = plan[branch_name]
+                if config.near_optimal_region_mode != "off":
+                    check(f"{branch_name}近优域已生成",
+                          branch["near_optimal_region_meta"]["status"]
+                          in {"ok", "partial"},
+                          branch["near_optimal_region_meta"])
+                    check(f"{branch_name}近优域层级",
+                          set(branch["near_optimal_regions"])
+                          == {"5pct", "10pct"},
+                          branch["near_optimal_regions"])
     else:
         check("空保证域禁用连续FIM",
               continuous["status"] == "unavailable", continuous)

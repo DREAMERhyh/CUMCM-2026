@@ -5,20 +5,45 @@ from pathlib import Path
 import random
 import sys
 import unittest
+from unittest.mock import patch
 
 SRC = Path(__file__).resolve().parents[2] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from common.models import Action
+from common.models import Action, BearingObservation
 from q3.coverage import nearest_coverage_distance, ring7, strip_clear_points
-from q3.policy import Q3Policy
+from q3.policy import Q3Policy, Q3State, SourceTrack
 from runtime.runner import run_policy
 from sim.fake import FakeSimulator, FakeSource
 from sim.protocol import build_request_payload
 
 
 class Q3TheoryTestbench(unittest.TestCase):
+    def test_refinement_consumes_q2_hybrid_recommendation(self):
+        policy = Q3Policy()
+        state = Q3State(position=(10.0, 20.0), current_channel=2)
+        track = SourceTrack(
+            3,
+            observations=[BearingObservation(
+                (0.0, 0.0), 3, "direction", 45.0
+            )],
+            region={"status": "bounded"},
+        )
+        fake_plan = {
+            "selected_point": (80.0, 90.0),
+            "recommendation_source": "continuous_fim",
+            "baseline": {"selected_point": (1.0, 2.0)},
+        }
+        with patch("q3.policy.plan_measurement",
+                   return_value=fake_plan) as planner:
+            self.assertEqual(policy._refinement_point(state, track),
+                             (80.0, 90.0))
+        self.assertTrue(policy.q2_config.continuous_fim_enabled)
+        self.assertEqual(policy.q2_config.fim_cpu_time_limit_s, 6.0)
+        self.assertEqual(policy.q2_config.near_optimal_region_mode, "off")
+        planner.assert_called_once()
+
     def test_ring7_covers_random_target_disk_at_radius_1000(self):
         rng = random.Random(20260911)
         centers = ring7()
@@ -68,14 +93,24 @@ class Q3TheoryTestbench(unittest.TestCase):
         self.assertNotIn("kind", payload)
 
     def test_q3_policy_finitely_clears_and_certifies_channels_offline(self):
+        class CountingQ3Policy(Q3Policy):
+            def __init__(self):
+                super().__init__(max_refinements=2)
+                self.refinement_plan_count = 0
+
+            def _refinement_point(self, state, track):
+                self.refinement_plan_count += 1
+                return super()._refinement_point(state, track)
+
         client = FakeSimulator([FakeSource(3, (1200.0, 100.0), 1000.0)])
-        summary = run_policy(Q3Policy(max_refinements=0), client,
-                             max_actions=1000)
+        policy = CountingQ3Policy()
+        summary = run_policy(policy, client, max_actions=1000)
         self.assertEqual(summary.cleared_channels, [3])
         self.assertEqual(summary.absent_channels,
                          [c for c in range(1, 21) if c != 3])
         self.assertEqual(summary.exit_reason, "user_exit")
         self.assertLess(len(summary.actions), 1000)
+        self.assertEqual(policy.refinement_plan_count, 2)
 
 
 if __name__ == "__main__":

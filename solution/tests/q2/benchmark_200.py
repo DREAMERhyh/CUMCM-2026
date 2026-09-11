@@ -80,7 +80,9 @@ def _robust_fim_at(point, plan, observation, config):
 
 def run_case(case):
     observation = BearingObservation(**case["first_observation"])
-    config = Q2Config()
+    # The benchmark compares point-selection algorithms.  Region sampling is
+    # disabled here so the 200-case run does not spend time on plot-only data.
+    config = Q2Config(near_optimal_region_mode="off")
     plan = plan_second_point(observation, config=config)
     source = tuple(case["source_for_generation_only"])
     if not contains(plan["region"]["planes"], source):
@@ -211,7 +213,9 @@ def summarize(results, *, seed, elapsed_s):
             "source_detector_distance_m": [100.0, 1000.0],
             "bearing_error_deg": [-1.0, 1.0],
             "current_channel": "same as detected source channel",
-            "planner_config": "Q2Config defaults",
+            "planner_config": (
+                "Q2Config defaults except near_optimal_region_mode='off'"
+            ),
         },
     }
 

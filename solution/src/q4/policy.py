@@ -5,10 +5,12 @@ from .directional import four_sided_points, grid121
 
 
 class Q4Policy(Q3Policy):
-    def __init__(self, *, max_refinements=2, error_deg=1.005):
+    def __init__(self, *, max_refinements=2, error_deg=1.005,
+                 fim_cpu_time_limit_s=6.0):
         super().__init__(max_refinements=max_refinements,
                          error_deg=error_deg,
-                         coverage_points=grid121())
+                         coverage_points=grid121(),
+                         fim_cpu_time_limit_s=fim_cpu_time_limit_s)
 
     def _refinement_point(self, state, track):
         circle = track.region["minimum_enclosing_circle"]

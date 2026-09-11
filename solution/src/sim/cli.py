@@ -38,6 +38,10 @@ def main(argv=None):
     parser.add_argument("--retry-delay-s", type=float, default=0.2)
     parser.add_argument("--max-actions", type=int)
     parser.add_argument("--max-refinements", type=int, default=2)
+    parser.add_argument(
+        "--fim-cpu-time-limit-s", type=float, default=6.0,
+        help="每次Q2连续FIM规划允许的真实墙钟秒数",
+    )
     parser.add_argument("--exit-safety-margin-s", type=float, default=15.0)
     parser.add_argument("--log", help="新建的逐动作 JSONL 日志路径")
     parser.add_argument(
@@ -55,6 +59,8 @@ def main(argv=None):
         parser.error("未发送任何请求：请确认模拟器接口就绪后添加 --confirm-ready。")
     if args.max_refinements < 0:
         parser.error("--max-refinements 不能为负数。")
+    if args.fim_cpu_time_limit_s <= 0:
+        parser.error("--fim-cpu-time-limit-s 必须为正数。")
     if args.mode == "policy" and not args.confirm_policy:
         parser.error("未发送任何请求：policy 模式还必须添加 --confirm-policy。")
 
@@ -62,9 +68,15 @@ def main(argv=None):
         policy = SmokePolicy()
         max_actions = args.max_actions or 10
     else:
-        policy = (Q3Policy(max_refinements=args.max_refinements)
+        policy = (Q3Policy(
+                      max_refinements=args.max_refinements,
+                      fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+                  )
                   if args.problem == 3
-                  else Q4Policy(max_refinements=args.max_refinements))
+                  else Q4Policy(
+                      max_refinements=args.max_refinements,
+                      fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+                  ))
         max_actions = args.max_actions or (1000 if args.problem == 3 else 4000)
     log_path = args.log or _default_log(args.problem)
     try:

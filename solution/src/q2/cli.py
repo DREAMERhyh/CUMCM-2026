@@ -31,6 +31,9 @@ def main(argv=None):
     parser.add_argument("--output")
     parser.add_argument("--result-json")
     parser.add_argument("--no-show", action="store_true")
+    parser.add_argument("--region-mode", choices=("off", "online", "offline"),
+                        default="online",
+                        help="5%%/10%%近优域计算档位")
     args = parser.parse_args(argv)
     if args.demo:
         args.first = (-600.0, -300.0, 35.89)
@@ -41,8 +44,14 @@ def main(argv=None):
 
     x, y, bearing = args.first
     observation = BearingObservation((x, y), args.channel, "direction", bearing)
-    plan = plan_second_point(observation,
-                             config=Q2Config(error_deg=args.error_deg))
+    plan = plan_second_point(
+        observation,
+        config=Q2Config(error_deg=args.error_deg,
+                        near_optimal_region_mode=args.region_mode,
+                        near_optimal_region_cpu_limit_s=(
+                            25.0 if args.region_mode == "offline" else 5.0
+                        )),
+    )
     selected = plan["baseline"]["selected"]
     print("离散搜索基线：")
     print(f"  第二检测点：({selected['point'][0]:.3f}, {selected['point'][1]:.3f})")
@@ -58,8 +67,17 @@ def main(argv=None):
         print(f"  鲁棒FIM指标：{continuous['robust_fim_index_per_s']:.6g}")
         print(f"  同口径选点分数：{fim_selected['score']:.3f}")
         print(f"  相对离散基线分差：{continuous['score_delta_vs_baseline']:+.3f}")
+        print(f"  相对离散基线半径差：{continuous['radius_delta_vs_baseline_m']:+.3f} m")
     else:
         print(f"  不可用：{continuous.get('reason', continuous['status'])}")
+    final = plan["selected"]
+    print("Pareto安全裁决：")
+    print(f"  来源：{plan['recommendation_source']}")
+    print(f"  执行点：({final['point'][0]:.3f}, {final['point'][1]:.3f})")
+    print(f"  最坏后验包围半径：{final['worst_case_radius_m']:.3f} m")
+    print(f"  虚拟动作时间：{final['action_time_s']:.3f} s")
+    print(f"  规划CPU墙钟：{plan['planning_cpu_wall_time_s']:.3f} s")
+    print(f"  近优域计算：{plan['near_optimal_region_summary']['status']}")
     print(f"候选数：{plan['candidate_count']}，保证接收候选：{plan['guaranteed_candidate_count']}")
     guaranteed = plan["candidate_regions"]["guaranteed_reception"]
     possible = plan["candidate_regions"]["possible_reception"]
