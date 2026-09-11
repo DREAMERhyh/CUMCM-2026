@@ -219,3 +219,6 @@ __marimo__/
 
 # codex
 tmp/
+
+# simulator
+simulator/
