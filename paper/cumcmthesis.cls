@@ -151,7 +151,8 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 	{\mcm@endoldtabular\egroup}
 % 每行缩进两个汉字
 \setlength\parindent{2em}
-% 设置字体
+% 设置西文字体：正文（非数学公式）中的英文字母和数字使用 Times New Roman；
+% 中文字体由 ctex/cumcm2026.sty 分别按宋体、黑体、楷体等命令控制。
 \setmainfont{Times New Roman}
 %\setmonofont{Courier New}
 \setsansfont{Arial} 
