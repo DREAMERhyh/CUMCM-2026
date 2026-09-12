@@ -11,6 +11,8 @@ import math
 from q3.coverage import strip_clear_points
 from q3.policy import Q3Policy, Q3State
 
+from .refine_selector import select_refine_leg
+
 
 def held_karp_tsp(points):
     """开放回路精确 TSP（起点任意、不返回）；O(n^2*2^n)。
@@ -75,6 +77,12 @@ class Q3BatchPolicy(Q3Policy):
     自动补 strip 保底点（沿用既有 strip_clear_points 网格）。
     """
 
+    def __init__(self, *, tour_refine=False, tspn_clear=False,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.tour_refine = tour_refine
+        self.tspn_clear = tspn_clear
+
     def initial_state(self):
         return Q3BatchState()
 
@@ -95,7 +103,14 @@ class Q3BatchPolicy(Q3Policy):
                 state.certificate_ok[channel] = True
                 return None
             if track.refinements < self.max_refinements:
-                point = self._refinement_point(state, track)
+                if self.tour_refine:
+                    point, _ = select_refine_leg(
+                        track.region, track.observations,
+                        current_position=state.position,
+                        current_channel=state.current_channel,
+                        error_deg=self.error_deg)
+                else:
+                    point = self._refinement_point(state, track)
                 return self._action(state, "measure", point, channel,
                                     "batch_refine")
             center = tuple(track.region["minimum_enclosing_circle"]["center"])
@@ -120,16 +135,52 @@ class Q3BatchPolicy(Q3Policy):
     def _clear_next(self, state):
         while state.clear_index < len(state.clear_queues):
             queue = state.clear_queues[state.clear_index]
-            while queue:
-                point, channel = queue[0]
-                if channel in state.cleared:
-                    break
-                return self._action(state, "clear", point, channel,
+            if not queue:
+                state.clear_index += 1
+                continue
+            point, channel = queue[0]
+            if channel in state.cleared:
+                state.clear_index += 1
+                continue
+            track = state.sources.get(channel)
+            radius = None
+            if (track is not None and track.region is not None
+                    and track.region.get("status") == "bounded"):
+                radius = track.region["minimum_enclosing_circle"]["radius"]
+            if radius is not None and radius <= 19.9:
+                # A：TSPN 清除端点（可选）——停在清除邻域边界朝下一目标
+                # 方向，|p-源| <= (20-r)+r = 20 数学保证，节省后续移动。
+                center = tuple(track.region["minimum_enclosing_circle"]
+                               ["center"])
+                if self.tspn_clear:
+                    next_center = self._next_queue_center(state,
+                                                          state.clear_index)
+                    if next_center is not None:
+                        dx = next_center[0] - center[0]
+                        dy = next_center[1] - center[1]
+                        norm = math.hypot(dx, dy)
+                        if norm > 1e-9:
+                            reach = max(0.0, 20.0 - radius)
+                            point = (center[0] + reach * dx / norm,
+                                     center[1] + reach * dy / norm)
+                            return self._action(state, "clear", point,
+                                                channel, "batch_clear")
+                return self._action(state, "clear", center, channel,
                                     "batch_clear")
-            state.clear_index += 1
+            return self._action(state, "clear", point, channel,
+                                "batch_clear")
         if state.cleared | state.absent != set(range(1, 21)):
             raise RuntimeError("批量清除未覆盖全部频道定性。")
         state.phase = "exit"
+        return None
+
+    @staticmethod
+    def _next_queue_center(state, index):
+        """返回 index 之后下一个未清除源的清除队列首点（目标中心）。"""
+        for j in range(index + 1, len(state.clear_queues)):
+            queue = state.clear_queues[j]
+            if queue and queue[0][1] not in state.cleared:
+                return queue[0][0]
         return None
 
     def _resolve_action(self, state):

@@ -48,7 +48,8 @@ class Q3Policy:
                  coverage_points=None, fim_cpu_time_limit_s=6.0,
                  scan_layout="pure_ring8", use_no_signal_pruning=False,
                  continuous_objective="fim", use_optimal_stop=True,
-                 stop_cost_per_metre=0.5, guess_clear_threshold_m=40.0):
+                 stop_cost_per_metre=0.5, guess_clear_threshold_m=40.0,
+                 interleaved_scan_refine=True):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
         if scan_layout not in SCAN_LAYOUTS:
@@ -65,6 +66,7 @@ class Q3Policy:
         self.use_optimal_stop = use_optimal_stop
         self.stop_cost_per_metre = stop_cost_per_metre
         self.guess_clear_threshold_m = guess_clear_threshold_m
+        self.interleaved_scan_refine = interleaved_scan_refine
         self.coverage_points = list(coverage_points or SCAN_LAYOUTS[scan_layout]())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
@@ -94,7 +96,11 @@ class Q3Policy:
                 state.scan_channel_index = 0
             while state.scan_channel_index < len(state.scan_order):
                 channel = state.scan_order[state.scan_channel_index]
-                if channel in state.cleared or channel in state.sources:
+                if channel in state.cleared:
+                    state.scan_channel_index += 1
+                    continue
+                if (channel in state.sources
+                        and not self.interleaved_scan_refine):
                     state.scan_channel_index += 1
                     continue
                 return self._action(state, "measure",
