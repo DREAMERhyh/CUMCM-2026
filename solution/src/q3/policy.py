@@ -80,6 +80,7 @@ class Q3State:
 class Q3Policy:
     def __init__(self, *, max_refinements=5, error_deg=1.005,
                  coverage_points=None, fim_cpu_time_limit_s=10.0,
+                 q2_version="new",
                  adaptive_refinement=True, posterior_grid=True,
                  min_improvement_ratio=0.05, stagnation_limit=2,
                  measure_savings_margin_s=10.0,
@@ -97,7 +98,7 @@ class Q3Policy:
                  rolling_candidate_limit=12,
                  rolling_risk_metric="cvar",
                  rolling_cvar_alpha=0.9,
-                 rolling_cpu_time_limit_s=1.0,
+                 rolling_cpu_time_limit_s=3.0,
                  multi_source_route_mode="off",
                  route_cpu_time_limit_s=0.25,
                  route_max_2opt_iterations=20,
@@ -195,6 +196,7 @@ class Q3Policy:
         )
         self.route_planning_history = []
         self.q2_config = Q2Config(error_deg=error_deg, circle_sides=16,
+                                  q2_version=q2_version,
                                   scenario_limit=4,
                                   continuous_fim_enabled=True,
                                   fim_cpu_time_limit_s=fim_cpu_time_limit_s,
@@ -936,7 +938,8 @@ class Q3Policy:
                       if track.region is not None else None)
         track.observations.append(observation)
         track.region = build_region_from_observations(
-            track.observations, error_deg=self.error_deg, circle_sides=16)
+            track.observations, error_deg=self.error_deg, circle_sides=16,
+            q2_version=self.q2_config.q2_version)
         if (mode in ("refine", "joint_target")
                 and old_radius is not None and old_radius > 0.0):
             new_radius = track.region["minimum_enclosing_circle"]["radius"]

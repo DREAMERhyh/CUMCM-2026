@@ -160,6 +160,7 @@ def _posterior_branch(track, point, target, error_deg, config,
         arena_radius=config.arena_radius,
         max_receive_radius=config.max_receive_radius,
         circle_sides=config.circle_sides,
+        q2_version=config.q2_version,
     )
     if posterior.get("status") != "bounded":
         raise RuntimeError("测后有限场景没有产生有界后验。")

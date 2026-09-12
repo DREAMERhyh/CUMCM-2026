@@ -21,6 +21,10 @@ def main(argv=None):
     parser.add_argument("--max-refinements", type=int, default=5)
     parser.add_argument("--fim-cpu-time-limit-s", type=float, default=10.0)
     parser.add_argument(
+        "--q2-version", choices=("new", "legacy"), default="new",
+        help="Q2源区域算法版本",
+    )
+    parser.add_argument(
         "--joint-batch-mode",
         choices=("off", "guaranteed", "all_active"),
         default="guaranteed",
@@ -36,7 +40,7 @@ def main(argv=None):
         choices=("off", "scenario"), default="scenario",
         help="总虚拟时间滚动评价：关闭或有限场景推演",
     )
-    parser.add_argument("--rolling-cpu-time-limit-s", type=float, default=1.0)
+    parser.add_argument("--rolling-cpu-time-limit-s", type=float, default=3.0)
     parser.add_argument(
         "--rolling-risk-metric",
         choices=("p90", "cvar", "worst", "mean"), default="cvar",
@@ -68,6 +72,7 @@ def main(argv=None):
     policy = Q3Policy(
         max_refinements=args.max_refinements,
         fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+        q2_version=args.q2_version,
         joint_batch_mode=args.joint_batch_mode,
         failed_clear_remeasure_mode=args.failed_clear_remeasure_mode,
         rolling_time_mode=args.rolling_time_mode,
@@ -89,6 +94,7 @@ def main(argv=None):
     print(f"清除频道：{summary.cleared_channels}")
     print(f"离线虚拟时间：{summary.virtual_time_s:.3f} s")
     print(f"细化上限：{args.max_refinements}；单次FIM墙钟上限：{args.fim_cpu_time_limit_s:.3f} s")
+    print(f"Q2版本：{args.q2_version}")
     print(f"联合批测模式：{args.joint_batch_mode}")
     print(f"清除失败复测模式：{args.failed_clear_remeasure_mode}")
     print(f"总时间滚动模式：{args.rolling_time_mode}")

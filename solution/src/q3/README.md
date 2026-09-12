@@ -6,13 +6,15 @@
 
 策略仍是待官方模拟器验收的算法原型。7 个固定检测点继续负责形成全区域发现证书；发现源后，Q3 调用 Q2 产生离散、连续 FIM 和 Pareto 候选，再由 Q3 的总虚拟时间滚动评价决定“继续检测还是直接清除”。
 
+Q3 构造参数 `q2_version="new"` 默认使用新版自适应圆弧细化；启动前改成 `legacy` 可让首次后验、每次真实观测更新、Q2 候选评分和滚动测后分支统一使用旧版固定外切正多边形。版本写入 Q2 配置并参与缓存键，运行中不混用。
+
 单源处理不再固定检测两次。共同硬条件是：最小包围圆半径不超过 19.9 m 时直接清除；每源至多专用细化 5 次；连续两次实际半径改善不足 5% 时停止。关闭总时间滚动模式时，保留旧的半径平方成本代理作为回归基线；默认滚动模式则使用下文的真实分支网格成本。停止后都以 27 m 方格覆盖当前后验多边形，理论覆盖半径约 19.092 m，相对 20 m 清除半径保留约 0.908 m 几何余量，不再遍历首次示向产生的整条固定带状区域。
 
 进入保底清除后，默认启用 `failed_clear_remeasure_mode="gated"`。每次 `fallback_clear` 失败只触发一次判断；当前位置保证接收、没有重复测量、距最近有效观测至少 40 m、剩余清除点不少于 3 个、预计净节省超过 2 s 且每源实际复测未超过 3 次时，机器人在失败点原地复测当前频道。有效示向会重建后验区域并废弃旧清除路线；`no_signal` 或判断不通过则继续原有限点列，不会循环复测。清除失败的 20 m 排除圆目前只记录，不直接切割凸后验区域，以免破坏覆盖保证。
 
 在此基础上，正式默认启用 `joint_batch_mode="guaranteed"`。固定 7 点扫描期间，机器人完成本站尚未发现频道的扫描后，会对已发现且当前位置对其整个后验区域保证 1000 m 接收的其他源各追加一次测量；此处利用既定停靠点，不再设置预计节省门槛。扫描结束后的联合规划则仍为所有可细化源生成候选，优先选择从当前位置动作时间最短的有效候选；机器人到达该点后，目标频道必测，其他频道只有在“保证接收，且预计清除成本节省超过追加检测成本”时才同点批测。每源最多接受三次顺便批测，扫描阶段与联合规划阶段共用该上限；顺便批测不占其五次专用 FIM 配额。
 
-总时间任务默认启用 `rolling_time_mode="scenario"`。它不会修改 Q2：只读取 Q2 的顶层、离散、连续多预算、Pareto 和保证接收区域候选。对每个候选，从当前后验区域确定性抽取有限源位置场景，并枚举测角误差端点和零误差；每个分支真正构造测后后验、生成 27 m 清除覆盖并计算路线。估值同时加入该路线终点到最近其他未处理源后验中心的续程时间，避免单源局部最优造成跨源长距离折返。训练种子在 P90、CVaR 和最坏值三种口径中选择了 CVaR；只有“测量动作 + CVaR 后续成本 + 10 s 余量”小于立即清除成本才测量。单次评价墙钟软截止为 1 s，截止前已有完整候选时返回 `partial` 最优候选，否则安全回退清除。该方法只能称为“有限场景下的总虚拟时间滚动优化”，不是严格全局最优。
+总时间任务默认启用 `rolling_time_mode="scenario"`。它不会修改 Q2：只读取 Q2 的顶层、离散、连续多预算、Pareto 和保证接收区域候选。对每个候选，从当前后验区域确定性抽取有限源位置场景，并枚举测角误差端点和零误差；每个分支真正构造测后后验、生成 27 m 清除覆盖并计算路线。估值同时加入该路线终点到最近其他未处理源后验中心的续程时间，避免单源局部最优造成跨源长距离折返。训练种子在 P90、CVaR 和最坏值三种口径中选择了 CVaR；只有“测量动作 + CVaR 后续成本 + 10 s 余量”小于立即清除成本才测量。单次评价墙钟软截止现为 3 s，截止前已有完整候选时返回 `partial` 最优候选，否则安全回退清除。该方法只能称为“有限场景下的总虚拟时间滚动优化”，不是严格全局最优。
 
 多源路线第一、二部分均已实现，但正式默认保持关闭。`multi_source_route_mode="insertion_2opt"` 启用第一部分；`beam_cached` 启用第二部分的有界缓存和有限束搜索。路线层把每个活动源表示为“入口—既有单源处理—保守出口”服务块；第一部分用最便宜插入构造开放路线，再用确定性 2-opt 消除局部折返。第二部分用后验、机器人位置、频道和完整配置组成稳定缓存键，缓存 Q2 计划、清除网格/路线、候选场景和服务块；束搜索在同一批已经通过单源判据的服务规格上搜索源顺序，不擅自改变测点或保证接收条件。实际每次仍只执行一个动作，响应后重新规划。回退顺序为“束搜索 → insertion_2opt 完整解 → 当前一步选择器”。第一部分路线软截止仍为 0.25 s；第二部分验证使用 1 s、缓存容量 4096、束宽 1、最大扩展 512。
 
@@ -44,8 +46,10 @@
 `cli.py` 仍只运行本地 `sim.fake.FakeSimulator`，但默认参数已与在线策略一致：最多五次细化、单次 FIM 10 s。上线前可运行：
 
 ```powershell
-python src/q3/cli.py --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 1 --output output/q3_offline/online_like_demo.json
+python src/q3/cli.py --q2-version new --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 3 --output output/q3_offline/online_like_demo.json
 ```
+
+将 `--q2-version new` 改成 `legacy` 即可在启动前切换旧版，其他 Q3 参数和状态机不变。
 
 离线配对基准（不连接官方模拟器）：
 
@@ -53,9 +57,11 @@ python src/q3/cli.py --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch
 python -B tests/q3/benchmark_adaptive.py --cases 8 --workers 4 --output output/q3_offline/strategy_benchmark.json
 python -B tests/q3/benchmark_joint.py --cases 8 --workers 4 --output output/q3_offline/joint_benchmark.json
 python -B tests/q3/benchmark_failed_clear_remeasure.py --cases 8 --workers 4 --fim-cpu-time-limit-s 10 --output output/q3_offline/failed_clear_remeasure_benchmark.json
-python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --output output/q3_offline/rolling_time_benchmark.json
+python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 3 --output output/q3_offline/rolling_time_benchmark.json
 python -B tests/q3/benchmark_route_beam_train.py --cases 1 --seed 20264912 --widths 1 2 4 --workers 3 --output output/q3_offline/route_part2_beam_train.json
-python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --route-cpu-time-limit-s 0.25 --beam-route-cpu-time-limit-s 1 --cache-capacity 4096 --beam-width 1 --beam-max-expansions 512 --output output/q3_offline/route_part2_benchmark.json
+python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 3 --route-cpu-time-limit-s 0.25 --beam-route-cpu-time-limit-s 1 --cache-capacity 4096 --beam-width 1 --beam-max-expansions 512 --output output/q3_offline/route_part2_benchmark.json
 ```
+
+现有 Q3 滚动与路线结果文件是在旧 1 s 滚动软截止下生成的历史结果；默认值改为 3 s 后按用户要求未重跑，后续用上面命令复测时应另存结果或明确覆盖。
 
 官方通信、三动作演练烟雾测试和现场日志入口位于 `src/sim/`。必须先按 `tests/sim/verify_manual.md` 完成 smoke；在人工核对通过前，不得把本地通过理解为 Q3 官方策略通过。
