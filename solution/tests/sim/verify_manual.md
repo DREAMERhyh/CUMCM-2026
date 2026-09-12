@@ -51,10 +51,10 @@ python src/sim/cli.py --problem 3 --robot-id "202601101010" --confirm-ready
 Q3 当前与离线演练对齐的完整策略命令为：
 
 ```powershell
-python src/sim/cli.py --problem 3 --mode policy --robot-id "202601101010" --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 0.2 --confirm-ready --confirm-policy
+python src/sim/cli.py --problem 3 --mode policy --robot-id "202601101010" --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 1 --confirm-ready --confirm-policy
 ```
 
-其中 10 s 是每次 Q2/FIM 规划的真实墙钟上限，0.2 s 是每次 Q3 滚动分支评价的额外真实墙钟截止；默认仍有 15 s 退出安全余量。运行结束后还应核对 `平均用时 = 虚拟时间 / 清除成功数`；无清除成功源时应显示无法计算。运行前检查日志目标不存在，并确认界面仍为 Q3 演练测试。
+其中 10 s 是每次 Q2/FIM 规划的真实墙钟上限，1 s 是每次 Q3 滚动分支评价的额外真实墙钟软截止；默认仍有 15 s 退出安全余量。运行结束后还应核对 `平均用时 = 虚拟时间 / 清除成功数`；无清除成功源时应显示无法计算。运行前检查日志目标不存在，并确认界面仍为 Q3 演练测试。
 
 ## 五 正式测试门禁
 

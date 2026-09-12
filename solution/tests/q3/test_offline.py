@@ -367,6 +367,8 @@ class Q3TheoryTestbench(unittest.TestCase):
         self.assertTrue(policy.q2_config.continuous_fim_enabled)
         self.assertEqual(policy.q2_config.fim_cpu_time_limit_s, 10.0)
         self.assertEqual(policy.q2_config.near_optimal_region_mode, "off")
+        self.assertEqual(policy.max_opportunistic_per_source, 3)
+        self.assertEqual(policy.rolling_cpu_time_limit_s, 1.0)
         planner.assert_called_once()
 
     def test_posterior_grid_uses_27_metres_with_safe_cover_radius(self):
@@ -463,6 +465,45 @@ class Q3TheoryTestbench(unittest.TestCase):
         all_active = Q3Policy(joint_batch_mode="all_active")
         self.assertTrue(all_active._include_batch_evaluation(evaluation,
                                                              -100.0))
+
+    def test_scan_batch_uses_guaranteed_stop_without_savings_gate(self):
+        policy = Q3Policy(joint_batch_mode="guaranteed")
+        observation = BearingObservation(
+            (0.0, 0.0), 3, "direction", 0.0
+        )
+        region = {
+            "status": "bounded",
+            "minimum_enclosing_circle": {
+                "center": (100.0, 0.0), "radius": 100.0,
+            },
+        }
+        state = Q3State(
+            current_channel=7,
+            sources={3: SourceTrack(3, [observation], region)},
+        )
+        guaranteed = {
+            "guaranteed_reception": True,
+            "worst_case_radius_m": 99.0,
+            "action_time_s": 1000.0,
+        }
+        with (patch("q3.policy.direct_clear_cost",
+                    side_effect=AssertionError("scan must not price clear")),
+              patch("q3.policy.fixed_point_evaluation",
+                    return_value=guaranteed),
+              patch("q3.policy.marginal_saving",
+                    side_effect=AssertionError("scan must not gate savings"))):
+            channels = policy._prepare_scan_batch(state, (10.0, 0.0))
+        self.assertEqual(channels, [3])
+
+        uncovered = dict(guaranteed, guaranteed_reception=False)
+        with (patch("q3.policy.direct_clear_cost",
+                    side_effect=AssertionError("scan must not price clear")),
+              patch("q3.policy.fixed_point_evaluation",
+                    return_value=uncovered),
+              patch("q3.policy.marginal_saving",
+                    side_effect=AssertionError("scan must not gate savings"))):
+            channels = policy._prepare_scan_batch(state, (10.0, 0.0))
+        self.assertEqual(channels, [])
 
     def test_ring7_covers_random_target_disk_at_radius_1000(self):
         rng = random.Random(20260911)

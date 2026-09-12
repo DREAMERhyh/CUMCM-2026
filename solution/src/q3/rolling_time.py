@@ -229,7 +229,7 @@ def _clear_decision(clear_now_s, *, status, timed_out, reason,
 def evaluate_total_time_decision(
         track, plan, *, current_position, current_channel, config,
         savings_margin_s=10.0, scenario_limit=4, candidate_limit=12,
-        cvar_alpha=0.9, risk_metric="p90", cpu_time_limit_s=0.2,
+        cvar_alpha=0.9, risk_metric="p90", cpu_time_limit_s=1.0,
         continuation_points=()):
     """Compare immediate clearing with one measurement and replanning.
 

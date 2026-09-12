@@ -36,7 +36,7 @@ def main(argv=None):
         choices=("off", "scenario"), default="scenario",
         help="总虚拟时间滚动评价：关闭或有限场景推演",
     )
-    parser.add_argument("--rolling-cpu-time-limit-s", type=float, default=0.2)
+    parser.add_argument("--rolling-cpu-time-limit-s", type=float, default=1.0)
     parser.add_argument(
         "--rolling-risk-metric",
         choices=("p90", "cvar", "worst", "mean"), default="cvar",

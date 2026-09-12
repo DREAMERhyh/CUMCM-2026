@@ -81,7 +81,7 @@ class Q3Policy:
                  prefer_continuous_fim=True,
                  joint_batch_mode="guaranteed",
                  batch_savings_margin_s=2.0,
-                 max_opportunistic_per_source=2,
+                 max_opportunistic_per_source=3,
                  failed_clear_remeasure_mode="gated",
                  max_failed_clear_remeasures_per_source=3,
                  min_remaining_clear_points_for_remeasure=3,
@@ -92,7 +92,7 @@ class Q3Policy:
                  rolling_candidate_limit=12,
                  rolling_risk_metric="cvar",
                  rolling_cvar_alpha=0.9,
-                 rolling_cpu_time_limit_s=0.2):
+                 rolling_cpu_time_limit_s=1.0):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
         if max_refinements < 0:
@@ -194,27 +194,29 @@ class Q3Policy:
         return (evaluation["guaranteed_reception"]
                 and saving_s > self.batch_savings_margin_s)
 
+    def _include_scan_batch_evaluation(self, evaluation):
+        """Use fixed scan stops whenever reception is already guaranteed."""
+        if self.joint_batch_mode == "all_active":
+            return True
+        return evaluation["guaranteed_reception"]
+
     def _prepare_scan_batch(self, state, point):
         if self.joint_batch_mode == "off":
             return []
-        entries = []
+        channels = []
         for channel, track in sorted(state.sources.items()):
             if channel in state.cleared or not self._can_batch(track):
                 continue
             if self._same_point(track.observations[-1].position, point):
                 continue
-            clear_now_s, _ = direct_clear_cost(track.region, point)
             evaluation = fixed_point_evaluation(
                 track, point,
                 current_channel=state.current_channel,
                 config=self.q2_config,
             )
-            radius = track.region["minimum_enclosing_circle"]["radius"]
-            saving_s = marginal_saving(clear_now_s, radius, evaluation)
-            if self._include_batch_evaluation(evaluation, saving_s):
-                entries.append((channel, saving_s))
-        entries.sort(key=lambda item: (-item[1], item[0]))
-        return [channel for channel, _ in entries]
+            if self._include_scan_batch_evaluation(evaluation):
+                channels.append(channel)
+        return channels
 
     def _scan_action(self, state):
         while state.scan_point_index < len(self.coverage_points):
@@ -322,8 +324,8 @@ class Q3Policy:
             return clear_costs[channel]
 
         options = []
-        # Compare every worthwhile target so movement between sources becomes
-        # part of the multi-source route instead of following channel order.
+        # Compare every worthwhile next target before the channel-order
+        # fallback.  This is still one-step selection, not a full source tour.
         refinable = [channel for channel in remaining
                      if self._can_refine(state.sources[channel])]
         for target_channel in refinable:

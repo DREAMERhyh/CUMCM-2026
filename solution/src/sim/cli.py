@@ -78,7 +78,7 @@ def main(argv=None):
         help="Q3有限场景总虚拟时间滚动评价；Q4忽略该参数",
     )
     parser.add_argument(
-        "--rolling-cpu-time-limit-s", type=float, default=0.2,
+        "--rolling-cpu-time-limit-s", type=float, default=1.0,
         help="每次Q3滚动评价的真实墙钟秒数；Q4忽略该参数",
     )
     parser.add_argument(

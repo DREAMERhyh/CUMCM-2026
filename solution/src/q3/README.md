@@ -10,9 +10,9 @@
 
 进入保底清除后，默认启用 `failed_clear_remeasure_mode="gated"`。每次 `fallback_clear` 失败只触发一次判断；当前位置保证接收、没有重复测量、距最近有效观测至少 40 m、剩余清除点不少于 3 个、预计净节省超过 2 s 且每源实际复测未超过 3 次时，机器人在失败点原地复测当前频道。有效示向会重建后验区域并废弃旧清除路线；`no_signal` 或判断不通过则继续原有限点列，不会循环复测。清除失败的 20 m 排除圆目前只记录，不直接切割凸后验区域，以免破坏覆盖保证。
 
-在此基础上，正式默认启用 `joint_batch_mode="guaranteed"`：每轮为所有仍可细化的源生成 FIM 候选，优先选择从当前位置动作时间最短的有效候选；机器人到达该点后，目标频道必测，其他频道只有在“对整个后验区域保证 1000 m 接收，且预计清除成本节省超过追加检测成本”时才同点批测。每源最多接受两次顺便批测，且顺便批测不占用其五次专用 FIM 配额。
+在此基础上，正式默认启用 `joint_batch_mode="guaranteed"`。固定 7 点扫描期间，机器人完成本站尚未发现频道的扫描后，会对已发现且当前位置对其整个后验区域保证 1000 m 接收的其他源各追加一次测量；此处利用既定停靠点，不再设置预计节省门槛。扫描结束后的联合规划则仍为所有可细化源生成候选，优先选择从当前位置动作时间最短的有效候选；机器人到达该点后，目标频道必测，其他频道只有在“保证接收，且预计清除成本节省超过追加检测成本”时才同点批测。每源最多接受三次顺便批测，扫描阶段与联合规划阶段共用该上限；顺便批测不占其五次专用 FIM 配额。
 
-总时间任务默认启用 `rolling_time_mode="scenario"`。它不会修改 Q2：只读取 Q2 的顶层、离散、连续多预算、Pareto 和保证接收区域候选。对每个候选，从当前后验区域确定性抽取有限源位置场景，并枚举测角误差端点和零误差；每个分支真正构造测后后验、生成 27 m 清除覆盖并计算路线。估值同时加入该路线终点到最近其他未处理源后验中心的续程时间，避免单源局部最优造成跨源长距离折返。训练种子在 P90、CVaR 和最坏值三种口径中选择了 CVaR；只有“测量动作 + CVaR 后续成本 + 10 s 余量”小于立即清除成本才测量。单次评价墙钟截止为 0.2 s，截止前已有完整候选时返回 `partial` 最优候选，否则安全回退清除。该方法只能称为“有限场景下的总虚拟时间滚动优化”，不是严格全局最优。
+总时间任务默认启用 `rolling_time_mode="scenario"`。它不会修改 Q2：只读取 Q2 的顶层、离散、连续多预算、Pareto 和保证接收区域候选。对每个候选，从当前后验区域确定性抽取有限源位置场景，并枚举测角误差端点和零误差；每个分支真正构造测后后验、生成 27 m 清除覆盖并计算路线。估值同时加入该路线终点到最近其他未处理源后验中心的续程时间，避免单源局部最优造成跨源长距离折返。训练种子在 P90、CVaR 和最坏值三种口径中选择了 CVaR；只有“测量动作 + CVaR 后续成本 + 10 s 余量”小于立即清除成本才测量。单次评价墙钟软截止为 1 s，截止前已有完整候选时返回 `partial` 最优候选，否则安全回退清除。该方法只能称为“有限场景下的总虚拟时间滚动优化”，不是严格全局最优。
 
 单次 FIM 真实墙钟上限默认 10 s，5%/10%近优域计算在线关闭。较早的“扫描点后立即单频道局部折返”在 8 组配对中平均增加 1359.27 s，仍只保留在 `tests/q3/benchmark_adaptive.py`。新的共享点批测见 `tests/q3/benchmark_joint.py`：在当时 6 s 单步上限的 8 组历史基准中，三种策略均完整清除；保证接收模式平均虚拟时间由 7553.85 s 降至 6880.95 s，6/8 场景更快，因此进入正式默认；`all_active` 仅作实验对照。10 s 默认值尚未重跑该正式基准。
 
@@ -24,7 +24,7 @@
 
 | 功能 | 代码位置 |
 |---|---|
-| 7 点扫描、状态机、两个独立开关及滚动接入 | `q3/policy.py` |
+| 7 点扫描、固定站保证接收顺便测量、状态机及滚动接入 | `q3/policy.py` |
 | Q2 候选去重、分支后验、真实清除路线、CVaR和超时回退 | `q3/rolling_time.py` |
 | 清除失败后的同点条件复测 | `q3/fallback_remeasure.py` |
 | 后验网格、路线和旧半径平方判据 | `q3/adaptive.py` |
@@ -34,7 +34,7 @@
 `cli.py` 仍只运行本地 `sim.fake.FakeSimulator`，但默认参数已与在线策略一致：最多五次细化、单次 FIM 10 s。上线前可运行：
 
 ```powershell
-python src/q3/cli.py --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 0.2 --output output/q3_offline/online_like_demo.json
+python src/q3/cli.py --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 1 --output output/q3_offline/online_like_demo.json
 ```
 
 离线配对基准（不连接官方模拟器）：
@@ -43,7 +43,7 @@ python src/q3/cli.py --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch
 python -B tests/q3/benchmark_adaptive.py --cases 8 --workers 4 --output output/q3_offline/strategy_benchmark.json
 python -B tests/q3/benchmark_joint.py --cases 8 --workers 4 --output output/q3_offline/joint_benchmark.json
 python -B tests/q3/benchmark_failed_clear_remeasure.py --cases 8 --workers 4 --fim-cpu-time-limit-s 10 --output output/q3_offline/failed_clear_remeasure_benchmark.json
-python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 0.2 --output output/q3_offline/rolling_time_benchmark.json
+python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --output output/q3_offline/rolling_time_benchmark.json
 ```
 
 官方通信、三动作演练烟雾测试和现场日志入口位于 `src/sim/`。必须先按 `tests/sim/verify_manual.md` 完成 smoke；在人工核对通过前，不得把本地通过理解为 Q3 官方策略通过。
