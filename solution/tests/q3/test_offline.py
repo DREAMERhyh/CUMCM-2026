@@ -95,7 +95,11 @@ class Q3TheoryTestbench(unittest.TestCase):
     def test_q3_policy_finitely_clears_and_certifies_channels_offline(self):
         class CountingQ3Policy(Q3Policy):
             def __init__(self):
-                super().__init__(max_refinements=2)
+                # 显式指定 ring7 并关闭最优停止：本案例的"两次细化"计数
+                # 依赖旧的强制 refine 语义；默认布局/最优停止见
+                # test_scan_layouts.py 与 test_pruning.py。
+                super().__init__(max_refinements=2, scan_layout="ring7",
+                                 use_optimal_stop=False)
                 self.refinement_plan_count = 0
 
             def _refinement_point(self, state, track):

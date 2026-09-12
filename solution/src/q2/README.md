@@ -25,6 +25,7 @@
 | 生成离散搜索点 | `candidates.py:generate_candidates` | 确定性有限候选 |
 | 有限场景评分 | `planner.py:score_candidates` | 不代表连续全局最坏情形 |
 | 连续测点 FIM 优化 | `continuous_fim.py:optimize_continuous_fim` | 源不确定性仍用边界场景近似 |
+| 统一墙钟预算 / anytime | `common/budget.py:WallClockBudget`、`planner.py:plan_measurement` | 候选评分、FIM、近优域共享一个 deadline；到期返回当前最优，不抛异常 |
 | 通用测点规划 | `planner.py:plan_measurement` | 接受已有区域与观测 |
 | Q2 常用入口 | `planner.py:plan_second_point` | 从第一观测开始 |
 | 移动/换频/检测计时 | `common/time_model.py:measure_cost` | `距离/5 + 0或1 + 5` 秒 |
@@ -58,5 +59,7 @@ python -B tests/q2/benchmark_200.py --count 200 --seed 20260911 --workers 16
 ```
 
 200 例配对结果及指标选择讨论见 `tests/q2/analysis/q2_200_case_comparison.md`。规划器以最坏后验半径为主指标、动作时间为次级指标；FIM 负责生成候选，最终由统一集合评分和 Pareto 规则裁决。
+
+单次规划由 `planning_wall_clock_budget_s`（默认 120s）统一限时：候选评分、FIM 搜索和近优域采样共享同一 deadline，耗尽即返回当前最优，绝不超时抛错；`fim_cpu_time_limit_s` 继续作为 FIM 阶段的子上限保留，因此默认参数下规划行为与历史版本逐位一致。预算对结果的影响可用 `python tests/q2/benchmark_anytime.py` 复现（3 个代表性区域 × 6/60/300s，json 落在 `tests/q2/analysis/`）。
 
 人工验收必须按 `tests/q2/verify_manual.md` 执行。离散结果在 `baseline.selected_point`，连续结果在 `continuous_fim.selected_point`，顶层 `selected_point` 是供 Q3/Q4 使用的推荐点。`--region-mode online` 适合现场，`offline` 用较密采样生成论文图，`off` 用于只比较选点。5%/10% 近优域是局部采样凸包近似，不是统计置信区间或连续证书。连续 FIM、源域最坏情形和圆域都仍含有限近似，不能写成原问题连续空间全局最优证明。

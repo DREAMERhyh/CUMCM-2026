@@ -57,6 +57,8 @@ python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --max-
 
 `--fim-cpu-time-limit-s 6` 是每次 Q2 连续 FIM 规划允许的真实 CPU 墙钟上限，不是机器狗虚拟动作时间。Q3 默认关闭近优域绘图计算，因此该时限只用于产生实际细化测点。
 
+Q3 扫描停点布局用 `--scan-layout {ring7,hub_ring6,pure_ring8}` 选择（缺省跟随 Q3Policy 当前默认，2026-09-12 起为 `pure_ring8`）；该参数仅对 `--problem 3` 生效。日常演练建议直接用 `solution/run_drill.py`（结果摘要落盘与时间对账，见 `docs/操作手册_演练对账.md`）。
+
 正式测试各有次数限制。必须先由人工按 `tests/sim/verify_manual.md` 完成演练核对；本程序不会操作模拟器界面，也不能判断当前选中的是演练还是正式测试。
 
 ## 失败处理

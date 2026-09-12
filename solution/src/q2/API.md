@@ -6,9 +6,9 @@
 
 ### `Q2Config`
 
-`Q2Config(error_deg=1.005, arena_radius=1800.0, min_receive_radius=1000.0, max_receive_radius=1500.0, circle_sides=24, candidate_region_sides=72, scenario_limit=8, uncertainty_seconds_per_metre=0.5, continuous_fim_enabled=True, fim_samples_per_edge=4, fim_initial_step_m=200.0, fim_min_step_m=2.0, fim_max_iterations=120, fim_seed_limit=10, fim_extra_time_budgets_s=(15.0,30.0,60.0), fim_execution_extra_time_s=30.0, fim_cpu_time_limit_s=8.0, near_optimal_region_mode="online", near_optimal_region_cpu_limit_s=5.0, near_optimal_time_slack_s=10.0, near_optimal_tolerances=(0.05,0.10))`
+`Q2Config(error_deg=1.005, arena_radius=1800.0, min_receive_radius=1000.0, max_receive_radius=1500.0, circle_sides=24, candidate_region_sides=72, scenario_limit=8, uncertainty_seconds_per_metre=0.5, continuous_fim_enabled=True, fim_samples_per_edge=4, fim_initial_step_m=200.0, fim_min_step_m=2.0, fim_max_iterations=120, fim_seed_limit=10, fim_extra_time_budgets_s=(15.0,30.0,60.0), fim_execution_extra_time_s=30.0, fim_cpu_time_limit_s=8.0, planning_wall_clock_budget_s=120.0, near_optimal_region_mode="online", near_optimal_region_cpu_limit_s=5.0, near_optimal_time_slack_s=10.0, near_optimal_tolerances=(0.05,0.10))`
 
-各半径和 FIM 步长单位 m，`error_deg` 单位 °；`circle_sides` 和 `candidate_region_sides` 是圆的多边形近似边数；`scenario_limit` 是集合评分场景上限；`uncertainty_seconds_per_metre` 只用于报告工程折中分数。`fim_extra_time_budgets_s` 是相对离散基线增加的虚拟动作时间预算，默认分别多 15/30/60 s；`fim_execution_extra_time_s` 指定连续分支可作为执行点的最大额外虚拟时间。`fim_cpu_time_limit_s` 是本地 CPU 墙钟保护上限，与机器狗虚拟时间不同。`near_optimal_region_mode` 可取 `off/online/offline`，后两种分别使用稀疏/较密局部采样。
+各半径和 FIM 步长单位 m，`error_deg` 单位 °；`circle_sides` 和 `candidate_region_sides` 是圆的多边形近似边数；`scenario_limit` 是集合评分场景上限；`uncertainty_seconds_per_metre` 只用于报告工程折中分数。`fim_extra_time_budgets_s` 是相对离散基线增加的虚拟动作时间预算，默认分别多 15/30/60 s；`fim_execution_extra_time_s` 指定连续分支可作为执行点的最大额外虚拟时间。`fim_cpu_time_limit_s` 是 FIM 模式搜索的本地 CPU 墙钟保护上限，与机器狗虚拟时间不同。`planning_wall_clock_budget_s` 是单次规划的统一墙钟预算（默认 120s）：候选评分、FIM 模式搜索与近优域采样共享这一个 deadline，`fim_cpu_time_limit_s`/`near_optimal_region_cpu_limit_s` 在统一预算内作为子上限生效（实际时限取二者较小值）；预算耗尽时各阶段立即停止并返回当前最优解，绝不抛超时异常。`near_optimal_region_mode` 可取 `off/online/offline`，后两种分别使用稀疏/较密局部采样。
 
 ### `build_candidate_regions(source_region, *, min_receive_radius=1000.0, max_receive_radius=1500.0, circle_sides=72)`
 
@@ -128,6 +128,8 @@ plan = plan_second_point(obs)
 `baseline.selected_point` 是原离散搜索结果；`continuous_fim.selected_point` 是满足执行时间预算、再用集合指标复评分后选出的连续结果。顶层 `selected_point`/`selected` 是二者按 `(worst_case_radius_m, action_time_s)` 词典序作出的最终安全推荐，`recommendation_source` 说明来源；Q3/Q4 调用该顶层推荐点。`score = action_time_s + uncertainty_seconds_per_metre × worst_case_radius_m` 仅用于并列报告，不覆盖上述主次目标。
 
 `continuous_fim.budget_solutions` 保留 15/30/60 s 三档 FIM 解，`pareto_front` 给出动作时间与最坏半径互不支配的候选。两个分支各自包含 `near_optimal_regions.5pct/10pct`：采样点同时满足 `R <= (1+eta)R_ref` 和 `T <= T_ref+10s`，多边形是这些已验证采样点的凸包。它们是便于描述“选取区间”的局部可视化近似，不是统计置信区间，也不是凸包内部处处达标的数学证书。保证接收域为空时连续结果为 `status="unavailable"`。Python 点为元组，JSON 中为数组。
+
+响应顶层含 `planning_wall_time_used_s`（本次规划实际消耗墙钟秒数，与 `planning_cpu_wall_time_s` 同源等效）、`planning_wall_clock_budget_s`（本次生效的统一预算）和 `planning_timed_out`（预算是否耗尽；为 True 时各阶段返回当前最优解）。预算耗尽不影响字段与结构：`selected_point`/`selected` 始终存在且可执行。
 
 ## 前置条件与不变量
 

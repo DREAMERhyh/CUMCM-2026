@@ -35,8 +35,11 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         self.assertTrue(region["approximation"]["conservative"])
 
     def test_plan_is_deterministic_and_selected_from_candidates(self):
-        first = plan_second_point(self.observation)
-        second = plan_second_point(self.observation)
+        # 近优域采样单次约 4s（既有实现成本），套件重负载下 5s 子预算会抖动，
+        # 故本测试显式给足预算以稳定断言 near_optimal 完整完成（语义不变）。
+        config = Q2Config(near_optimal_region_cpu_limit_s=15.0)
+        first = plan_second_point(self.observation, config=config)
+        second = plan_second_point(self.observation, config=config)
         self.assertEqual(first["selected_point"], second["selected_point"])
         self.assertIn(first["selected_point"], [
             first["baseline"]["selected_point"],

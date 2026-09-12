@@ -9,7 +9,8 @@ if __package__ in (None, ""):
     code_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(code_root))
 
-from q3.policy import Q3Policy
+from q3.batch_policy import Q3BatchPolicy
+from q3.coverage import SCAN_LAYOUTS
 from q4.policy import Q4Policy
 from sim.client import HttpRobotClient
 from sim.errors import SimulatorError
@@ -42,6 +43,11 @@ def main(argv=None):
         "--fim-cpu-time-limit-s", type=float, default=6.0,
         help="每次Q2连续FIM规划允许的真实墙钟秒数",
     )
+    parser.add_argument(
+        "--scan-layout", choices=sorted(SCAN_LAYOUTS), default=None,
+        help=("Q3 扫描停点布局（仅 --problem 3 生效；缺省跟随 Q3Policy "
+              "当前默认值）"),
+    )
     parser.add_argument("--exit-safety-margin-s", type=float, default=15.0)
     parser.add_argument("--log", help="新建的逐动作 JSONL 日志路径")
     parser.add_argument(
@@ -67,17 +73,26 @@ def main(argv=None):
     if args.mode == "smoke":
         policy = SmokePolicy()
         max_actions = args.max_actions or 10
+    elif args.problem == 3:
+        policy_kwargs = dict(
+            max_refinements=args.max_refinements,
+            fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+        )
+        if args.scan_layout is not None:
+            policy_kwargs["scan_layout"] = args.scan_layout
+        # 2026-09-12 夜间晋级：Q3 默认策略为"批量解耦"（B2，TSP 清除顺序），
+        # simlite 300 局确认门1 全过（总虚拟时间 -29%、fallback→0）；
+        # 交错流程可用 Q3Policy 显式选择。
+        policy = Q3BatchPolicy(**policy_kwargs)
+        # 2026-09-12 演练实证：14-16 源局 resolve（含 fallback）动作数可超 1000，
+        # 默认 8000 保险（约 1.6MB 日志，远低于 2MB 上限；现实耗时约数分钟）。
+        max_actions = args.max_actions or 8000
     else:
-        policy = (Q3Policy(
-                      max_refinements=args.max_refinements,
-                      fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
-                  )
-                  if args.problem == 3
-                  else Q4Policy(
-                      max_refinements=args.max_refinements,
-                      fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
-                  ))
-        max_actions = args.max_actions or (1000 if args.problem == 3 else 4000)
+        policy = Q4Policy(
+            max_refinements=args.max_refinements,
+            fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+        )
+        max_actions = args.max_actions or 4000
     log_path = args.log or _default_log(args.problem)
     try:
         client = HttpRobotClient(

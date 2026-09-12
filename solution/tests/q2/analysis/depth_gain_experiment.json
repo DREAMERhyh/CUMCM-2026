@@ -1,0 +1,379 @@
+{
+  "experiment": "q2_search_depth_gain",
+  "reference_level": 120,
+  "depth_levels": [
+    [
+      120,
+      10,
+      2.0
+    ],
+    [
+      600,
+      50,
+      0.4
+    ],
+    [
+      3000,
+      250,
+      0.08
+    ]
+  ],
+  "scenarios": {
+    "near_field": {
+      "sensor": [
+        0.0,
+        0.0
+      ],
+      "source": [
+        140.0,
+        180.0
+      ],
+      "note": "第一检测点与源距离 ~228m，源区域小"
+    },
+    "mid_field": {
+      "sensor": [
+        -200.0,
+        300.0
+      ],
+      "source": [
+        800.0,
+        500.0
+      ],
+      "note": "距离 ~1034m，中等区域"
+    },
+    "far_field": {
+      "sensor": [
+        200.0,
+        600.0
+      ],
+      "source": [
+        1400.0,
+        300.0
+      ],
+      "note": "距离 ~1300m，大区域"
+    },
+    "boundary_source": {
+      "sensor": [
+        750.0,
+        0.0
+      ],
+      "source": [
+        1750.0,
+        0.0
+      ],
+      "note": "源贴近 1800 圆边界"
+    },
+    "wide_angle_reference": {
+      "sensor": [
+        -650.0,
+        100.0
+      ],
+      "source": [
+        500.0,
+        1000.0
+      ],
+      "note": "远方斜向交会参考系"
+    }
+  },
+  "results": [
+    {
+      "scenario": "near_field",
+      "max_iterations": 120,
+      "seed_limit": 10,
+      "min_step_m": 2.0,
+      "wall_s": 7.65,
+      "worst_radius_m": 79.46557983323225,
+      "action_time_s": 162.18071172321152,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 353,
+      "fim_evaluation_count": 4822,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "near_field",
+      "max_iterations": 600,
+      "seed_limit": 50,
+      "min_step_m": 0.4,
+      "wall_s": 8.49,
+      "worst_radius_m": 79.45154496720308,
+      "action_time_s": 162.19930821023087,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 1493,
+      "fim_evaluation_count": 19435,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "near_field",
+      "max_iterations": 3000,
+      "seed_limit": 250,
+      "min_step_m": 0.08,
+      "wall_s": 8.27,
+      "worst_radius_m": 79.45139017190775,
+      "action_time_s": 162.19951336009464,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 1946,
+      "fim_evaluation_count": 25612,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "mid_field",
+      "max_iterations": 120,
+      "seed_limit": 10,
+      "min_step_m": 2.0,
+      "wall_s": 5.79,
+      "worst_radius_m": 78.66322399430447,
+      "action_time_s": 164.0767409384837,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 382,
+      "fim_evaluation_count": 5243,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "mid_field",
+      "max_iterations": 600,
+      "seed_limit": 50,
+      "min_step_m": 0.4,
+      "wall_s": 6.65,
+      "worst_radius_m": 78.70160914635191,
+      "action_time_s": 164.1045002986653,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 1587,
+      "fim_evaluation_count": 21410,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "mid_field",
+      "max_iterations": 3000,
+      "seed_limit": 250,
+      "min_step_m": 0.08,
+      "wall_s": 6.8,
+      "worst_radius_m": 78.69393261443629,
+      "action_time_s": 164.1049579656259,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 2055,
+      "fim_evaluation_count": 28079,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "far_field",
+      "max_iterations": 120,
+      "seed_limit": 10,
+      "min_step_m": 2.0,
+      "wall_s": 5.71,
+      "worst_radius_m": 76.79100746249489,
+      "action_time_s": 165.30753332952463,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 369,
+      "fim_evaluation_count": 5213,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "far_field",
+      "max_iterations": 600,
+      "seed_limit": 50,
+      "min_step_m": 0.4,
+      "wall_s": 6.19,
+      "worst_radius_m": 76.81241516240736,
+      "action_time_s": 165.3118899703414,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 1645,
+      "fim_evaluation_count": 22120,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "far_field",
+      "max_iterations": 3000,
+      "seed_limit": 250,
+      "min_step_m": 0.08,
+      "wall_s": 6.48,
+      "worst_radius_m": 76.8204670184835,
+      "action_time_s": 165.3135629422497,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 2121,
+      "fim_evaluation_count": 28919,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "boundary_source",
+      "max_iterations": 120,
+      "seed_limit": 10,
+      "min_step_m": 2.0,
+      "wall_s": 7.11,
+      "worst_radius_m": 61.0495370420262,
+      "action_time_s": 105.67854372388668,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 387,
+      "fim_evaluation_count": 5735,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "boundary_source",
+      "max_iterations": 600,
+      "seed_limit": 50,
+      "min_step_m": 0.4,
+      "wall_s": 10.8,
+      "worst_radius_m": 60.93105607337369,
+      "action_time_s": 105.7035826258855,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 2187,
+      "fim_evaluation_count": 30398,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "boundary_source",
+      "max_iterations": 3000,
+      "seed_limit": 250,
+      "min_step_m": 0.08,
+      "wall_s": 11.24,
+      "worst_radius_m": 60.93406138982522,
+      "action_time_s": 105.7084849366291,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 2926,
+      "fim_evaluation_count": 41239,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "wide_angle_reference",
+      "max_iterations": 120,
+      "seed_limit": 10,
+      "min_step_m": 2.0,
+      "wall_s": 9.27,
+      "worst_radius_m": 79.50667289360968,
+      "action_time_s": 162.13580376466024,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 344,
+      "fim_evaluation_count": 4433,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "wide_angle_reference",
+      "max_iterations": 600,
+      "seed_limit": 50,
+      "min_step_m": 0.4,
+      "wall_s": 10.28,
+      "worst_radius_m": 79.47508232267806,
+      "action_time_s": 162.14672158204039,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 1488,
+      "fim_evaluation_count": 18164,
+      "planning_timed_out": false
+    },
+    {
+      "scenario": "wide_angle_reference",
+      "max_iterations": 3000,
+      "seed_limit": 250,
+      "min_step_m": 0.08,
+      "wall_s": 10.39,
+      "worst_radius_m": 79.48226152218403,
+      "action_time_s": 162.15017047027632,
+      "recommendation_source": "continuous_fim",
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 1904,
+      "fim_evaluation_count": 23821,
+      "planning_timed_out": false
+    }
+  ],
+  "relative_gains": [
+    {
+      "scenario": "near_field",
+      "level": 600,
+      "gain": 0.00017661566251239345,
+      "reference_radius_m": 79.46557983323225,
+      "deep_radius_m": 79.45154496720308
+    },
+    {
+      "scenario": "near_field",
+      "level": 3000,
+      "gain": 0.00017856361652789427,
+      "reference_radius_m": 79.46557983323225,
+      "deep_radius_m": 79.45139017190775
+    },
+    {
+      "scenario": "mid_field",
+      "level": 600,
+      "gain": -0.0004879682029078627,
+      "reference_radius_m": 78.66322399430447,
+      "deep_radius_m": 78.70160914635191
+    },
+    {
+      "scenario": "mid_field",
+      "level": 3000,
+      "gain": -0.00039038089939006244,
+      "reference_radius_m": 78.66322399430447,
+      "deep_radius_m": 78.69393261443629
+    },
+    {
+      "scenario": "far_field",
+      "level": 600,
+      "gain": -0.000278778734904975,
+      "reference_radius_m": 76.79100746249489,
+      "deep_radius_m": 76.81241516240736
+    },
+    {
+      "scenario": "far_field",
+      "level": 3000,
+      "gain": -0.00038363288830397553,
+      "reference_radius_m": 76.79100746249489,
+      "deep_radius_m": 76.8204670184835
+    },
+    {
+      "scenario": "boundary_source",
+      "level": 600,
+      "gain": 0.001940734924344325,
+      "reference_radius_m": 61.0495370420262,
+      "deep_radius_m": 60.93105607337369
+    },
+    {
+      "scenario": "boundary_source",
+      "level": 3000,
+      "gain": 0.0018915074183362259,
+      "reference_radius_m": 61.0495370420262,
+      "deep_radius_m": 60.93406138982522
+    },
+    {
+      "scenario": "wide_angle_reference",
+      "level": 600,
+      "gain": 0.0003973323217019152,
+      "reference_radius_m": 79.50667289360968,
+      "deep_radius_m": 79.47508232267806
+    },
+    {
+      "scenario": "wide_angle_reference",
+      "level": 3000,
+      "gain": 0.0003070355045331664,
+      "reference_radius_m": 79.50667289360968,
+      "deep_radius_m": 79.48226152218403
+    }
+  ],
+  "verdict": "增益 <1%：建议关闭此优化线，保持默认 120 迭代档。",
+  "verdict_rule": "增益<1% 关闭此优化线；>3% 才建议调大默认值。"
+}

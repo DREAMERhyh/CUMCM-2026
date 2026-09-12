@@ -40,6 +40,8 @@
 - 2026-09-11 最新自动检查：Q2 单元/CLI 9/9 通过；random、boundary、adversarial 三组对拍各 4/4 通过；Q3 7/7、Q4 4/4 离线测试通过；全项目 `unittest` 76/76 通过，耗时 66.071 s。Q3 在线同款离线 CLI 执行 140 动作、两次细化，成功清除频道 3，虚拟时间 2959.614 s。以上未连接官方模拟器，Q1-Q4 状态仍为【待验证】。
 - 固定种子 20260911 的 200 个合法首测案例全部可比较：以有限场景最坏后验半径为主指标，分时限连续 FIM 优于离散基线 200/200（100%），均值由 119.037 m 降至 70.082 m；以 `T+0.5R` 为指标仅 76/200（38%）更优。连续点平均多 29.706 s 虚拟动作时间。16 进程墙钟 122.015 s。结果文件为 `tests/q2/analysis/q2_200_case_comparison.{md,json}`。
 - 当前机器单案例粗测：仅离散且不生成近优域 3.741 s；分时限 FIM 且不生成近优域 4.115 s；默认在线近优域 6.919 s；离线较密近优域 17.227 s。它们是 CPU/墙钟时间，不是机器狗虚拟时间。
+- 2026-09-11 新增：Q2 规划统一墙钟预算 `Q2Config.planning_wall_clock_budget_s`（默认 120 s，`common/budget.py` 共享 deadline，候选评分/FIM/近优域三阶段 anytime，返回 `planning_wall_time_used_s`/`planning_timed_out`；`fim_cpu_time_limit_s` 仍作为子上限生效，默认行为不变）。基准：`tests/q2/benchmark_anytime.py`（3 区域 × 6/60/300 s，实测预算 ≥ ~5.7 s 时 FIM 自然收敛、输出逐位一致）。
+- 2026-09-11 新增：Q3 扫描布局 `scan_layout ∈ {ring7, hub_ring6, pure_ring8}`（`q3/coverage.py`）。hub_ring6（原点+6 环点 r=1200）覆盖最坏 968.9 m、扫描虚拟总时 2273.0 s；pure_ring8（8 环点 r=960）覆盖最坏 984.2 m、扫描虚拟总时 2172.7 s（比 ring7 的 2633.0 s 省 460 s）。2026-09-12 决策：**默认布局切换为 pure_ring8**（覆盖解析验证 984.21 m ≤ 995 设计裕量；扫描省 460 s）；回退方式：`Q3Policy(scan_layout="ring7")` 或 `run_drill.py --scan-layout ring7`。正式测试前若演练对账出现漏检，将按手册 E 节回退/切 hub_ring6。
 
 ## Important interfaces and nesting
 

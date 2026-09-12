@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from common.domain import build_region_from_observations
 from common.models import Action, BearingObservation
 from q2.planner import Q2Config, plan_measurement
-from .coverage import ring7, strip_clear_points
+from .coverage import SCAN_LAYOUTS, ring7, strip_clear_points
 
 
 @dataclass
@@ -18,6 +18,9 @@ class SourceTrack:
     fallback_index: int = 0
     certificate_failed: bool = False
     probe_points: list[tuple[float, float]] = field(default_factory=list)
+    exclusion_circles: list[tuple[tuple[float, float], float]] = field(
+        default_factory=list)
+    clear_guessed: bool = False
 
 
 @dataclass
@@ -42,16 +45,34 @@ class Q3State:
 
 class Q3Policy:
     def __init__(self, *, max_refinements=2, error_deg=1.005,
-                 coverage_points=None, fim_cpu_time_limit_s=6.0):
+                 coverage_points=None, fim_cpu_time_limit_s=6.0,
+                 scan_layout="pure_ring8", use_no_signal_pruning=False,
+                 continuous_objective="fim", use_optimal_stop=True,
+                 stop_cost_per_metre=0.5, guess_clear_threshold_m=40.0):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
-        self.coverage_points = list(coverage_points or ring7())
+        if scan_layout not in SCAN_LAYOUTS:
+            raise ValueError(
+                f"未知扫描布局：{scan_layout}；可选 {sorted(SCAN_LAYOUTS)}。"
+            )
+        if continuous_objective not in ("fim", "diameter"):
+            raise ValueError("continuous_objective 必须为 fim 或 diameter。")
+        if stop_cost_per_metre <= 0 or guess_clear_threshold_m <= 0:
+            raise ValueError("停止阈值与折算系数必须为正数。")
+        self.scan_layout = scan_layout
+        self.use_no_signal_pruning = use_no_signal_pruning
+        self.continuous_objective = continuous_objective
+        self.use_optimal_stop = use_optimal_stop
+        self.stop_cost_per_metre = stop_cost_per_metre
+        self.guess_clear_threshold_m = guess_clear_threshold_m
+        self.coverage_points = list(coverage_points or SCAN_LAYOUTS[scan_layout]())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
         self.q2_config = Q2Config(error_deg=error_deg, circle_sides=16,
                                   scenario_limit=4,
                                   continuous_fim_enabled=True,
                                   fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+                                  continuous_objective=continuous_objective,
                                   near_optimal_region_mode="off")
 
     def initial_state(self):
@@ -104,15 +125,38 @@ class Q3Policy:
             state.phase = "exit"
             return None
         track = state.sources[remaining[0]]
+        if (track.region is None
+                or track.region.get("status") != "bounded"):
+            # 参数越界防御（E3 实证）：error_deg 低于真实误差界时窄锥交会
+            # 可能产生无界后验区域（minimum_enclosing_circle 为 None），
+            # 无法细化解；此时直接走 fallback 保底，不崩溃。
+            return self._fallback_action(state, track)
         radius = track.region["minimum_enclosing_circle"]["radius"]
         if radius <= 19.9 and not track.certificate_failed:
             center = tuple(track.region["minimum_enclosing_circle"]["center"])
             return self._action(state, "clear", center, track.channel,
                                 "certified_clear")
+        # A3 最优停止（默认关闭）：区域直径已收缩到清除保证半径（阈值
+        # 默认 40m = 20m 清除半径 x2）时，直接猜中心点 clear 的最坏虚拟
+        # 成本（miss 后仍可走既有 refine/fallback）只比直接 refine 多 3s/
+        # 源，却省下一次规划的全部墙钟（每源 6s+），对 20 分钟现实窗口
+        # 尤其有利。最坏情形口径：不假设命中概率，只比较成本下界。
+        # 失败后 clear_guessed=True，不再重复猜测，转入正常 refine。
+        if (self.use_optimal_stop and not track.clear_guessed
+                and not track.certificate_failed
+                and radius <= self.guess_clear_threshold_m):
+            center = tuple(track.region["minimum_enclosing_circle"]["center"])
+            track.clear_guessed = True
+            return self._action(state, "clear", center, track.channel,
+                                "guess_clear")
         if track.refinements < self.max_refinements:
             point = self._refinement_point(state, track)
             return self._action(state, "measure", point, track.channel,
                                 "refine")
+        return self._fallback_action(state, track)
+
+    def _fallback_action(self, state, track):
+        """有限清除保底：条带网格逐点清除（证书与细化均失败的兜底）。"""
         if not track.fallback_points:
             first = track.observations[0]
             track.fallback_points = list(strip_clear_points(first.position,
@@ -145,12 +189,24 @@ class Q3Policy:
             else:
                 raise RuntimeError(f"未知策略阶段：{state.phase}")
 
-    def _record_measurement(self, state, action, response):
+    def _record_measurement(self, state, action, response, mode=None):
         result = response["measure_result"]
         if result == "near":
             state.forced_clear = (action.position, action.channel)
             return
         if result == "no_signal":
+            # A1 排除圆修剪（默认关闭）：仅对"已被 direction/near 确认有源
+            # 的频道"的细化测量 no_signal 追加排除圆 B(测点, 1000)——
+            # 有效接收半径下界 1000 保证真实源不在此圆内（全向源前提）；
+            # 扫描期 no_signal 只用于 absent 判定，不建排除圆。
+            if (mode == "refine" and self.use_no_signal_pruning
+                    and action.channel in state.sources):
+                track = state.sources[action.channel]
+                track.exclusion_circles.append(
+                    (tuple(action.position), 1000.0))
+                if track.region is not None:
+                    track.region["exclusion_circles"] = list(
+                        track.exclusion_circles)
             return
         observation = BearingObservation(action.position, action.channel,
                                          "direction", response["svd_deg"])
@@ -159,6 +215,7 @@ class Q3Policy:
         track.observations.append(observation)
         track.region = build_region_from_observations(
             track.observations, error_deg=self.error_deg, circle_sides=16)
+        track.region["exclusion_circles"] = list(track.exclusion_circles)
 
     def apply_response(self, state, action, response):
         if action != state.pending:
@@ -177,7 +234,7 @@ class Q3Policy:
             state.position = action.position
         if action.kind == "measure":
             state.current_channel = action.channel
-            self._record_measurement(state, action, response)
+            self._record_measurement(state, action, response, mode)
             if mode == "scan":
                 state.scan_channel_index += 1
             elif mode == "refine":
@@ -199,6 +256,8 @@ class Q3Policy:
                 track.refinements = self.max_refinements
             elif mode == "fallback_clear":
                 track.fallback_index += 1
+            elif mode == "guess_clear":
+                pass  # clear_guessed 已置位，下一轮转入既有 refine 流程
             return
         if action.kind == "exit":
             state.exited = True

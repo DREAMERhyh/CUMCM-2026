@@ -1,0 +1,183 @@
+{
+  "cases": {
+    "near_field": {
+      "position": [
+        -600.0,
+        -300.0
+      ],
+      "bearing_deg": 35.89,
+      "note": "第一检测点在盘内偏近，源区域为窄楔形"
+    },
+    "mid_field": {
+      "position": [
+        300.0,
+        400.0
+      ],
+      "bearing_deg": 120.0,
+      "note": "第一检测点在盘内中部，源区域中宽"
+    },
+    "far_field": {
+      "position": [
+        800.0,
+        0.0
+      ],
+      "bearing_deg": 0.0,
+      "note": "第一检测点靠近区域边缘，源区域向边界延伸"
+    }
+  },
+  "results": [
+    {
+      "case": "near_field",
+      "budget_s": 6.0,
+      "planning_wall_time_used_s": 5.725454299998091,
+      "measured_wall_s": 5.728,
+      "worst_case_radius_m": 78.6568523439554,
+      "action_time_s": 162.47887026137693,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        -358.02,
+        449.29
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 357,
+      "planning_timed_out": false
+    },
+    {
+      "case": "near_field",
+      "budget_s": 60.0,
+      "planning_wall_time_used_s": 5.743075599999429,
+      "measured_wall_s": 5.745,
+      "worst_case_radius_m": 78.6568523439554,
+      "action_time_s": 162.47887026137693,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        -358.02,
+        449.29
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 357,
+      "planning_timed_out": false
+    },
+    {
+      "case": "near_field",
+      "budget_s": 300.0,
+      "planning_wall_time_used_s": 5.788407599997299,
+      "measured_wall_s": 5.791,
+      "worst_case_radius_m": 78.6568523439554,
+      "action_time_s": 162.47887026137693,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        -358.02,
+        449.29
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 357,
+      "planning_timed_out": false
+    },
+    {
+      "case": "mid_field",
+      "budget_s": 6.0,
+      "planning_wall_time_used_s": 5.745108699997218,
+      "measured_wall_s": 5.748,
+      "worst_case_radius_m": 75.98942403122466,
+      "action_time_s": 167.3048597260827,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        347.2,
+        1210.15
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 396,
+      "planning_timed_out": false
+    },
+    {
+      "case": "mid_field",
+      "budget_s": 60.0,
+      "planning_wall_time_used_s": 5.7580959999977495,
+      "measured_wall_s": 5.761,
+      "worst_case_radius_m": 75.98942403122466,
+      "action_time_s": 167.3048597260827,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        347.2,
+        1210.15
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 396,
+      "planning_timed_out": false
+    },
+    {
+      "case": "mid_field",
+      "budget_s": 300.0,
+      "planning_wall_time_used_s": 5.797949799998605,
+      "measured_wall_s": 5.8,
+      "worst_case_radius_m": 75.98942403122466,
+      "action_time_s": 167.3048597260827,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        347.2,
+        1210.15
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 396,
+      "planning_timed_out": false
+    },
+    {
+      "case": "far_field",
+      "budget_s": 6.0,
+      "planning_wall_time_used_s": 5.539487900001404,
+      "measured_wall_s": 5.542,
+      "worst_case_radius_m": 54.489028840767276,
+      "action_time_s": 105.65653687011874,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        1194.85,
+        312.07
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 394,
+      "planning_timed_out": false
+    },
+    {
+      "case": "far_field",
+      "budget_s": 60.0,
+      "planning_wall_time_used_s": 5.528634499998589,
+      "measured_wall_s": 5.531,
+      "worst_case_radius_m": 54.489028840767276,
+      "action_time_s": 105.65653687011874,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        1194.85,
+        312.07
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 394,
+      "planning_timed_out": false
+    },
+    {
+      "case": "far_field",
+      "budget_s": 300.0,
+      "planning_wall_time_used_s": 5.514587500001653,
+      "measured_wall_s": 5.517,
+      "worst_case_radius_m": 54.489028840767276,
+      "action_time_s": 105.65653687011874,
+      "recommendation_source": "continuous_fim",
+      "selected_point": [
+        1194.85,
+        312.07
+      ],
+      "fim_status": "ok",
+      "fim_timed_out": false,
+      "fim_iteration_count": 394,
+      "planning_timed_out": false
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import time
 
 from q1.geometry import bearing_planes, intersect_halfplanes
 
+from common.budget import WallClockBudget
 from common.domain import (build_region_from_observations, circle_outer_planes,
                            max_vertex_distance, representative_points)
 from common.models import BearingObservation
@@ -34,6 +35,8 @@ class Q2Config:
     fim_extra_time_budgets_s: tuple = (15.0, 30.0, 60.0)
     fim_execution_extra_time_s: float = 30.0
     fim_cpu_time_limit_s: float = 8.0
+    planning_wall_clock_budget_s: float = 120.0
+    continuous_objective: str = "fim"
     near_optimal_region_mode: str = "online"
     near_optimal_region_cpu_limit_s: float = 5.0
     near_optimal_time_slack_s: float = 10.0
@@ -69,13 +72,28 @@ def _fim_proxy(sensor, current_position, nominal_target, action_seconds):
 
 
 def score_candidates(region, observations, candidates, current_position,
-                     current_channel, target_channel, config=Q2Config()):
+                     current_channel, target_channel, config=Q2Config(),
+                     budget=None):
     vertices = region["vertices"]
-    scenarios = representative_points(vertices, config.scenario_limit)
+    # A6 口径：排除圆（no_signal 排除约束）内的代表点不是可行源位置，
+    # 从评分场景中剔除；worst_case_radius_m 即"可行代表点最坏距离"。
+    # 全部被排除的极端情形回退到全场景（保守，不凭空缩小区域）。
+    exclusion = region.get("exclusion_circles") or []
+    scenarios = [
+        point for point in representative_points(vertices,
+                                                 config.scenario_limit)
+        if not any(math.dist(point, center) <= radius + 1e-9
+                   for center, radius in exclusion)
+    ]
+    if not scenarios:
+        scenarios = representative_points(vertices, config.scenario_limit)
     current_radius = region["minimum_enclosing_circle"]["radius"]
     nominal = tuple(region["minimum_enclosing_circle"]["center"])
     scores = []
+    # 预算耗尽时停止评分新的候选，保留已经评出的当前最优；第一个候选总是完成。
     for sensor in candidates:
+        if scores and budget is not None and budget.expired():
+            break
         timing = measure_cost(current_position, sensor, current_channel,
                               target_channel)
         guaranteed = max_vertex_distance(sensor, vertices) <= config.min_receive_radius + 1e-7
@@ -123,7 +141,7 @@ def _pareto_front(items):
 
 def _near_optimal_outputs(region, observations, candidate_region, branches,
                           current_position, current_channel, target_channel,
-                          first, config):
+                          first, config, budget=None):
     mode = config.near_optimal_region_mode
     if mode == "off" or candidate_region.get("status") != "bounded":
         status = "disabled" if mode == "off" else "unavailable"
@@ -139,7 +157,14 @@ def _near_optimal_outputs(region, observations, candidate_region, branches,
                 "cpu_wall_time_s": 0.0}
 
     started = time.perf_counter()
-    deadline = started + config.near_optimal_region_cpu_limit_s
+    if budget is not None:
+        sub_budget = config.near_optimal_region_cpu_limit_s
+        remaining = budget.remaining_s()
+        if remaining is not None:
+            sub_budget = max(min(sub_budget, remaining), 1e-6)
+        deadline = started + sub_budget
+    else:
+        deadline = started + config.near_optimal_region_cpu_limit_s
     feasible_vertices = candidate_region["vertices"]
     points_by_branch = {
         branch["method"]: local_sample_points(
@@ -196,6 +221,9 @@ def plan_measurement(region, observations, *, current_position=None,
                      current_channel=None, target_channel=None,
                      config=Q2Config()):
     planning_started = time.perf_counter()
+    if config.continuous_objective not in ("fim", "diameter"):
+        raise ValueError("continuous_objective 必须为 fim 或 diameter。")
+    budget = WallClockBudget(config.planning_wall_clock_budget_s)
     observations = list(observations)
     directions = [obs for obs in observations if obs.result == "direction"]
     if not directions:
@@ -216,7 +244,7 @@ def plan_measurement(region, observations, *, current_position=None,
     )
     scores = score_candidates(region, observations, candidates,
                               current_position, current_channel,
-                              target_channel, config)
+                              target_channel, config, budget=budget)
     scores = sorted(scores, key=lambda item: (item["score"],
                                                -item["fim_proxy_per_s"],
                                                item["point"]))
@@ -241,23 +269,62 @@ def plan_measurement(region, observations, *, current_position=None,
             selected["action_time_s"] + extra
             for extra in config.fim_extra_time_budgets_s
         ]
-        continuous_fim = optimize_continuous_fim(
-            region,
-            candidate_regions["guaranteed_reception"],
-            first_position=first.position,
-            current_position=current_position,
-            current_channel=current_channel,
-            target_channel=target_channel,
-            min_receive_radius=config.min_receive_radius,
-            seed_points=[item["point"] for item in (guaranteed or scores)],
-            samples_per_edge=config.fim_samples_per_edge,
-            initial_step_m=config.fim_initial_step_m,
-            min_step_m=config.fim_min_step_m,
-            max_iterations=config.fim_max_iterations,
-            seed_limit=config.fim_seed_limit,
-            action_time_limits_s=action_time_limits,
-            cpu_time_limit_s=config.fim_cpu_time_limit_s,
-        )
+        # FIM 的子预算与其享墙钟预算取小，保证总规划时间不越过统一上限；
+        # 预算耗尽时 FIM 内部仍返回当前种子/最优解并标记 timed_out，不会抛异常。
+        fim_limit = config.fim_cpu_time_limit_s
+        remaining = budget.remaining_s()
+        if remaining is not None:
+            fim_limit = max(min(fim_limit, remaining), 1e-6)
+        if config.continuous_objective == "diameter":
+            from .continuous_diameter import optimize_continuous_diameter
+            continuous_fim = optimize_continuous_diameter(
+                region,
+                candidate_regions["guaranteed_reception"],
+                first_position=first.position,
+                current_position=current_position,
+                current_channel=current_channel,
+                target_channel=target_channel,
+                min_receive_radius=config.min_receive_radius,
+                seed_points=[item["point"] for item in (guaranteed or scores)],
+                samples_per_edge=config.fim_samples_per_edge,
+                initial_step_m=config.fim_initial_step_m,
+                min_step_m=config.fim_min_step_m,
+                max_iterations=config.fim_max_iterations,
+                seed_limit=config.fim_seed_limit,
+                action_time_limits_s=action_time_limits,
+                cpu_time_limit_s=fim_limit,
+                error_deg=config.error_deg,
+            )
+            # 字段归一化：fim 分支断言为"越大越好"的指标，diameter 目标
+            # 用负直径表达同一排序语义；下游重评分/裁决逻辑不变。
+            for item in continuous_fim.get("budget_solutions", []):
+                item["best_seed_fim_index_per_s"] = -item.get(
+                    "best_seed_diameter_m", 0.0)
+                item["robust_fim_index_per_s"] = -item.get(
+                    "worst_diameter_m", 0.0)
+            if continuous_fim.get("status") == "ok":
+                continuous_fim["robust_fim_index_per_s"] = -continuous_fim[
+                    "worst_diameter_m"]
+                continuous_fim["best_seed_fim_index_per_s"] = -continuous_fim[
+                    "best_seed_diameter_m"]
+        else:
+            continuous_fim = optimize_continuous_fim(
+                region,
+                candidate_regions["guaranteed_reception"],
+                first_position=first.position,
+                current_position=current_position,
+                current_channel=current_channel,
+                target_channel=target_channel,
+                min_receive_radius=config.min_receive_radius,
+                seed_points=[item["point"] for item in (guaranteed or scores)],
+                samples_per_edge=config.fim_samples_per_edge,
+                initial_step_m=config.fim_initial_step_m,
+                min_step_m=config.fim_min_step_m,
+                max_iterations=config.fim_max_iterations,
+                seed_limit=config.fim_seed_limit,
+                action_time_limits_s=action_time_limits,
+                cpu_time_limit_s=fim_limit,
+            )
         if continuous_fim["status"] == "ok":
             solutions = [item for item in continuous_fim["budget_solutions"]
                          if item["status"] == "ok"]
@@ -350,6 +417,7 @@ def plan_measurement(region, observations, *, current_position=None,
         region, observations,
         candidate_regions["guaranteed_reception"], branches_for_regions,
         current_position, current_channel, target_channel, first, config,
+        budget=budget,
     )
     comparison = {
         "score_definition": (
@@ -387,6 +455,9 @@ def plan_measurement(region, observations, *, current_position=None,
         "region": region,
         "config": asdict(config),
         "near_optimal_region_summary": near_optimal_summary,
+        "planning_wall_time_used_s": time.perf_counter() - planning_started,
+        "planning_wall_clock_budget_s": config.planning_wall_clock_budget_s,
+        "planning_timed_out": budget.expired(),
         "planning_cpu_wall_time_s": time.perf_counter() - planning_started,
         "limitations": [
             "源物理圆域用外切正多边形保守近似。",

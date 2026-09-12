@@ -1,0 +1,86 @@
+{
+  "elapsed_s": 71.23488189999989,
+  "workers": 18,
+  "rows": [
+    {
+      "seed": 20260912,
+      "sources": 10,
+      "cleared": 10,
+      "actions": 595,
+      "virtual_time_s": 8797.1,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260913,
+      "sources": 10,
+      "cleared": 10,
+      "actions": 282,
+      "virtual_time_s": 6810.6,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260914,
+      "sources": 13,
+      "cleared": 13,
+      "actions": 884,
+      "virtual_time_s": 13007.0,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260915,
+      "sources": 15,
+      "cleared": 15,
+      "actions": 854,
+      "virtual_time_s": 12511.3,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260916,
+      "sources": 15,
+      "cleared": 15,
+      "actions": 767,
+      "virtual_time_s": 12419.7,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260917,
+      "sources": 14,
+      "cleared": 14,
+      "actions": 579,
+      "virtual_time_s": 9574.6,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260918,
+      "sources": 12,
+      "cleared": 12,
+      "actions": 423,
+      "virtual_time_s": 8182.1,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260919,
+      "sources": 15,
+      "cleared": 15,
+      "actions": 644,
+      "virtual_time_s": 11068.7,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260920,
+      "sources": 14,
+      "cleared": 14,
+      "actions": 543,
+      "virtual_time_s": 9362.5,
+      "accounting_ok": true
+    },
+    {
+      "seed": 20260921,
+      "sources": 16,
+      "cleared": 16,
+      "actions": 417,
+      "virtual_time_s": 10049.3,
+      "accounting_ok": true
+    }
+  ]
+}
