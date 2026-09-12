@@ -8,7 +8,7 @@
 
 ## 算法步骤
 
-1. 用目标圆、首测接收圆和示向扇区建立源位置区域。
+1. 用目标圆、首测接收圆和示向扇区建立源位置区域：先以 `circle_sides` 边整圆外切得到有界粗外包，再用可行线—圆/圆—圆交点补充端点切线，并对超出真实圆盘容差的多边形顶点迭代补切线。
 2. 计算第二测点的保证接收连续域（内近似）与可能接收连续域（外近似）。
 3. 从首测方向、区域中心和保证域中心等位置生成有限候选。
 4. 对有限源位置及误差样本模拟第二次观测，计算最坏后验半径。
@@ -20,7 +20,8 @@
 
 | 算法步骤 / 数学关系 | 对应函数 | 说明 |
 |---|---|---|
-| 首测后的物理源域 | `common/domain.py:build_region_from_observations` | 合并圆域与示向约束 |
+| 首测后的物理源域 | `common/domain.py:build_region_from_observations` | 合并圆域与示向约束，输出嵌套于原粗外包的自适应外近似 |
+| 新观测后的局部圆弧细化 | `common/domain.py:extend_region_with_observation` | 保留已有区域，只对新增接收圆作端点切线与超差迭代 |
 | 保证/可能接收连续域 | `candidates.py:build_candidate_regions` | 分别是内近似、外近似 |
 | 生成离散搜索点 | `candidates.py:generate_candidates` | 确定性有限候选 |
 | 有限场景评分 | `planner.py:score_candidates` | 不代表连续全局最坏情形 |
@@ -55,8 +56,9 @@ python tests/q2/test_unit.py
 python tests/q2/gen_data.py --mode random --seed 42
 python tests/q2/test_duipai.py --dir tests/q2/data/random
 python -B tests/q2/benchmark_200.py --count 200 --seed 20260911 --workers 16
+python -B tests/q2/benchmark_arc_refinement.py --count 200 --plan-count 20 --repeats 7 --seed 20260912
 ```
 
 200 例配对结果及指标选择讨论见 `tests/q2/analysis/q2_200_case_comparison.md`。规划器以最坏后验半径为主指标、动作时间为次级指标；FIM 负责生成候选，最终由统一集合评分和 Pareto 规则裁决。
 
-人工验收必须按 `tests/q2/verify_manual.md` 执行。离散结果在 `baseline.selected_point`，连续结果在 `continuous_fim.selected_point`，顶层 `selected_point` 是供 Q3/Q4 使用的推荐点。`--region-mode online` 适合现场，`offline` 用较密采样生成论文图，`off` 用于只比较选点。5%/10% 近优域是局部采样凸包近似，不是统计置信区间或连续证书。连续 FIM、源域最坏情形和圆域都仍含有限近似，不能写成原问题连续空间全局最优证明。
+人工验收必须按 `tests/q2/verify_manual.md` 执行。离散结果在 `baseline.selected_point`，连续结果在 `continuous_fim.selected_point`，顶层 `selected_point` 是供 Q3/Q4 使用的推荐点。`--region-mode online` 适合现场，`offline` 用较密采样生成论文图，`off` 用于只比较选点。5%/10% 近优域是局部采样凸包近似，不是统计置信区间或连续证书。圆弧细化始终保留原粗外切半平面，因此不会排除真实源；达到的只是输出顶点相对各真实圆盘的径向容差，不是曲边交会区域的精确解析表示。连续 FIM、源域最坏情形和圆域都仍含有限近似，不能写成原问题连续空间全局最优证明。

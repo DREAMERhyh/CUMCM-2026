@@ -4,9 +4,8 @@ from dataclasses import asdict, dataclass
 import math
 import time
 
-from q1.geometry import bearing_planes, intersect_halfplanes
-
-from common.domain import (build_region_from_observations, circle_outer_planes,
+from common.domain import (build_region_from_observations,
+                           extend_region_with_observation,
                            max_vertex_distance, representative_points)
 from common.models import BearingObservation
 from common.time_model import measure_cost
@@ -40,18 +39,20 @@ class Q2Config:
     near_optimal_tolerances: tuple = (0.05, 0.10)
 
 
-def _posterior_radius(region, sensor, target, error, config):
+def _posterior_radius(region, observations, sensor, target, error, config):
     distance = math.dist(sensor, target)
     if distance <= 5.0:
         return min(5.0, region["minimum_enclosing_circle"]["radius"])
     true_bearing = math.degrees(math.atan2(target[1]-sensor[1],
                                            target[0]-sensor[0])) % 360
-    planes = list(region["planes"])
-    planes.extend(circle_outer_planes(sensor, config.max_receive_radius,
-                                      config.circle_sides))
-    planes.extend(bearing_planes(sensor, true_bearing+error,
-                                 config.error_deg))
-    posterior = intersect_halfplanes(planes)
+    observation = BearingObservation(
+        sensor, observations[-1].channel, "direction", true_bearing+error
+    )
+    posterior = extend_region_with_observation(
+        region, observation, error_deg=config.error_deg,
+        max_receive_radius=config.max_receive_radius,
+        circle_sides=config.circle_sides,
+    )
     if posterior["status"] != "bounded":
         return float("inf")
     return posterior["minimum_enclosing_circle"]["radius"]
@@ -86,8 +87,9 @@ def score_candidates(region, observations, candidates, current_position,
                 radii.append(current_radius)
                 continue
             for error in (-config.error_deg, 0.0, config.error_deg):
-                radii.append(_posterior_radius(region, sensor, target, error,
-                                               config))
+                radii.append(_posterior_radius(
+                    region, observations, sensor, target, error, config
+                ))
             if distance > config.min_receive_radius:
                 radii.append(current_radius)  # unknown R may produce no_signal
         if not guaranteed:
@@ -389,7 +391,7 @@ def plan_measurement(region, observations, *, current_position=None,
         "near_optimal_region_summary": near_optimal_summary,
         "planning_cpu_wall_time_s": time.perf_counter() - planning_started,
         "limitations": [
-            "源物理圆域用外切正多边形保守近似。",
+            "源位置圆域先作整圆粗外切，再以解析端点切线和顶点超差切线保守细化。",
             "保证接收域是圆交集的内近似；可能接收域是圆盘Minkowski和的外近似。",
             "最坏情形在有限边界场景和误差端点上计算，不声称连续全局最优。",
             "连续FIM在测点坐标上优化，但源位置鲁棒性仍由有限边界场景近似。",

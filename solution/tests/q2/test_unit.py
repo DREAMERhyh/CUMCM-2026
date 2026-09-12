@@ -13,9 +13,11 @@ SRC = SOLUTION / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from common.domain import build_region_from_observations
+from common.domain import (build_region_from_observations,
+                           circle_outer_planes,
+                           extend_region_with_observation)
 from common.models import BearingObservation
-from q1.geometry import contains
+from q1.geometry import bearing_planes, contains, intersect_halfplanes
 from q2.planner import Q2Config, plan_second_point
 
 
@@ -33,6 +35,87 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         self.assertEqual(region["status"], "bounded")
         self.assertTrue(contains(region["planes"], self.source))
         self.assertTrue(region["approximation"]["conservative"])
+
+    def test_adaptive_outer_region_is_nested_and_tighter(self):
+        sides = 24
+        uniform_planes = [
+            *circle_outer_planes((0.0, 0.0), 1800.0, sides),
+            *circle_outer_planes(self.sensor, 1500.0, sides),
+            *bearing_planes(
+                self.sensor, self.observation.bearing_deg, 1.005
+            ),
+        ]
+        uniform = intersect_halfplanes(uniform_planes)
+        adaptive = build_region_from_observations(
+            [self.observation], circle_sides=sides
+        )
+        self.assertEqual(
+            adaptive["approximation"]["kind"],
+            "adaptive_circumscribed_polygon",
+        )
+        self.assertTrue(adaptive["approximation"]["target_met"])
+        self.assertTrue(all(
+            contains(uniform_planes, vertex)
+            for vertex in adaptive["vertices"]
+        ))
+        uniform_excess = max(
+            math.dist(vertex, self.sensor)-1500.0
+            for vertex in uniform["vertices"]
+        )
+        adaptive_excess = max(
+            math.dist(vertex, self.sensor)-1500.0
+            for vertex in adaptive["vertices"]
+        )
+        self.assertLess(adaptive_excess, uniform_excess)
+        self.assertLess(adaptive["area"], uniform["area"])
+
+    def test_adaptive_extension_keeps_compatible_truth(self):
+        region = build_region_from_observations([self.observation])
+        second_sensor = (400.0, -450.0)
+        true = math.degrees(math.atan2(
+            self.source[1]-second_sensor[1],
+            self.source[0]-second_sensor[0],
+        )) % 360.0
+        second = BearingObservation(
+            second_sensor, 1, "direction", true-0.4
+        )
+        posterior = extend_region_with_observation(
+            region, second, circle_sides=24
+        )
+        self.assertEqual(posterior["status"], "bounded")
+        self.assertTrue(contains(posterior["planes"], self.source))
+        self.assertTrue(posterior["approximation"]["conservative"])
+        self.assertTrue(posterior["approximation"]["target_met"])
+
+    def test_inactive_circle_boundaries_do_not_change_region(self):
+        observations = [
+            BearingObservation((-500.0, 0.0), 1, "direction", 0.0),
+            BearingObservation((500.0, 0.0), 1, "direction", 180.0),
+            BearingObservation((0.0, -500.0), 1, "direction", 90.0),
+        ]
+        sides = 16
+        uniform_planes = circle_outer_planes(
+            (0.0, 0.0), 1800.0, sides
+        )
+        for observation in observations:
+            uniform_planes.extend(circle_outer_planes(
+                observation.position, 1500.0, sides
+            ))
+            uniform_planes.extend(bearing_planes(
+                observation.position, observation.bearing_deg, 1.005
+            ))
+        uniform = intersect_halfplanes(uniform_planes)
+        adaptive = build_region_from_observations(
+            observations, circle_sides=sides
+        )
+        self.assertEqual(adaptive["vertices"], uniform["vertices"])
+        self.assertAlmostEqual(adaptive["area"], uniform["area"])
+        self.assertEqual(
+            adaptive["approximation"]["endpoint_tangent_count"], 0
+        )
+        self.assertEqual(
+            adaptive["approximation"]["adaptive_tangent_count"], 0
+        )
 
     def test_plan_is_deterministic_and_selected_from_candidates(self):
         first = plan_second_point(self.observation)
