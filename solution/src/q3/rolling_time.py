@@ -10,6 +10,8 @@ from common.models import BearingObservation
 from common.time_model import measure_cost
 
 from .adaptive import nearest_neighbor_order, posterior_clear_points
+from .cache import (config_fingerprint, point_fingerprint,
+                    posterior_fingerprint, region_fingerprint)
 
 
 def _point_key(point):
@@ -79,31 +81,42 @@ def extract_q2_candidate_points(plan, region, config, *, limit=12):
     return guaranteed[:limit]
 
 
-def clear_plan_cost(region, start, *, continuation_points=()):
+def clear_plan_cost(region, start, *, continuation_points=(), cache=None):
     """Return grid-route cost plus a one-step multi-source continuation."""
-    points = posterior_clear_points(region)
-    ordered = nearest_neighbor_order(points, start)
-    current = tuple(start)
-    distance_m = 0.0
-    for point in ordered:
-        distance_m += math.dist(current, point)
-        current = point
-    base_cost_s = (
-        distance_m / 5.0 + 3.0 * len(ordered)
-        + (2.0 if ordered else 0.0)
+    continuation_points = tuple(tuple(point) for point in continuation_points)
+
+    def compute():
+        points = posterior_clear_points(region)
+        ordered = nearest_neighbor_order(points, start)
+        current = tuple(start)
+        distance_m = 0.0
+        for point in ordered:
+            distance_m += math.dist(current, point)
+            current = point
+        base_cost_s = (
+            distance_m / 5.0 + 3.0 * len(ordered)
+            + (2.0 if ordered else 0.0)
+        )
+        continuation_s = (
+            min(math.dist(current, point)
+                for point in continuation_points) / 5.0
+            if continuation_points else 0.0
+        )
+        return {
+            "cost_s": base_cost_s + continuation_s,
+            "base_clear_cost_s": base_cost_s,
+            "continuation_cost_s": continuation_s,
+            "point_count": len(points),
+            "route_end": current,
+        }
+
+    if cache is None:
+        return compute()
+    key = (
+        region_fingerprint(region), point_fingerprint(start),
+        tuple(point_fingerprint(point) for point in continuation_points),
     )
-    continuation_points = [tuple(point) for point in continuation_points]
-    continuation_s = (
-        min(math.dist(current, point) for point in continuation_points) / 5.0
-        if continuation_points else 0.0
-    )
-    return {
-        "cost_s": base_cost_s + continuation_s,
-        "base_clear_cost_s": base_cost_s,
-        "continuation_cost_s": continuation_s,
-        "point_count": len(points),
-        "route_end": current,
-    }
+    return cache.get_or_compute("clear_route", key, compute, clone=True)
 
 
 def risk_summary(values, *, cvar_alpha=0.9):
@@ -124,7 +137,7 @@ def risk_summary(values, *, cvar_alpha=0.9):
 
 
 def _posterior_branch(track, point, target, error_deg, config,
-                      continuation_points=()):
+                      continuation_points=(), cache=None):
     distance = math.dist(point, target)
     if distance <= 5.0:
         continuation_s = (
@@ -151,7 +164,8 @@ def _posterior_branch(track, point, target, error_deg, config,
     if posterior.get("status") != "bounded":
         raise RuntimeError("测后有限场景没有产生有界后验。")
     clear = clear_plan_cost(
-        posterior, point, continuation_points=continuation_points
+        posterior, point, continuation_points=continuation_points,
+        cache=cache,
     )
     return {
         "clear_cost_s": clear["cost_s"],
@@ -162,44 +176,62 @@ def _posterior_branch(track, point, target, error_deg, config,
 
 def evaluate_candidate(track, point, *, current_position, current_channel,
                        config, scenario_limit=4, cvar_alpha=0.9,
-                       deadline=None, continuation_points=()):
+                       deadline=None, continuation_points=(), cache=None):
     """Evaluate one guaranteed point using real posterior clear covers."""
     point = tuple(point)
-    timing = measure_cost(
-        current_position, point, current_channel, track.channel
-    )
-    if scenario_limit == 1:
-        targets = [tuple(track.region["minimum_enclosing_circle"]["center"])]
-    else:
-        targets = representative_points(
-            track.region["vertices"], limit=scenario_limit
+    continuation_points = tuple(tuple(item) for item in continuation_points)
+
+    def compute():
+        timing = measure_cost(
+            current_position, point, current_channel, track.channel
         )
-    clear_costs, point_counts = [], []
-    for target in targets:
-        errors = (0.0,) if math.dist(point, target) <= 5.0 else (
-            -config.error_deg, 0.0, config.error_deg,
-        )
-        for error in errors:
-            if deadline is not None and time.perf_counter() >= deadline:
-                return None
-            branch = _posterior_branch(
-                track, point, target, error, config,
-                continuation_points=continuation_points,
+        if scenario_limit == 1:
+            targets = [tuple(
+                track.region["minimum_enclosing_circle"]["center"]
+            )]
+        else:
+            targets = representative_points(
+                track.region["vertices"], limit=scenario_limit
             )
-            clear_costs.append(branch["clear_cost_s"])
-            point_counts.append(branch["clear_point_count"])
-    risk = risk_summary(clear_costs, cvar_alpha=cvar_alpha)
-    return {
-        "point": point,
-        "measure_action_time_s": timing.total_s,
-        "measure_time_breakdown": timing.as_dict(),
-        "post_clear_mean_s": risk["mean_s"],
-        "post_clear_p90_s": risk["p90_s"],
-        "post_clear_cvar_s": risk["cvar_s"],
-        "post_clear_worst_s": risk["worst_s"],
-        "mean_clear_point_count": statistics.fmean(point_counts),
-        "scenario_count": len(clear_costs),
-    }
+        clear_costs, point_counts = [], []
+        for target in targets:
+            errors = (0.0,) if math.dist(point, target) <= 5.0 else (
+                -config.error_deg, 0.0, config.error_deg,
+            )
+            for error in errors:
+                if deadline is not None and time.perf_counter() >= deadline:
+                    return None
+                branch = _posterior_branch(
+                    track, point, target, error, config,
+                    continuation_points=continuation_points, cache=cache,
+                )
+                clear_costs.append(branch["clear_cost_s"])
+                point_counts.append(branch["clear_point_count"])
+        risk = risk_summary(clear_costs, cvar_alpha=cvar_alpha)
+        return {
+            "point": point,
+            "measure_action_time_s": timing.total_s,
+            "measure_time_breakdown": timing.as_dict(),
+            "post_clear_mean_s": risk["mean_s"],
+            "post_clear_p90_s": risk["p90_s"],
+            "post_clear_cvar_s": risk["cvar_s"],
+            "post_clear_worst_s": risk["worst_s"],
+            "mean_clear_point_count": statistics.fmean(point_counts),
+            "scenario_count": len(clear_costs),
+        }
+
+    if cache is None:
+        return compute()
+    key = (
+        posterior_fingerprint(track), point_fingerprint(point),
+        point_fingerprint(current_position), current_channel,
+        config_fingerprint(config), scenario_limit, cvar_alpha,
+        tuple(point_fingerprint(item) for item in continuation_points),
+    )
+    return cache.get_or_compute(
+        "candidate_scenario", key, compute, clone=True,
+        cache_if=lambda value: value is not None,
+    )
 
 
 def _clear_decision(clear_now_s, *, status, timed_out, reason,
@@ -230,7 +262,7 @@ def evaluate_total_time_decision(
         track, plan, *, current_position, current_channel, config,
         savings_margin_s=10.0, scenario_limit=4, candidate_limit=12,
         cvar_alpha=0.9, risk_metric="p90", cpu_time_limit_s=1.0,
-        continuation_points=()):
+        continuation_points=(), cache=None):
     """Compare immediate clearing with one measurement and replanning.
 
     The result is a finite-scenario numerical approximation.  Only candidates
@@ -247,6 +279,7 @@ def evaluate_total_time_decision(
     clear_now = clear_plan_cost(
         track.region, current_position,
         continuation_points=continuation_points,
+        cache=cache,
     )["cost_s"]
     candidates = extract_q2_candidate_points(
         plan, track.region, config, limit=candidate_limit
@@ -278,6 +311,7 @@ def evaluate_total_time_decision(
             cvar_alpha=cvar_alpha,
             deadline=deadline,
             continuation_points=continuation_points,
+            cache=cache,
         )
         if result is None:
             timed_out = True

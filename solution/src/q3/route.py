@@ -89,6 +89,10 @@ class RoutePlan:
     insertion_order: tuple[int, ...]
     two_opt_iterations: int
     cpu_wall_time_s: float
+    solver: str = "insertion_2opt"
+    beam_width: int = 0
+    beam_expanded_nodes: int = 0
+    fallback_solver: str | None = None
 
 
 class RoutePlanningTimeout(RuntimeError):
@@ -111,7 +115,16 @@ def _long_jump_summary(distances, threshold_m=1000.0):
     return len(long), sum(long)
 
 
-def materialize_service_block(spec, incoming_position, incoming_channel):
+def _spec_fingerprint(spec):
+    return (
+        spec.channel, spec.mode, spec.entry_point, spec.entry_action_kind,
+        spec.entry_action_channel, spec.batch_channels, spec.route_points,
+        spec.source_version, spec.reorder_clear_points,
+    )
+
+
+def _materialize_service_block_uncached(
+        spec, incoming_position, incoming_channel):
     """Materialise one conservative block from a predicted predecessor."""
     incoming_position = tuple(incoming_position)
     clear_points = list(spec.route_points)
@@ -184,7 +197,26 @@ def materialize_service_block(spec, incoming_position, incoming_channel):
     )
 
 
-def evaluate_open_service_route(order, specs, start_position, start_channel):
+def materialize_service_block(spec, incoming_position, incoming_channel, *,
+                              cache=None):
+    """Materialise one block, optionally reusing an exact state-keyed value."""
+    if cache is None:
+        return _materialize_service_block_uncached(
+            spec, incoming_position, incoming_channel
+        )
+    key = (
+        _spec_fingerprint(spec), tuple(incoming_position), incoming_channel,
+    )
+    return cache.get_or_compute(
+        "service_block", key,
+        lambda: _materialize_service_block_uncached(
+            spec, incoming_position, incoming_channel
+        ),
+    )
+
+
+def evaluate_open_service_route(order, specs, start_position, start_channel, *,
+                                cache=None):
     """Fully re-materialise and score one open source order."""
     order = tuple(order)
     if len(order) != len(set(order)):
@@ -197,7 +229,7 @@ def evaluate_open_service_route(order, specs, start_position, start_channel):
     blocks = []
     for source_channel in order:
         block = materialize_service_block(
-            specs[source_channel], position, channel
+            specs[source_channel], position, channel, cache=cache
         )
         blocks.append(block)
         position = block.exit_point
@@ -227,11 +259,12 @@ def _estimate_key(estimate):
     )
 
 
-def cheapest_insertion(specs, start_position, start_channel, *, deadline=None):
+def cheapest_insertion(specs, start_position, start_channel, *, deadline=None,
+                       cache=None):
     """Construct a complete deterministic open route by cheapest insertion."""
     if not specs:
         return evaluate_open_service_route(
-            (), specs, start_position, start_channel
+            (), specs, start_position, start_channel, cache=cache
         )
     remaining = set(specs)
     first_candidates = []
@@ -239,7 +272,7 @@ def cheapest_insertion(specs, start_position, start_channel, *, deadline=None):
         if deadline is not None and time.perf_counter() >= deadline:
             raise RoutePlanningTimeout("insertion_before_first_complete_route")
         estimate = evaluate_open_service_route(
-            (channel,), specs, start_position, start_channel
+            (channel,), specs, start_position, start_channel, cache=cache
         )
         first_candidates.append((_estimate_key(estimate), channel, estimate))
     _, first, current = min(first_candidates)
@@ -257,7 +290,8 @@ def cheapest_insertion(specs, start_position, start_channel, *, deadline=None):
                 candidate_order = [*order]
                 candidate_order.insert(position, channel)
                 estimate = evaluate_open_service_route(
-                    candidate_order, specs, start_position, start_channel
+                    candidate_order, specs, start_position, start_channel,
+                    cache=cache,
                 )
                 delta = (
                     estimate.total_virtual_time_s
@@ -281,7 +315,8 @@ def cheapest_insertion(specs, start_position, start_channel, *, deadline=None):
 
 
 def improve_two_opt(initial, specs, start_position, start_channel, *,
-                    max_iterations=20, deadline=None, tolerance=1e-9):
+                    max_iterations=20, deadline=None, tolerance=1e-9,
+                    cache=None):
     """Apply deterministic best-improvement 2-opt with full rescoring."""
     if max_iterations < 0:
         raise ValueError("2-opt迭代上限不能为负。")
@@ -301,7 +336,8 @@ def improve_two_opt(initial, specs, start_position, start_channel, *,
                     + current.order[last + 1:]
                 )
                 candidate = evaluate_open_service_route(
-                    candidate_order, specs, start_position, start_channel
+                    candidate_order, specs, start_position, start_channel,
+                    cache=cache,
                 )
                 if _estimate_key(candidate) < _estimate_key(best):
                     best = candidate
@@ -314,7 +350,8 @@ def improve_two_opt(initial, specs, start_position, start_channel, *,
 
 
 def plan_service_route(specs, start_position, start_channel, *,
-                       cpu_time_limit_s=0.25, max_2opt_iterations=20):
+                       cpu_time_limit_s=0.25, max_2opt_iterations=20,
+                       cache=None):
     """Return insertion + 2-opt result or a finite fallback status."""
     if cpu_time_limit_s <= 0.0:
         raise ValueError("路线规划CPU软截止必须为正数。")
@@ -322,7 +359,8 @@ def plan_service_route(specs, start_position, start_channel, *,
     deadline = started + cpu_time_limit_s
     try:
         insertion = cheapest_insertion(
-            specs, start_position, start_channel, deadline=deadline
+            specs, start_position, start_channel, deadline=deadline,
+            cache=cache,
         )
     except (RoutePlanningTimeout, RuntimeError, ValueError) as error:
         return RoutePlan(
@@ -335,7 +373,7 @@ def plan_service_route(specs, start_position, start_channel, *,
         )
     improved, iterations, timed_out = improve_two_opt(
         insertion, specs, start_position, start_channel,
-        max_iterations=max_2opt_iterations, deadline=deadline,
+        max_iterations=max_2opt_iterations, deadline=deadline, cache=cache,
     )
     return RoutePlan(
         status="partial" if timed_out else "ok",
@@ -344,4 +382,186 @@ def plan_service_route(specs, start_position, start_channel, *,
         insertion_order=insertion.order,
         two_opt_iterations=iterations,
         cpu_wall_time_s=time.perf_counter() - started,
+    )
+
+
+def _service_point_set(spec):
+    points = list(spec.route_points)
+    if spec.mode == "measure_then_clear" and spec.entry_point is not None:
+        points.append(spec.entry_point)
+    return tuple(dict.fromkeys(tuple(point) for point in points))
+
+
+def _minimum_set_distance(first, second):
+    return min(math.dist(left, right) for left in first for right in second)
+
+
+def remaining_cost_lower_bound(specs, remaining, position, *, cache=None):
+    """Optimistic action + connection lower bound for beam ordering.
+
+    Channel switches and travel inside a service block are intentionally
+    omitted.  A minimum spanning tree over each block's possible visit-point
+    set is therefore a lower bound, not a claimed executable route.
+    """
+    remaining = tuple(sorted(remaining))
+    if not remaining:
+        return 0.0
+    key = (
+        tuple((_spec_fingerprint(specs[channel])) for channel in remaining),
+        remaining, tuple(position),
+    )
+
+    def compute():
+        fixed_s = 0.0
+        sets = [(tuple(position),)]
+        for channel in remaining:
+            spec = specs[channel]
+            clear_count = len(spec.route_points)
+            fixed_s += 3.0 * clear_count + (2.0 if clear_count else 0.0)
+            if spec.mode == "measure_then_clear":
+                extra_count = sum(
+                    item != spec.entry_action_channel
+                    for item in spec.batch_channels
+                )
+                fixed_s += 5.0 * (1 + extra_count)
+            sets.append(_service_point_set(spec))
+
+        connected = {0}
+        movement_m = 0.0
+        while len(connected) < len(sets):
+            distance, selected = min(
+                (_minimum_set_distance(sets[first], sets[second]), second)
+                for first in connected
+                for second in range(1, len(sets))
+                if second not in connected
+            )
+            movement_m += distance
+            connected.add(selected)
+        return fixed_s + movement_m / 5.0
+
+    if cache is None:
+        return compute()
+    return cache.get_or_compute("route_lower_bound", key, compute)
+
+
+def plan_beam_cached_route(
+        specs, start_position, start_channel, *, cpu_time_limit_s=1.0,
+        beam_width=1, max_expansions=512, max_2opt_iterations=20,
+        cache=None):
+    """Anytime deterministic beam search with an insertion+2-opt incumbent.
+
+    The incumbent guarantees a complete first-part route whenever insertion
+    finishes.  Beam search then explores alternative prefixes over the same
+    single-source-approved service specs.  If it cannot complete before the
+    soft limit, the incumbent is returned; if insertion itself cannot finish,
+    the caller can still fall back to the legacy one-step selector.
+    """
+    if cpu_time_limit_s <= 0.0:
+        raise ValueError("束搜索CPU软截止必须为正数。")
+    if beam_width < 1 or max_expansions < 1:
+        raise ValueError("束宽和最大扩展数至少为1。")
+    started = time.perf_counter()
+    deadline = started + cpu_time_limit_s
+    if not specs:
+        estimate = evaluate_open_service_route(
+            (), specs, start_position, start_channel, cache=cache
+        )
+        return RoutePlan(
+            status="ok", reason="complete", estimate=estimate,
+            insertion_order=(), two_opt_iterations=0,
+            cpu_wall_time_s=time.perf_counter() - started,
+            solver="beam_cached", beam_width=beam_width,
+        )
+
+    seed_fraction = 0.4
+    seed_deadline = started + min(
+        cpu_time_limit_s * seed_fraction, 0.25
+    )
+    try:
+        insertion = cheapest_insertion(
+            specs, start_position, start_channel,
+            deadline=seed_deadline, cache=cache,
+        )
+    except (RoutePlanningTimeout, RuntimeError, ValueError) as error:
+        return RoutePlan(
+            status="fallback",
+            reason=f"insertion_fallback:{type(error).__name__}:{error}",
+            estimate=None, insertion_order=(), two_opt_iterations=0,
+            cpu_wall_time_s=time.perf_counter() - started,
+            solver="beam_cached", beam_width=beam_width,
+            fallback_solver="legacy",
+        )
+    incumbent, two_opt_iterations, _ = improve_two_opt(
+        insertion, specs, start_position, start_channel,
+        max_iterations=max_2opt_iterations,
+        deadline=seed_deadline, cache=cache,
+    )
+
+    root = evaluate_open_service_route(
+        (), specs, start_position, start_channel, cache=cache
+    )
+    beam = [((), root)]
+    expanded = 0
+    completed = False
+    stopped_reason = None
+    all_channels = frozenset(specs)
+
+    for _ in range(len(specs)):
+        candidates = []
+        for order, _ in beam:
+            remaining = all_channels.difference(order)
+            for channel in sorted(remaining):
+                if time.perf_counter() >= deadline:
+                    stopped_reason = "beam_time_limit"
+                    break
+                if expanded >= max_expansions:
+                    stopped_reason = "beam_expansion_limit"
+                    break
+                candidate_order = (*order, channel)
+                estimate = evaluate_open_service_route(
+                    candidate_order, specs, start_position, start_channel,
+                    cache=cache,
+                )
+                tail = all_channels.difference(candidate_order)
+                lower_bound = remaining_cost_lower_bound(
+                    specs, tail, estimate.end_position, cache=cache
+                )
+                candidates.append((
+                    estimate.total_virtual_time_s + lower_bound,
+                    estimate.total_virtual_time_s,
+                    estimate.total_movement_distance_m,
+                    estimate.long_jump_count,
+                    estimate.order,
+                    estimate,
+                ))
+                expanded += 1
+            if stopped_reason is not None:
+                break
+        if stopped_reason is not None:
+            break
+        if not candidates:
+            stopped_reason = "beam_no_candidate"
+            break
+        candidates.sort(key=lambda item: item[:-1])
+        beam = [(item[4], item[5]) for item in candidates[:beam_width]]
+    else:
+        completed = True
+
+    if completed:
+        best_beam = min(
+            (estimate for _, estimate in beam), key=_estimate_key
+        )
+        if _estimate_key(best_beam) < _estimate_key(incumbent):
+            incumbent = best_beam
+
+    return RoutePlan(
+        status="ok" if completed else "partial",
+        reason="complete" if completed else stopped_reason,
+        estimate=incumbent,
+        insertion_order=insertion.order,
+        two_opt_iterations=two_opt_iterations,
+        cpu_wall_time_s=time.perf_counter() - started,
+        solver="beam_cached", beam_width=beam_width,
+        beam_expanded_nodes=expanded,
+        fallback_solver=(None if completed else "insertion_2opt"),
     )

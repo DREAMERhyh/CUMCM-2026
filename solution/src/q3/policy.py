@@ -9,10 +9,14 @@ from q2.planner import Q2Config, plan_measurement
 from .adaptive import (measurement_is_worthwhile, nearest_neighbor_order,
                        posterior_clear_points, worst_case_clear_cost)
 from .coverage import ring7, strip_clear_points
+from .cache import (Q3ComputationCache, config_fingerprint,
+                    point_fingerprint, posterior_fingerprint,
+                    region_fingerprint)
 from .fallback_remeasure import evaluate_failed_clear_remeasure
 from .joint import (direct_clear_cost, fixed_point_evaluation,
                     marginal_saving, predicted_clear_cost)
-from .route import (SourceServiceSpec, plan_service_route)
+from .route import (SourceServiceSpec, plan_beam_cached_route,
+                    plan_service_route)
 from .rolling_time import evaluate_total_time_decision
 
 
@@ -96,7 +100,11 @@ class Q3Policy:
                  rolling_cpu_time_limit_s=1.0,
                  multi_source_route_mode="off",
                  route_cpu_time_limit_s=0.25,
-                 route_max_2opt_iterations=20):
+                 route_max_2opt_iterations=20,
+                 computation_cache_mode="off",
+                 cache_capacity=4096,
+                 beam_width=1,
+                 beam_max_expansions=512):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
         if max_refinements < 0:
@@ -129,12 +137,21 @@ class Q3Policy:
             raise ValueError("滚动CVaR分位必须位于(0,1)。")
         if rolling_cpu_time_limit_s <= 0.0:
             raise ValueError("滚动评价CPU时限必须为正数。")
-        if multi_source_route_mode not in ("off", "insertion_2opt"):
-            raise ValueError("多源路线模式必须为off或insertion_2opt。")
+        if multi_source_route_mode not in (
+                "off", "insertion_2opt", "beam_cached"):
+            raise ValueError(
+                "多源路线模式必须为off、insertion_2opt或beam_cached。"
+            )
         if route_cpu_time_limit_s <= 0.0:
             raise ValueError("路线规划CPU软截止必须为正数。")
         if route_max_2opt_iterations < 0:
             raise ValueError("路线2-opt迭代上限不能为负。")
+        if computation_cache_mode not in ("off", "bounded"):
+            raise ValueError("计算缓存模式必须为off或bounded。")
+        if cache_capacity < 1:
+            raise ValueError("计算缓存容量至少为1。")
+        if beam_width < 1 or beam_max_expansions < 1:
+            raise ValueError("束宽和束搜索扩展上限至少为1。")
         self.coverage_points = list(coverage_points or ring7())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
@@ -165,6 +182,17 @@ class Q3Policy:
         self.multi_source_route_mode = multi_source_route_mode
         self.route_cpu_time_limit_s = route_cpu_time_limit_s
         self.route_max_2opt_iterations = route_max_2opt_iterations
+        self.computation_cache_mode = (
+            "bounded" if multi_source_route_mode == "beam_cached"
+            else computation_cache_mode
+        )
+        self.cache_capacity = cache_capacity
+        self.beam_width = beam_width
+        self.beam_max_expansions = beam_max_expansions
+        self.computation_cache = Q3ComputationCache(
+            capacity=cache_capacity,
+            enabled=self.computation_cache_mode == "bounded",
+        )
         self.route_planning_history = []
         self.q2_config = Q2Config(error_deg=error_deg, circle_sides=16,
                                   scenario_limit=4,
@@ -270,12 +298,29 @@ class Q3Policy:
         return None
 
     def _refinement_plan(self, state, track):
-        return plan_measurement(
-            track.region, track.observations,
-            current_position=state.position,
-            current_channel=state.current_channel,
-            target_channel=track.channel,
-            config=self.q2_config,
+        if not self.computation_cache.enabled:
+            return plan_measurement(
+                track.region, track.observations,
+                current_position=state.position,
+                current_channel=state.current_channel,
+                target_channel=track.channel,
+                config=self.q2_config,
+            )
+        key = (
+            posterior_fingerprint(track), point_fingerprint(state.position),
+            state.current_channel, track.channel,
+            config_fingerprint(self.q2_config),
+        )
+        return self.computation_cache.get_or_compute(
+            "q2_plan", key,
+            lambda: plan_measurement(
+                track.region, track.observations,
+                current_position=state.position,
+                current_channel=state.current_channel,
+                target_channel=track.channel,
+                config=self.q2_config,
+            ),
+            clone=True,
         )
 
     def _refinement_candidate(self, plan):
@@ -311,6 +356,8 @@ class Q3Policy:
                 risk_metric=self.rolling_risk_metric,
                 cpu_time_limit_s=self.rolling_cpu_time_limit_s,
                 continuation_points=continuation_points,
+                cache=(self.computation_cache
+                       if self.computation_cache.enabled else None),
             )
         except (RuntimeError, ValueError, KeyError, ZeroDivisionError) as error:
             decision = {
@@ -333,9 +380,21 @@ class Q3Policy:
 
         def clear_cost(channel):
             if channel not in clear_costs:
-                clear_costs[channel] = direct_clear_cost(
-                    state.sources[channel].region, state.position
-                )[0]
+                track = state.sources[channel]
+                if self.computation_cache.enabled:
+                    key = (
+                        region_fingerprint(track.region),
+                        point_fingerprint(state.position),
+                    )
+                    value = self.computation_cache.get_or_compute(
+                        "direct_clear", key,
+                        lambda: direct_clear_cost(
+                            track.region, state.position
+                        ),
+                    )
+                else:
+                    value = direct_clear_cost(track.region, state.position)
+                clear_costs[channel] = value[0]
             return clear_costs[channel]
 
         options = []
@@ -387,11 +446,27 @@ class Q3Policy:
                     continue
                 if self._same_point(track.observations[-1].position, point):
                     continue
-                evaluation = fixed_point_evaluation(
-                    track, point,
-                    current_channel=target_channel,
-                    config=self.q2_config,
-                )
+                if self.computation_cache.enabled:
+                    key = (
+                        posterior_fingerprint(track),
+                        point_fingerprint(point), target_channel,
+                        config_fingerprint(self.q2_config),
+                    )
+                    evaluation = self.computation_cache.get_or_compute(
+                        "fixed_point", key,
+                        lambda: fixed_point_evaluation(
+                            track, point,
+                            current_channel=target_channel,
+                            config=self.q2_config,
+                        ),
+                        clone=True,
+                    )
+                else:
+                    evaluation = fixed_point_evaluation(
+                        track, point,
+                        current_channel=target_channel,
+                        config=self.q2_config,
+                    )
                 other_radius = track.region[
                     "minimum_enclosing_circle"
                 ]["radius"]
@@ -495,8 +570,17 @@ class Q3Policy:
             "fallback_remeasure",
         )
 
+    def _cached_posterior_clear_points(self, region):
+        if not self.computation_cache.enabled:
+            return tuple(posterior_clear_points(region))
+        key = region_fingerprint(region)
+        return self.computation_cache.get_or_compute(
+            "clear_grid", key,
+            lambda: tuple(posterior_clear_points(region)),
+        )
+
     def _rebuild_fallback_after_remeasure(self, state, track):
-        raw_points = posterior_clear_points(track.region)
+        raw_points = self._cached_posterior_clear_points(track.region)
         raw_points = [
             point for point in raw_points
             if not any(self._same_point(point, failed)
@@ -555,7 +639,9 @@ class Q3Policy:
                 )
                 reorder = False
             else:
-                clear_points = tuple(posterior_clear_points(track.region))
+                clear_points = self._cached_posterior_clear_points(
+                    track.region
+                )
                 reorder = True
             if option is not None:
                 point = tuple(option["point"])
@@ -595,9 +681,13 @@ class Q3Policy:
         entry = {
             "status": plan.status,
             "reason": plan.reason,
+            "solver": plan.solver,
             "cpu_wall_time_s": plan.cpu_wall_time_s,
             "insertion_order": list(plan.insertion_order),
             "two_opt_iterations": plan.two_opt_iterations,
+            "beam_width": plan.beam_width,
+            "beam_expanded_nodes": plan.beam_expanded_nodes,
+            "fallback_solver": plan.fallback_solver,
             "order": list(estimate.order) if estimate else [],
             "predicted_total_cost_s": (
                 estimate.total_virtual_time_s if estimate else None
@@ -612,6 +702,7 @@ class Q3Policy:
                 estimate.blocks[0].total_cost_s
                 if estimate and estimate.blocks else None
             ),
+            "cache": self.computation_cache.snapshot(),
         }
         self.route_planning_history.append(entry)
         return entry
@@ -619,7 +710,7 @@ class Q3Policy:
     def _prepare_direct_clear(self, state, track):
         if not track.fallback_points:
             if self.posterior_grid:
-                raw_points = posterior_clear_points(track.region)
+                raw_points = self._cached_posterior_clear_points(track.region)
                 track.fallback_points = nearest_neighbor_order(
                     raw_points, state.position
                 )
@@ -643,7 +734,7 @@ class Q3Policy:
                 point = self._refinement_point(state, track)
                 return self._action(state, "measure", point,
                                     track.channel, "refine")
-            raw_points = posterior_clear_points(track.region)
+            raw_points = self._cached_posterior_clear_points(track.region)
             clear_now_s = worst_case_clear_cost(raw_points, state.position)
             try:
                 plan = self._refinement_plan(state, track)
@@ -708,13 +799,28 @@ class Q3Policy:
             options, rejected = [], set()
         try:
             specs = self._build_route_specs(state, remaining, options)
-            route_plan = plan_service_route(
-                specs,
-                state.position,
-                state.current_channel,
-                cpu_time_limit_s=self.route_cpu_time_limit_s,
-                max_2opt_iterations=self.route_max_2opt_iterations,
-            )
+            if self.multi_source_route_mode == "beam_cached":
+                route_plan = plan_beam_cached_route(
+                    specs,
+                    state.position,
+                    state.current_channel,
+                    cpu_time_limit_s=self.route_cpu_time_limit_s,
+                    beam_width=self.beam_width,
+                    max_expansions=self.beam_max_expansions,
+                    max_2opt_iterations=self.route_max_2opt_iterations,
+                    cache=(self.computation_cache
+                           if self.computation_cache.enabled else None),
+                )
+            else:
+                route_plan = plan_service_route(
+                    specs,
+                    state.position,
+                    state.current_channel,
+                    cpu_time_limit_s=self.route_cpu_time_limit_s,
+                    max_2opt_iterations=self.route_max_2opt_iterations,
+                    cache=(self.computation_cache
+                           if self.computation_cache.enabled else None),
+                )
         except (RuntimeError, ValueError, KeyError) as error:
             route_plan = None
             self.route_planning_history.append({
@@ -774,7 +880,7 @@ class Q3Policy:
             action = self._failed_clear_remeasure_action(state, track)
             if action is not None:
                 return action
-        if self.multi_source_route_mode == "insertion_2opt":
+        if self.multi_source_route_mode in ("insertion_2opt", "beam_cached"):
             return self._route_resolve_choice(state, remaining)
 
         certified = []
@@ -855,6 +961,7 @@ class Q3Policy:
             state.entered = True
             return
         if action.kind in ("measure", "clear"):
+            self.computation_cache.note_state_change()
             state.position = action.position
         if action.kind == "measure":
             state.current_channel = action.channel

@@ -10,7 +10,7 @@
 - Q1–Q4 当前状态一律为【待验证】；只有人工按清单验收后才能改状态。AI 不得标记【已验证】或【模拟器未测试】。
 - Q1/Q2 API 必须归纳自真实函数签名；接口语义或官方协议不确定时必须暂停询问。
 - 不修改题目 PDF、附件或其他原始材料。
-- 用户已授权新增 Q3 自适应策略、同点多频道联合批测、第一部分多源路线与离线配对测试；Q4 只做兼容回归，不改变其既有四向探测逻辑。缓存和有限束搜索仍须另行授权。
+- 用户已授权新增 Q3 自适应策略、同点多频道联合批测，以及多源路线第一、二部分与离线配对测试；Q4 只做兼容回归，不改变其既有四向探测逻辑。
 
 ## Confirmed decisions
 
@@ -33,12 +33,13 @@
 - Q2 对外接口：`Q2Config`、`build_candidate_regions`、`optimize_continuous_fim`、`plan_measurement`、`plan_second_point`；契约见 `src/q2/API.md`。
 - Q2 的 `src/q2/continuous_fim.py` 支持多个绝对动作时间上限共享场景/缓存；`src/q2/near_optimal.py` 负责局部近优域采样和凸包输出。默认规划返回 `baseline`、`continuous_fim`、`comparison`、`pareto_front`、`recommendation_source` 及两套近优域。
 - Q2 演示图同图显示离散基线红星、连续 FIM 蓝菱形、最终推荐黑圈、5%/10%近优域及局部放大、两方案综合分数、`T-R` Pareto 前沿。示例产物为 `output/q2_pareto_regions.png`、`output/q2_pareto_regions.json`。
-- Q3 已加入“自适应 FIM + 27 m 后验清除网格 + 保证接收联合批测 + 清除失败条件复测 + 有限场景总虚拟时间滚动优化”，并完成第一部分“多源服务块 + 最便宜插入 + 2-opt”。路线层只排序下一主服务源，不改 Q2、单源 measure/clear 结论、联合批测、后验或清除点集合；每个真实响应后重算，超时/异常回退原一步策略。`multi_source_route_mode` 正式默认仍为 `off`，显式设置 `insertion_2opt` 才启用，路线软截止默认 0.25 s。其余默认参数仍为每源顺便测量上限 3、`joint_batch_mode=guaranteed`、`failed_clear_remeasure_mode=gated`、`rolling_time_mode=scenario`、风险口径 `cvar`、滚动软截止 1 s、FIM 上限 10 s。Q4 显式关闭路线及所有 Q3 新分支。
+- Q3 已完成多源路线两部分。第一部分为服务块、最便宜插入和确定性 2-opt；第二部分为策略实例内的有界状态键缓存和有限束搜索。路线层只排序下一主服务源，不改 Q2、单源 measure/clear 结论、联合批测、后验或清除点集合；每个真实响应后重算。`multi_source_route_mode` 支持 `off/insertion_2opt/beam_cached`，正式默认仍为 `off`；第一部分软截止 0.25 s，第二部分验证参数为缓存容量 4096、束宽 1、最大扩展 512、路线软截止 1 s。三级回退为束搜索到第一部分完整解再到原一步策略。其余默认参数仍为每源顺便测量上限 3、`joint_batch_mode=guaranteed`、`failed_clear_remeasure_mode=gated`、`rolling_time_mode=scenario`、风险口径 `cvar`、滚动软截止 1 s、FIM 上限 10 s。Q4 显式关闭路线及所有 Q3 新分支。
 - Q1/Q2 已有分题 README、单元测试、三模式数据生成器、对拍器、人工验收清单和人工结果模板。
 - Q3/Q4 README 明确为待验证原型；已有离线测试位于 `tests/q3/test_offline.py` 与 `tests/q4/test_offline.py`。
 - `src/sim/` 已实现严格请求/响应校验、回环HTTP客户端、幂等与并发保护、现实时间安全退出、逐动作JSONL、离线规则替身和三动作smoke；Q3/Q4 在线策略结束时还会输出“平均用时 = 总虚拟时间 / 清除成功的信号源数”，零个成功源时显示无法计算。人工步骤见 `tests/sim/verify_manual.md`。
-- 2026-09-12 路线修改后，Q3 定向测试 32/32 通过（原 22 项加 10 项路线/兼容回归）；显式设置 `NO_PROXY=127.0.0.1,localhost` 后，最终文件状态下全项目 `unittest` 107/107 通过，耗时 53.549 s。此前两次失败分别来自沙箱禁止创建本机 socket、代理劫持 localhost，并非断言失败。全部检查只使用单元测试、本机回环假服务器和 `FakeSimulator`；当前环境没有官方模拟器，Q1-Q4 状态仍为【待验证】。
+- 2026-09-12 第二部分完成后，Q3 定向测试 37/37 通过；显式设置 `NO_PROXY=127.0.0.1,localhost` 后，最终文件状态下全项目 `unittest` 112/112 通过，耗时 68.052 s。新增测试覆盖缓存数值一致性、位置/频道/观测键失效、容量淘汰、束宽确定性与扩展截止回退。全部检查只使用单元测试、本机回环假服务器和 `FakeSimulator`；当前环境没有官方模拟器，Q1-Q4 状态仍为【待验证】。
 - 路线配对使用种子 20263912 的 4 个相同场景，FIM/滚动/路线软截止为 10/1/0.25 s，27 m 网格、CVaR、每源顺便测量上限 3、失败清除复测开启。current 与 insertion_2opt 均 4/4 完整清除；新路线 3/4 胜，平均总虚拟时间 5966.309→5377.612 s，P90/最坏值 6717.235→5876.333 s，平均 resolve 移动 17285.294→14399.309 m，跨源移动 14914.362→12767.182 m，长跳 4.50→3.25；平均真实墙钟 137.362→149.947 s。第 2 场反增 391.246 s；118 次路线调用 `ok/partial/fallback=72/7/39`。结果见 `output/q3_offline/route_benchmark.{json,md}`，小样本不足以自动打开正式默认。
+- 第二部分训练种子 20264912 的 1 个场景中束宽 1/2/4 虚拟时间相同，束宽 1 墙钟最低，故锁定束宽 1。随后用第一部分相同种子 20263912 做 4 场景三策略配对，三者均 4/4 完成。beam_cached 相对 insertion_2opt 为 0/4 胜，平均虚拟时间 5236.592→5417.769 s（+181.176 s），P90 5876.333→5918.775 s，跨源移动 +1306.861 m，现实墙钟 206.465→194.052 s；缓存命中率 77.9%，每场平均扩展 841.25 节点。结果见 `output/q3_offline/route_part2_beam_train.json` 与 `route_part2_benchmark.{json,md}`。第二部分没有稳定优于第一部分，正式候选保留 insertion_2opt，beam_cached 只作实验模式。
 - 固定种子 20260911 的 200 个合法首测案例全部可比较：以有限场景最坏后验半径为主指标，分时限连续 FIM 优于离散基线 200/200（100%），均值由 119.037 m 降至 70.082 m；以 `T+0.5R` 为指标仅 76/200（38%）更优。连续点平均多 29.706 s 虚拟动作时间。16 进程墙钟 122.015 s。结果文件为 `tests/q2/analysis/q2_200_case_comparison.{md,json}`。
 - 当前机器单案例粗测：仅离散且不生成近优域 3.741 s；分时限 FIM 且不生成近优域 4.115 s；默认在线近优域 6.919 s；离线较密近优域 17.227 s。它们是 CPU/墙钟时间，不是机器狗虚拟时间。
 - 论文问题二正文已与问题一圆弧讨论衔接：$K_1$ 用 24 边外切圆多边形得到保守外近似 $\widehat K_1$，保证接收域使用 72 边内近似，可能接收域使用 72 个支撑方向外近似；最小包围圆已展开为一、二、三支撑点候选及逐顶点覆盖检查，FIM 首次使用处引用 Fisher 1922。绘图脚本 `../paper/code/q2_region_figures.py` 生成 `q2-k1-outer-approx` 和 `q2-reception-regions` 两组 PDF/PNG，并断言示例中 174 个高密度 $K_1$ 边界点均在 $\widehat K_1$ 内。2026-09-12 重跑 Q2 单元测试 9/9 通过；当前环境无 XeLaTeX，整篇排版仍待 Windows 双次编译和人工检查。
@@ -68,7 +69,8 @@ python -B tests/q3/benchmark_adaptive.py --cases 8 --workers 4 --output output/q
 python -B tests/q3/benchmark_joint.py --cases 8 --workers 4 --output output/q3_offline/joint_benchmark.json
 python -B tests/q3/benchmark_failed_clear_remeasure.py --cases 8 --workers 4 --fim-cpu-time-limit-s 10 --output output/q3_offline/failed_clear_remeasure_benchmark.json
 python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --output output/q3_offline/rolling_time_benchmark.json
-python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --route-cpu-time-limit-s 0.25 --output output/q3_offline/route_benchmark.json
+python -B tests/q3/benchmark_route_beam_train.py --cases 1 --seed 20264912 --widths 1 2 4 --workers 3 --output output/q3_offline/route_part2_beam_train.json
+python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --route-cpu-time-limit-s 0.25 --beam-route-cpu-time-limit-s 1 --cache-capacity 4096 --beam-width 1 --beam-max-expansions 512 --output output/q3_offline/route_part2_benchmark.json
 ```
 
 人工改变 Q1/Q2 状态前，必须执行对应 `tests/qN/verify_manual.md` 的完整清单并填写 `test_res.md`。
@@ -83,7 +85,7 @@ python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fi
 - **Implemented grid thinning and route Part 1:** Q3 默认清除方格为 27 m，最远格点距离 `27/sqrt(2)=19.0919... m`，相对 20 m 清除半径保留约 0.908 m 几何余量。第一部分小规模路径规划已替代“只按最近中心一步续程”作为可选源排序层，并完成当前 27 m 参数下的独立配对；正式默认仍关闭。缓存与有限束搜索未实施，详见 `src/TODO.md`。
 - **Q4 audit:** `four_sided_points` 在满足条件时构造圆心东/北/西/南四个点，四点整体才有未知发射方向下至少一点可见的保证；但 `Q4Policy` 默认 `max_refinements=2`，实际最多只试前两个点，因此当前代码没有完整兑现四点证明。四点不可用时回退 Q2，而 Q2 的保证接收只含距离、不含未知方向可见性。Q4 正式在线测试前应优先补齐这一缺口。
 - **Confirmed rolling policy:** 默认 `rolling_time_mode="scenario"` 时，Q3 把 Q2 的离散基线、连续 FIM 多预算解、Pareto、顶层推荐及保证接收域候选放入同一池，按有限场景预计总虚拟时间选择测点或直接清除，并不固定执行单纯 FIM 或顶层推荐。`prefer_continuous_fim=True` 只在关闭滚动模式时生效；若必须在顶层混合推荐与单纯 FIM 之间选，保留含离散安全后备的顶层推荐。
-- **Implemented multi-source route Part 1 and paused:** `src/q3/route.py` 已实现服务规格/块、开放路线估值、最便宜插入和确定性 2-opt；`policy.py` 接入显式开关和安全回退，`benchmark_route.py` 输出配对 JSON/Markdown。已观察到平均跨源移动和总虚拟时间下降，但有 1/4 反例和 39 次路线回退。正式默认是否开启由用户决定；只有用户随后明确要求，才实施缓存和有限束搜索。完整说明见 `src/q3/路径规划修改.md`。
+- **Implemented multi-source route Part 2, retained Part 1 candidate:** `src/q3/cache.py` 已实现状态键有界缓存，`route.py` 已实现带第一部分 incumbent 的有限束搜索，CLI 可显式选择 `beam_cached`。训练选择束宽 1 后，4 场景验证没有显示相对 insertion_2opt 的额外收益，因此不把第二部分设为默认；后续若继续，应先校准服务块预测误差而不是盲目扩大束宽。
 - 队员可按 `tests/q2/verify_manual.md` 人工验收两种确切点、分时限预算、Pareto 前沿、5%/10%近优域和局部放大图；正式报告不得把 200 例的 100% 写成全局最优概率。
 - 若后续需要标量化，可对归一化 lambda 做训练集网格扫描、Pareto拐点和独立种子验证；当前正式实现优先采用硬时间预算，未引入 lambda。
 - 队员决定 Q3/Q4 的独立对拍判据、参考实现与人工验收流程后，再建立完整测试体系。
@@ -93,4 +95,4 @@ python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fi
 
 ## Handoff
 
-从 `快速上手指南.md` 查看结构和状态，从分题 README 找算法到代码的映射，从 API.md 获取测试数据契约。Q3 多源路线第一部分已完成并暂停；先查看 `src/q3/路径规划修改.md` 与 `output/q3_offline/route_benchmark.{json,md}`，未经用户后续明确授权不得开始第二部分缓存和有限束搜索。当前环境没有官方模拟器，本轮只完成本地 `FakeSimulator` 配对；不要把自动测试或离线配对理解为人工验收或官方模拟器成绩。
+从 `快速上手指南.md` 查看结构和状态，从分题 README 找算法到代码的映射，从 API.md 获取测试数据契约。Q3 多源路线第二部分已经完成编码、自动测试和本地配对，但未优于第一部分；先查看 `src/q3/路径规划修改.md`、`output/q3_offline/route_part2_beam_train.json` 与 `route_part2_benchmark.{json,md}`。正式候选保留 `insertion_2opt`，`beam_cached` 仅作实验。当前环境没有官方模拟器，不要把自动测试或离线配对理解为人工验收或官方模拟器成绩。

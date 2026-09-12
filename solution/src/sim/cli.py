@@ -88,13 +88,16 @@ def main(argv=None):
     )
     parser.add_argument(
         "--multi-source-route-mode",
-        choices=("off", "insertion_2opt"), default="off",
+        choices=("off", "insertion_2opt", "beam_cached"), default="off",
         help="Q3多源顺序优化；Q4忽略该参数",
     )
     parser.add_argument(
         "--route-cpu-time-limit-s", type=float, default=0.25,
         help="Q3路线排序真实墙钟软截止；Q4忽略该参数",
     )
+    parser.add_argument("--cache-capacity", type=int, default=4096)
+    parser.add_argument("--beam-width", type=int, default=1)
+    parser.add_argument("--beam-max-expansions", type=int, default=512)
     parser.add_argument("--exit-safety-margin-s", type=float, default=15.0)
     parser.add_argument("--log", help="新建的逐动作 JSONL 日志路径")
     parser.add_argument(
@@ -121,6 +124,9 @@ def main(argv=None):
         parser.error("--rolling-cpu-time-limit-s 必须为正数。")
     if args.route_cpu_time_limit_s <= 0:
         parser.error("--route-cpu-time-limit-s 必须为正数。")
+    if (args.cache_capacity < 1 or args.beam_width < 1
+            or args.beam_max_expansions < 1):
+        parser.error("缓存容量、束宽和束搜索扩展上限必须为正数。")
     if args.mode == "policy" and not args.confirm_policy:
         parser.error("未发送任何请求：policy 模式还必须添加 --confirm-policy。")
 
@@ -148,6 +154,9 @@ def main(argv=None):
                           args.multi_source_route_mode
                       ),
                       route_cpu_time_limit_s=args.route_cpu_time_limit_s,
+                      cache_capacity=args.cache_capacity,
+                      beam_width=args.beam_width,
+                      beam_max_expansions=args.beam_max_expansions,
                   )
                   if args.problem == 3
                   else Q4Policy(

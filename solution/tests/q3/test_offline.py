@@ -17,12 +17,13 @@ from q3.adaptive import (CLEAR_RADIUS_M, DEFAULT_CLEAR_GRID_SPACING_M,
                          measurement_is_worthwhile,
                          posterior_clear_points)
 from q3.coverage import nearest_coverage_distance, ring7, strip_clear_points
+from q3.cache import Q3ComputationCache
 from q3.fallback_remeasure import evaluate_failed_clear_remeasure
 from q3.policy import Q3Policy, Q3State, SourceTrack
 from q3.route import (RouteEstimate, RoutePlan, SourceServiceSpec,
                       cheapest_insertion, evaluate_open_service_route,
                       improve_two_opt, materialize_service_block,
-                      plan_service_route)
+                      plan_beam_cached_route, plan_service_route)
 from q3.rolling_time import (clear_plan_cost, evaluate_candidate,
                              evaluate_total_time_decision, risk_summary)
 from q4.policy import Q4Policy
@@ -148,6 +149,132 @@ class Q3TheoryTestbench(unittest.TestCase):
         second = materialize_service_block(spec, (50.0, 0.0), 1)
         self.assertEqual(set(first.route_points), set(points))
         self.assertEqual(set(second.route_points), set(points))
+
+    def test_bounded_cache_preserves_route_and_clear_cost_values(self):
+        specs = {
+            channel: self._certified_spec(channel, point)
+            for channel, point in {
+                1: (100.0, 0.0), 2: (0.0, 100.0), 3: (200.0, 0.0),
+            }.items()
+        }
+        uncached = plan_service_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=1.0
+        )
+        cache = Q3ComputationCache(capacity=128)
+        cached = plan_service_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=1.0,
+            cache=cache,
+        )
+        repeated = plan_service_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=1.0,
+            cache=cache,
+        )
+        self.assertEqual(uncached.estimate, cached.estimate)
+        self.assertEqual(cached.estimate, repeated.estimate)
+
+        region = self._small_region(20.0)
+        uncached_clear = clear_plan_cost(region, (3.0, 4.0))
+        cached_clear = clear_plan_cost(
+            region, (3.0, 4.0), cache=cache
+        )
+        repeated_clear = clear_plan_cost(
+            region, (3.0, 4.0), cache=cache
+        )
+        self.assertEqual(uncached_clear, cached_clear)
+        self.assertEqual(cached_clear, repeated_clear)
+        self.assertGreater(cache.snapshot()["hits"], 0)
+
+    def test_q2_cache_key_invalidates_on_state_changes(self):
+        policy = Q3Policy(
+            computation_cache_mode="bounded", cache_capacity=32
+        )
+        track = SourceTrack(3, region=self._small_region())
+        state = Q3State(position=(0.0, 0.0), current_channel=1)
+        counter = {"value": 0}
+
+        def fake_plan(*args, **kwargs):
+            counter["value"] += 1
+            return {"marker": counter["value"]}
+
+        with patch("q3.policy.plan_measurement", side_effect=fake_plan):
+            first = policy._refinement_plan(state, track)
+            second = policy._refinement_plan(state, track)
+            state.position = (1.0, 0.0)
+            moved = policy._refinement_plan(state, track)
+            state.current_channel = 2
+            switched = policy._refinement_plan(state, track)
+            track.observations.append(BearingObservation(
+                (1.0, 0.0), 3, "direction", 0.0
+            ))
+            observed = policy._refinement_plan(state, track)
+        self.assertEqual(first, second)
+        self.assertEqual(
+            [first["marker"], moved["marker"], switched["marker"],
+             observed["marker"]],
+            [1, 2, 3, 4],
+        )
+        q2_stats = policy.computation_cache.snapshot()[
+            "namespaces"
+        ]["q2_plan"]
+        self.assertEqual(q2_stats["hits"], 1)
+        self.assertEqual(q2_stats["misses"], 4)
+
+    def test_cache_capacity_eviction_does_not_change_values(self):
+        cache = Q3ComputationCache(capacity=2)
+        self.assertEqual(cache.get_or_compute("test", "a", lambda: 1), 1)
+        self.assertEqual(cache.get_or_compute("test", "b", lambda: 2), 2)
+        self.assertEqual(cache.get_or_compute("test", "c", lambda: 3), 3)
+        self.assertEqual(cache.get_or_compute("test", "a", lambda: 1), 1)
+        snapshot = cache.snapshot()
+        self.assertEqual(snapshot["entries"], 2)
+        self.assertGreaterEqual(snapshot["evictions"], 2)
+
+    def test_beam_search_is_deterministic_and_not_worse_than_width_one(self):
+        specs = {
+            channel: self._certified_spec(channel, point)
+            for channel, point in {
+                1: (100.0, 70.0), 2: (10.0, 160.0),
+                3: (170.0, 10.0), 4: (80.0, 170.0),
+                5: (180.0, 120.0),
+            }.items()
+        }
+        narrow = plan_beam_cached_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=2.0,
+            beam_width=1, max_expansions=256,
+            cache=Q3ComputationCache(capacity=1024),
+        )
+        wide = plan_beam_cached_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=2.0,
+            beam_width=4, max_expansions=256,
+            cache=Q3ComputationCache(capacity=1024),
+        )
+        repeated = plan_beam_cached_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=2.0,
+            beam_width=4, max_expansions=256,
+            cache=Q3ComputationCache(capacity=1024),
+        )
+        self.assertEqual(narrow.status, "ok")
+        self.assertEqual(wide.status, "ok")
+        self.assertLessEqual(
+            wide.estimate.total_virtual_time_s,
+            narrow.estimate.total_virtual_time_s + 1e-9,
+        )
+        self.assertEqual(wide.estimate, repeated.estimate)
+
+    def test_beam_expansion_limit_returns_complete_insertion_fallback(self):
+        specs = {
+            channel: self._certified_spec(channel, (channel * 20.0, 0.0))
+            for channel in range(1, 5)
+        }
+        result = plan_beam_cached_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=2.0,
+            beam_width=2, max_expansions=1,
+            cache=Q3ComputationCache(capacity=1024),
+        )
+        self.assertEqual(result.status, "partial")
+        self.assertIsNotNone(result.estimate)
+        self.assertEqual(set(result.estimate.order), set(specs))
+        self.assertEqual(result.fallback_solver, "insertion_2opt")
 
     def test_rolling_clear_cost_uses_execution_grid_and_route_accounting(self):
         region = self._small_region(5.0)
