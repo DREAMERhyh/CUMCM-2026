@@ -42,6 +42,7 @@
 - 当前机器单案例粗测：仅离散且不生成近优域 3.741 s；分时限 FIM 且不生成近优域 4.115 s；默认在线近优域 6.919 s；离线较密近优域 17.227 s。它们是 CPU/墙钟时间，不是机器狗虚拟时间。
 - 2026-09-11 新增：Q2 规划统一墙钟预算 `Q2Config.planning_wall_clock_budget_s`（默认 120 s，`common/budget.py` 共享 deadline，候选评分/FIM/近优域三阶段 anytime，返回 `planning_wall_time_used_s`/`planning_timed_out`；`fim_cpu_time_limit_s` 仍作为子上限生效，默认行为不变）。基准：`tests/q2/benchmark_anytime.py`（3 区域 × 6/60/300 s，实测预算 ≥ ~5.7 s 时 FIM 自然收敛、输出逐位一致）。
 - 2026-09-11 新增：Q3 扫描布局 `scan_layout ∈ {ring7, hub_ring6, pure_ring8}`（`q3/coverage.py`）。hub_ring6（原点+6 环点 r=1200）覆盖最坏 968.9 m、扫描虚拟总时 2273.0 s；pure_ring8（8 环点 r=960）覆盖最坏 984.2 m、扫描虚拟总时 2172.7 s（比 ring7 的 2633.0 s 省 460 s）。2026-09-12 决策：**默认布局切换为 pure_ring8**（覆盖解析验证 984.21 m ≤ 995 设计裕量；扫描省 460 s）；回退方式：`Q3Policy(scan_layout="ring7")` 或 `run_drill.py --scan-layout ring7`。正式测试前若演练对账出现漏检，将按手册 E 节回退/切 hub_ring6。
+- 【考古修正 2026-09-12】历史文字"组合策略平均 5873.934 s"（≈6000s）来自并行策略轨道（rolling_time/adaptive/joint 全套、20m 清除网格）在 4 个合成场景上的**本地规则替身离线对拍**（见 `test_res_q3_rolling_time.md`），**从未在官方模拟器实测**；该轨道代码不在当前 HEAD 分支线。当前主线性能演进与 V 形曲线解释见 `docs/性能演进考古_20260912.md`；当前默认（pure_ring8 + max_actions 8000 + use_optimal_stop=True + Q3BatchPolicy 入口）为官方实测可比口径下的历史最优（今晨 5 局 5/5 对账通过、同源数比凌晨交错快 16%~48%），已冻结，改动须走决策表回滚路径。
 
 ## Important interfaces and nesting
 
