@@ -22,7 +22,7 @@
 
 ## B 题 solution/ 协作规范
 
-- 目录约定：`solution/src/q1` 至 `q4` 放分题实现，`src/common` 放共享逻辑，`src/runtime` 放运行层，`src/legacy` 放仅为回归保留的旧代码；测试按题放在 `solution/tests/qN`，和模拟器相关通信相关的代码放在`src/sim`。
+- 目录约定：`solution/src/q1` 至 `q4` 放分题实现，`src/common` 放共享逻辑，`src/runtime` 放运行层，`src/legacy` 放仅为回归保留的旧代码；测试按题放在 `solution/tests/qN`，和模拟器相关通信相关的代码放在`src/sim`，日志可视化工具在`src/tools/log_visualize`。
 - 文档职责：分题 `README.md` 解释算法与代码对应关系；Q1/Q2 `API.md` 是测试数据和模块边界的接口契约；`verify_manual.md` 是人工状态判定的唯一清单；`test_res.md` 由执行验证的人工填写；`快速上手指南.md` 提供全局图和状态总表；`TODO.md` 只放未实施方案；`PROJECT_CONTEXT.md` 保存长期任务状态。
 - 修改分题代码后，同步检查并更新该题 README 的算法对应表；若签名、字段、单位或返回语义变化，同步提出 API.md 变更并等待人工确认；全局状态表只能由人工根据验证结果更新。
 - API.md 必须来自现有真实函数签名。任何接口变更须先列出影响并经人工确认，不得凭空设计官方协议。
