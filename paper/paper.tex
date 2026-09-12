@@ -90,7 +90,7 @@
 
 \begin{table}[H]
   \centering
-  \caption{问题一主要符号说明}
+  \caption{问题一符号说明}
   \label{tab:symbols}
   \begin{tabularx}{0.9\textwidth}{@{}cXc@{}}
     \toprule
@@ -118,7 +118,7 @@
 
 \begin{table}[H]
   \centering
-  \caption{问题二新增符号说明}
+  \caption{问题二符号说明}
   \label{tab:q2-symbols}
   \begin{tabularx}{0.94\textwidth}{@{}cXc@{}}
     \toprule
@@ -378,7 +378,12 @@
   R_0=\rho(\widehat K_1)
 \end{equation}
 
-表示第一次观测后的当前位置不确定性。下面给出实际计算过程。设 $\widehat K_1=\operatorname{conv}\{V_1,\ldots,V_m\}$。由问题一命题 3 中相同的凸性论证，一个圆覆盖全部顶点当且仅当它覆盖整个 $\widehat K_1$，因而只需针对顶点集求最小包围圆。
+表示第一次观测后的当前位置不确定性。下面给出实际计算过程。设
+\begin{equation}
+  \widehat K_1=\operatorname{conv}\{V_1,\ldots,V_m\}.
+\end{equation}
+
+由问题一命题 3 中相同的凸性论证，一个圆覆盖全部顶点，当且仅当它覆盖整个 $\widehat K_1$。因此，只需针对顶点集求最小包围圆。
 
 平面最小包围圆的边界必有不超过三个支撑点：若边界上没有支撑点，圆还可继续缩小；若由两点支撑，两点必为一条直径的端点；否则至少需要三个不共线边界点唯一确定外接圆。因此依次构造以下候选圆。
 
