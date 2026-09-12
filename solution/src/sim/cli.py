@@ -55,11 +55,20 @@ def main(argv=None):
     parser.add_argument("--max-actions", type=int)
     parser.add_argument(
         "--max-refinements", type=int,
-        help="每源细化上限；未指定时 Q3=5、Q4=2",
+        help="每源细化上限；Q4按完整探测组计数；未指定时 Q3=5、Q4=2",
+    )
+    parser.add_argument(
+        "--q4-scan-mode", choices=("triangular37", "grid121"),
+        default="triangular37",
+        help="Q4发现扫描网；Q3忽略该参数",
     )
     parser.add_argument(
         "--fim-cpu-time-limit-s", type=float,
         help="每次Q2连续FIM规划允许的真实墙钟秒数；未指定时Q3=10、Q4=6",
+    )
+    parser.add_argument(
+        "--q2-version", choices=("new", "legacy"), default="new",
+        help="Q3/Q4调用的Q2源区域算法版本；默认new",
     )
     parser.add_argument(
         "--joint-batch-mode",
@@ -70,30 +79,34 @@ def main(argv=None):
     parser.add_argument(
         "--failed-clear-remeasure-mode",
         choices=("off", "gated"), default="gated",
-        help="Q3清除失败复测模式；Q4忽略该参数",
+        help="Q3/Q4清除失败原地复测模式",
     )
     parser.add_argument(
         "--rolling-time-mode",
         choices=("off", "scenario"), default="scenario",
-        help="Q3有限场景总虚拟时间滚动评价；Q4忽略该参数",
+        help="Q3总时间滚动；Q4映射为方向探测组滚动",
     )
     parser.add_argument(
-        "--rolling-cpu-time-limit-s", type=float, default=1.0,
-        help="每次Q3滚动评价的真实墙钟秒数；Q4忽略该参数",
+        "--rolling-cpu-time-limit-s", type=float, default=3.0,
+        help="每次Q3/Q4滚动评价的真实墙钟秒数",
     )
     parser.add_argument(
         "--rolling-risk-metric",
         choices=("p90", "cvar", "worst", "mean"), default="cvar",
-        help="Q3有限场景风险汇总口径；Q4忽略该参数",
+        help="Q3/Q4有限场景风险汇总口径",
     )
     parser.add_argument(
         "--multi-source-route-mode",
         choices=("off", "insertion_2opt", "beam_cached"), default="off",
-        help="Q3多源顺序优化；Q4忽略该参数",
+        help="Q3/Q4多源顺序优化；Q4仅支持off或insertion_2opt",
     )
     parser.add_argument(
         "--route-cpu-time-limit-s", type=float, default=0.25,
-        help="Q3路线排序真实墙钟软截止；Q4忽略该参数",
+        help="Q3/Q4路线排序真实墙钟软截止",
+    )
+    parser.add_argument(
+        "--q4-long-clear-tail-mode", choices=("off", "adaptive"),
+        default="adaptive", help="Q4长清除尾救援与后验引导排序；Q3忽略",
     )
     parser.add_argument("--cache-capacity", type=int, default=4096)
     parser.add_argument("--beam-width", type=int, default=1)
@@ -129,6 +142,9 @@ def main(argv=None):
         parser.error("缓存容量、束宽和束搜索扩展上限必须为正数。")
     if args.mode == "policy" and not args.confirm_policy:
         parser.error("未发送任何请求：policy 模式还必须添加 --confirm-policy。")
+    if (args.problem == 4
+            and args.multi_source_route_mode == "beam_cached"):
+        parser.error("Q4当前只接入insertion_2opt，不支持beam_cached。")
 
     if args.mode == "smoke":
         policy = SmokePolicy()
@@ -141,6 +157,7 @@ def main(argv=None):
         policy = (Q3Policy(
                       max_refinements=q3_refinements,
                       fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+                      q2_version=args.q2_version,
                       joint_batch_mode=args.joint_batch_mode,
                       failed_clear_remeasure_mode=(
                           args.failed_clear_remeasure_mode
@@ -162,7 +179,22 @@ def main(argv=None):
                   else Q4Policy(
                       max_refinements=q4_refinements,
                       fim_cpu_time_limit_s=fim_cpu_time_limit_s,
-                  ))
+                       scan_mode=args.q4_scan_mode,
+                       q2_version=args.q2_version,
+                       failed_clear_remeasure_mode=(
+                           args.failed_clear_remeasure_mode
+                       ),
+                       directional_rolling_mode=args.rolling_time_mode,
+                       directional_rolling_cpu_time_limit_s=(
+                           args.rolling_cpu_time_limit_s
+                       ),
+                       directional_rolling_risk_metric=(
+                           args.rolling_risk_metric
+                       ),
+                       long_clear_tail_mode=args.q4_long_clear_tail_mode,
+                       multi_source_route_mode=args.multi_source_route_mode,
+                       route_cpu_time_limit_s=args.route_cpu_time_limit_s,
+                   ))
         max_actions = args.max_actions or (1000 if args.problem == 3 else 4000)
     log_path = args.log or _default_log(args.problem)
     try:
