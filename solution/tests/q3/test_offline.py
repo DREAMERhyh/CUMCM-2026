@@ -19,6 +19,10 @@ from q3.adaptive import (CLEAR_RADIUS_M, DEFAULT_CLEAR_GRID_SPACING_M,
 from q3.coverage import nearest_coverage_distance, ring7, strip_clear_points
 from q3.fallback_remeasure import evaluate_failed_clear_remeasure
 from q3.policy import Q3Policy, Q3State, SourceTrack
+from q3.route import (RouteEstimate, RoutePlan, SourceServiceSpec,
+                      cheapest_insertion, evaluate_open_service_route,
+                      improve_two_opt, materialize_service_block,
+                      plan_service_route)
 from q3.rolling_time import (clear_plan_cost, evaluate_candidate,
                              evaluate_total_time_decision, risk_summary)
 from q4.policy import Q4Policy
@@ -52,6 +56,98 @@ class Q3TheoryTestbench(unittest.TestCase):
             "mean_clear_point_count": 3.0,
             "scenario_count": 12,
         }
+
+    @staticmethod
+    def _certified_spec(channel, point):
+        return SourceServiceSpec(
+            channel=channel,
+            mode="certified_clear",
+            entry_point=tuple(point),
+            entry_action_kind="clear",
+            entry_action_channel=channel,
+            route_points=(tuple(point),),
+            source_version=(channel,),
+        )
+
+    def test_open_route_cost_counts_movement_and_clear_actions(self):
+        specs = {
+            1: self._certified_spec(1, (0.0, 0.0)),
+            2: self._certified_spec(2, (50.0, 0.0)),
+            3: self._certified_spec(3, (100.0, 0.0)),
+        }
+        route = evaluate_open_service_route(
+            (1, 2, 3), specs, (0.0, 0.0), 1
+        )
+        self.assertAlmostEqual(route.total_movement_distance_m, 100.0)
+        self.assertAlmostEqual(route.total_virtual_time_s, 35.0)
+        self.assertEqual(route.end_position, (100.0, 0.0))
+
+    def test_cheapest_insertion_beats_channel_order(self):
+        specs = {
+            1: self._certified_spec(1, (1000.0, 0.0)),
+            2: self._certified_spec(2, (10.0, 0.0)),
+            3: self._certified_spec(3, (20.0, 0.0)),
+        }
+        channel_order = evaluate_open_service_route(
+            (1, 2, 3), specs, (0.0, 0.0), 1
+        )
+        route = cheapest_insertion(specs, (0.0, 0.0), 1)
+        self.assertEqual(route.order, (2, 3, 1))
+        self.assertLess(route.total_virtual_time_s,
+                        channel_order.total_virtual_time_s)
+
+    def test_two_opt_strictly_improves_folded_open_route(self):
+        specs = {
+            1: self._certified_spec(1, (0.0, 100.0)),
+            2: self._certified_spec(2, (100.0, 0.0)),
+            3: self._certified_spec(3, (100.0, 100.0)),
+            4: self._certified_spec(4, (200.0, 0.0)),
+        }
+        initial = evaluate_open_service_route(
+            (1, 2, 3, 4), specs, (0.0, 0.0), 1
+        )
+        improved, iterations, timed_out = improve_two_opt(
+            initial, specs, (0.0, 0.0), 1
+        )
+        self.assertGreaterEqual(iterations, 1)
+        self.assertFalse(timed_out)
+        self.assertLess(improved.total_virtual_time_s,
+                        initial.total_virtual_time_s)
+
+    def test_route_planning_is_deterministic(self):
+        specs = {
+            channel: self._certified_spec(channel, point)
+            for channel, point in {
+                1: (100.0, 100.0), 2: (-100.0, 100.0),
+                3: (-100.0, -100.0), 4: (100.0, -100.0),
+            }.items()
+        }
+        first = plan_service_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=1.0
+        )
+        second = plan_service_route(
+            specs, (0.0, 0.0), 1, cpu_time_limit_s=1.0
+        )
+        self.assertEqual(first.status, "ok")
+        self.assertEqual(first.estimate.order, second.estimate.order)
+        self.assertAlmostEqual(first.estimate.total_virtual_time_s,
+                               second.estimate.total_virtual_time_s)
+
+    def test_materialisation_preserves_clear_point_set(self):
+        points = ((0.0, 0.0), (27.0, 0.0), (0.0, 27.0))
+        spec = SourceServiceSpec(
+            channel=3,
+            mode="direct_clear",
+            entry_point=None,
+            entry_action_kind="clear",
+            entry_action_channel=3,
+            route_points=points,
+            source_version=(3,),
+        )
+        first = materialize_service_block(spec, (-50.0, 0.0), 1)
+        second = materialize_service_block(spec, (50.0, 0.0), 1)
+        self.assertEqual(set(first.route_points), set(points))
+        self.assertEqual(set(second.route_points), set(points))
 
     def test_rolling_clear_cost_uses_execution_grid_and_route_accounting(self):
         region = self._small_region(5.0)
@@ -453,6 +549,116 @@ class Q3TheoryTestbench(unittest.TestCase):
         second = policy._next_joint_batch_action(state)
         self.assertEqual(first.position, second.position)
         self.assertNotEqual(first.channel, second.channel)
+
+    def test_route_selection_keeps_single_source_point_and_does_not_stop_other(self):
+        policy = Q3Policy(multi_source_route_mode="insertion_2opt")
+        region = self._small_region()
+        state = Q3State(
+            entered=True,
+            phase="resolve",
+            sources={
+                3: SourceTrack(3, [BearingObservation(
+                    (-100.0, 0.0), 3, "direction", 0.0
+                )], region),
+                7: SourceTrack(7, [BearingObservation(
+                    (0.0, -100.0), 7, "direction", 90.0
+                )], region),
+            },
+        )
+        option = {
+            "point": (40.0, 50.0),
+            "channels": [7],
+            "target_channel": 7,
+            "estimated_saving_s": 50.0,
+            "target_action_time_s": 20.0,
+            "single_source_decision": {"decision": "measure"},
+        }
+        estimate = RouteEstimate(
+            order=(7, 3), blocks=(), total_virtual_time_s=100.0,
+            total_movement_distance_m=200.0, long_jump_count=0,
+            long_jump_distance_m=0.0, end_position=(0.0, 0.0),
+            end_channel=7,
+        )
+        route_plan = RoutePlan(
+            status="ok", reason="complete", estimate=estimate,
+            insertion_order=(3, 7), two_opt_iterations=1,
+            cpu_wall_time_s=0.01,
+        )
+        with (patch.object(policy, "_build_joint_options",
+                           return_value=([option], {3})),
+              patch("q3.policy.plan_service_route",
+                    return_value=route_plan)):
+            action = policy.next_action(state)
+        self.assertEqual(action.kind, "measure")
+        self.assertEqual(action.channel, 7)
+        self.assertEqual(action.position, option["point"])
+        self.assertFalse(state.sources[3].refinement_stopped)
+
+    def test_route_finishes_existing_joint_batch_before_replanning(self):
+        policy = Q3Policy(multi_source_route_mode="insertion_2opt")
+        region = self._small_region()
+        state = Q3State(
+            entered=True, phase="resolve",
+            sources={3: SourceTrack(3, [BearingObservation(
+                (-100.0, 0.0), 3, "direction", 0.0
+            )], region)},
+            batch_point=(20.0, 30.0), batch_channels=[3],
+            batch_target_channel=3,
+        )
+        with patch("q3.policy.plan_service_route",
+                   side_effect=AssertionError("batch must finish first")):
+            action = policy.next_action(state)
+        self.assertEqual(action.kind, "measure")
+        self.assertEqual(action.position, (20.0, 30.0))
+        self.assertEqual(state.pending_mode, "joint_target")
+
+    def test_route_fallback_uses_existing_joint_selector(self):
+        policy = Q3Policy(multi_source_route_mode="insertion_2opt")
+        region = self._small_region()
+        state = Q3State(
+            entered=True, phase="resolve",
+            sources={3: SourceTrack(3, [BearingObservation(
+                (-100.0, 0.0), 3, "direction", 0.0
+            )], region)},
+        )
+        option = {
+            "point": (20.0, 30.0),
+            "channels": [3],
+            "target_channel": 3,
+            "estimated_saving_s": 50.0,
+            "target_action_time_s": 15.0,
+            "single_source_decision": {"decision": "measure"},
+        }
+        fallback = RoutePlan(
+            status="fallback", reason="test", estimate=None,
+            insertion_order=(), two_opt_iterations=0,
+            cpu_wall_time_s=0.01,
+        )
+        with (patch.object(policy, "_build_joint_options",
+                           return_value=([option], set())),
+              patch("q3.policy.plan_service_route", return_value=fallback)):
+            action = policy.next_action(state)
+        self.assertEqual(action.kind, "measure")
+        self.assertEqual(action.channel, 3)
+        self.assertEqual(action.position, option["point"])
+        self.assertEqual(policy.route_planning_history[-1]["status"],
+                         "fallback")
+
+    def test_route_mode_keeps_near_clear_forced_priority(self):
+        policy = Q3Policy(multi_source_route_mode="insertion_2opt")
+        state = Q3State(
+            entered=True, phase="resolve",
+            forced_clear=((12.0, 13.0), 3),
+        )
+        with patch("q3.policy.plan_service_route",
+                   side_effect=AssertionError("near clear must be first")):
+            action = policy.next_action(state)
+        self.assertEqual(action.kind, "clear")
+        self.assertEqual(action.position, (12.0, 13.0))
+        self.assertEqual(state.pending_mode, "near_clear")
+
+    def test_q4_explicitly_keeps_multi_source_route_off(self):
+        self.assertEqual(Q4Policy().multi_source_route_mode, "off")
 
     def test_guaranteed_batch_rejects_uncovered_extra_channel(self):
         policy = Q3Policy(joint_batch_mode="guaranteed")

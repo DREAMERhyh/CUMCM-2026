@@ -10,7 +10,7 @@
 - Q1–Q4 当前状态一律为【待验证】；只有人工按清单验收后才能改状态。AI 不得标记【已验证】或【模拟器未测试】。
 - Q1/Q2 API 必须归纳自真实函数签名；接口语义或官方协议不确定时必须暂停询问。
 - 不修改题目 PDF、附件或其他原始材料。
-- 用户已授权新增 Q3 自适应策略、同点多频道联合批测与离线配对测试；Q4 只做兼容回归，不改变其既有四向探测逻辑。
+- 用户已授权新增 Q3 自适应策略、同点多频道联合批测、第一部分多源路线与离线配对测试；Q4 只做兼容回归，不改变其既有四向探测逻辑。缓存和有限束搜索仍须另行授权。
 
 ## Confirmed decisions
 
@@ -33,19 +33,21 @@
 - Q2 对外接口：`Q2Config`、`build_candidate_regions`、`optimize_continuous_fim`、`plan_measurement`、`plan_second_point`；契约见 `src/q2/API.md`。
 - Q2 的 `src/q2/continuous_fim.py` 支持多个绝对动作时间上限共享场景/缓存；`src/q2/near_optimal.py` 负责局部近优域采样和凸包输出。默认规划返回 `baseline`、`continuous_fim`、`comparison`、`pareto_front`、`recommendation_source` 及两套近优域。
 - Q2 演示图同图显示离散基线红星、连续 FIM 蓝菱形、最终推荐黑圈、5%/10%近优域及局部放大、两方案综合分数、`T-R` Pareto 前沿。示例产物为 `output/q2_pareto_regions.png`、`output/q2_pareto_regions.json`。
-- Q3 正式策略已加入“自适应 FIM + 27 m 后验清除网格 + 保证接收联合批测 + 清除失败条件复测 + 有限场景总虚拟时间滚动优化”。滚动评价不改 Q2 输出，而是对其离散、连续多预算、Pareto、顶层及保证接收域候选真正生成测后后验、清除网格和路线，并加入当前源路线终点到最近其他活动源中心的续程。固定 7 点扫描阶段对已发现且在本站保证接收的其他源追加测量，不设预计节省门槛；扫描结束后的联合候选仍要求边际节省。默认每源顺便测量上限为 3 次，`joint_batch_mode=guaranteed`、`failed_clear_remeasure_mode=gated`、`rolling_time_mode=scenario`、风险口径 `cvar`、单次滚动评价软截止 1 s；FIM 单次上限仍为 10 s。Q4 明确关闭联合批测、Q3 自适应分支、失败条件复测和滚动评价，继续原四向探测和旧保底，以免继承全向源假设。
+- Q3 已加入“自适应 FIM + 27 m 后验清除网格 + 保证接收联合批测 + 清除失败条件复测 + 有限场景总虚拟时间滚动优化”，并完成第一部分“多源服务块 + 最便宜插入 + 2-opt”。路线层只排序下一主服务源，不改 Q2、单源 measure/clear 结论、联合批测、后验或清除点集合；每个真实响应后重算，超时/异常回退原一步策略。`multi_source_route_mode` 正式默认仍为 `off`，显式设置 `insertion_2opt` 才启用，路线软截止默认 0.25 s。其余默认参数仍为每源顺便测量上限 3、`joint_batch_mode=guaranteed`、`failed_clear_remeasure_mode=gated`、`rolling_time_mode=scenario`、风险口径 `cvar`、滚动软截止 1 s、FIM 上限 10 s。Q4 显式关闭路线及所有 Q3 新分支。
 - Q1/Q2 已有分题 README、单元测试、三模式数据生成器、对拍器、人工验收清单和人工结果模板。
 - Q3/Q4 README 明确为待验证原型；已有离线测试位于 `tests/q3/test_offline.py` 与 `tests/q4/test_offline.py`。
 - `src/sim/` 已实现严格请求/响应校验、回环HTTP客户端、幂等与并发保护、现实时间安全退出、逐动作JSONL、离线规则替身和三动作smoke；Q3/Q4 在线策略结束时还会输出“平均用时 = 总虚拟时间 / 清除成功的信号源数”，零个成功源时显示无法计算。人工步骤见 `tests/sim/verify_manual.md`。
-- 2026-09-12 最近一次自动检查：固定扫描站保证接收顺便测量、每源顺便测量上限 3 次、滚动软截止 1 s 的当前配置下，全项目 `unittest` 97/97 通过，耗时 68.149 s，其中 Q3 22/22 通过。任务二历史性能基准使用 20 m 网格、旧固定站规则、每源 2 次上限和 0.2 s 截止：种子 20260912 的 2 个训练场景从 P90/CVaR/最坏值中选择 CVaR，再在新种子 20262912 的 4 个验证场景对照四种开关；全部 4/4 完整清除，组合策略平均 5873.934 s。该历史结果见 `output/q3_offline/rolling_time_benchmark.json`，尚不能代表当前版本性能。以上未连接官方模拟器，Q1-Q4 状态仍为【待验证】。
+- 2026-09-12 路线修改后，Q3 定向测试 32/32 通过（原 22 项加 10 项路线/兼容回归）；显式设置 `NO_PROXY=127.0.0.1,localhost` 后，最终文件状态下全项目 `unittest` 107/107 通过，耗时 53.549 s。此前两次失败分别来自沙箱禁止创建本机 socket、代理劫持 localhost，并非断言失败。全部检查只使用单元测试、本机回环假服务器和 `FakeSimulator`；当前环境没有官方模拟器，Q1-Q4 状态仍为【待验证】。
+- 路线配对使用种子 20263912 的 4 个相同场景，FIM/滚动/路线软截止为 10/1/0.25 s，27 m 网格、CVaR、每源顺便测量上限 3、失败清除复测开启。current 与 insertion_2opt 均 4/4 完整清除；新路线 3/4 胜，平均总虚拟时间 5966.309→5377.612 s，P90/最坏值 6717.235→5876.333 s，平均 resolve 移动 17285.294→14399.309 m，跨源移动 14914.362→12767.182 m，长跳 4.50→3.25；平均真实墙钟 137.362→149.947 s。第 2 场反增 391.246 s；118 次路线调用 `ok/partial/fallback=72/7/39`。结果见 `output/q3_offline/route_benchmark.{json,md}`，小样本不足以自动打开正式默认。
 - 固定种子 20260911 的 200 个合法首测案例全部可比较：以有限场景最坏后验半径为主指标，分时限连续 FIM 优于离散基线 200/200（100%），均值由 119.037 m 降至 70.082 m；以 `T+0.5R` 为指标仅 76/200（38%）更优。连续点平均多 29.706 s 虚拟动作时间。16 进程墙钟 122.015 s。结果文件为 `tests/q2/analysis/q2_200_case_comparison.{md,json}`。
 - 当前机器单案例粗测：仅离散且不生成近优域 3.741 s；分时限 FIM 且不生成近优域 4.115 s；默认在线近优域 6.919 s；离线较密近优域 17.227 s。它们是 CPU/墙钟时间，不是机器狗虚拟时间。
+- 论文问题二正文已与问题一圆弧讨论衔接：$K_1$ 用 24 边外切圆多边形得到保守外近似 $\widehat K_1$，保证接收域使用 72 边内近似，可能接收域使用 72 个支撑方向外近似；最小包围圆已展开为一、二、三支撑点候选及逐顶点覆盖检查，FIM 首次使用处引用 Fisher 1922。绘图脚本 `../paper/code/q2_region_figures.py` 生成 `q2-k1-outer-approx` 和 `q2-reception-regions` 两组 PDF/PNG，并断言示例中 174 个高密度 $K_1$ 边界点均在 $\widehat K_1$ 内。2026-09-12 重跑 Q2 单元测试 9/9 通过；当前环境无 XeLaTeX，整篇排版仍待 Windows 双次编译和人工检查。
 
 ## Important interfaces and nesting
 
 - Q1：`analyze_q1` → `localize` → 半平面交、凸包、旋转卡壳。
 - Q2：`plan_second_point` → `build_region_from_observations`（复用 Q1 几何）→ `plan_measurement` → 离散候选评分 + 多预算 `optimize_continuous_fim` → 集合复评分/Pareto → `_near_optimal_outputs`。顶层 `selected_point` 是最终混合推荐。
-- Q3/Q4：策略由 `runtime.runner.run_policy(policy, client)` 驱动；Q4 继承 Q3。Q3 的 Q2 规划只负责生成候选，`q3.rolling_time.evaluate_total_time_decision` 对保证接收候选作有限位置/误差分支推演，按“测量动作 + CVaR测后清除及续程”与立即清除比较；超时返回截止前最佳完整候选 `partial` 或安全清除 `fallback`。固定扫描站的顺便测量只要求保证接收；扫描结束后的联合规划继续按当前位置动作时间最短选择目标，并在同点顺便测量满足边际节省的频道。失败复测判断位于 `q3.fallback_remeasure.evaluate_failed_clear_remeasure`，只在 `fallback_clear` 失败后触发一次。Q4 默认细化上限和 FIM 上限仍为 2 和 6 s，并显式设置联合批测、失败复测和滚动评价均为 `off`。
+- Q3/Q4：策略由 `runtime.runner.run_policy(policy, client)` 驱动；Q4 继承 Q3。Q3 的 Q2 规划只负责生成候选，`q3.rolling_time.evaluate_total_time_decision` 保留单源 measure/clear 结论；`q3.route` 将这些结论物化为有入口、保守出口和本地成本的服务块，完整重算开放路线，用最便宜插入和确定性 2-opt 排序。固定扫描、强制 near 清除、未完成联合批次及失败点同点复测优先于路线层。Q4 默认细化上限和 FIM 上限仍为 2 和 6 s，并显式设置联合批测、失败复测、滚动评价和多源路线均为 `off`。
 - 官方模拟器：`sim.cli` → `sim.live_runner.run_live_policy` → Q3/Q4或smoke策略 → `sim.client.HttpRobotClient.execute` → `sim.protocol` 严格校验。网络失败只用原ID和原正文重试；结果不确定时禁止把该ID绑定到其他动作。策略运行收尾从 JSONL 统计成功清除数并打印总虚拟时间和平均用时。
 
 ## Verification commands
@@ -66,6 +68,7 @@ python -B tests/q3/benchmark_adaptive.py --cases 8 --workers 4 --output output/q
 python -B tests/q3/benchmark_joint.py --cases 8 --workers 4 --output output/q3_offline/joint_benchmark.json
 python -B tests/q3/benchmark_failed_clear_remeasure.py --cases 8 --workers 4 --fim-cpu-time-limit-s 10 --output output/q3_offline/failed_clear_remeasure_benchmark.json
 python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --output output/q3_offline/rolling_time_benchmark.json
+python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --route-cpu-time-limit-s 0.25 --output output/q3_offline/route_benchmark.json
 ```
 
 人工改变 Q1/Q2 状态前，必须执行对应 `tests/qN/verify_manual.md` 的完整清单并填写 `test_res.md`。
@@ -77,10 +80,10 @@ python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 
 - **Rejected Part 2:** “每完成一个扫描站后最多处理两个局部动作”只留在 `tests/q3/benchmark_adaptive.py` 的 `InterleavedQ3Policy`。8 组离线配对虽都完整清除，但只赢 1 组，平均多 1359.270 s；原因是局部动作打断扫描路线后产生额外往返。因此正式 `src/q3/policy.py` 不含交错阶段或开关。
 - **Implemented Part 2 v2:** Q3 以虚拟时间为目标实现同点多频道联合批测。扫描阶段只在既定 `ring7` 站点顺便复测：只要该点对已发现源的整个当前后验区域保证接收就追加一次，不再要求边际节省；扫描结束后，对所有可细化源生成 Q2/FIM 目标点，先选择从当前位置动作时间最短且预计值得复测的目标。到点后目标频道必测，其他频道仍需同时满足保证接收、预计清除成本节省超过追加检测成本且未超过每源三次顺便测量。扫描和后续联合规划共用每源三次上限，顺便测量不占五次专用 FIM 配额。固定 8 场景中的旧联合基准早于本次固定站规则与参数调整，需重跑后才能评价新规则；`all_active` 保留为激进离线对照。
 - **Implemented two-task plan:** 任务一“每次保底清除失败后条件复测”和任务二“用 Q2 候选推演测量后验并按总虚拟时间滚动决策”均已作为独立开关编码、测试和基准。任务二首版把跨源续程视为零，在种子 20261912 的 4 场景中仅赢 2 场且均值/P90变差；逐场证据显示动作减少但移动变长。修正为加入“清除路线终点到最近其他源中心”的续程后，使用新验证种子 20262912 达到 4/4 胜出，故 Q3 默认同时启用两个任务。不得把此结果称为严格全局最优。
-- **Implemented grid thinning, performance to verify:** Q3 默认清除方格已从 20 m 改为 27 m；最远格点距离为 `27/sqrt(2)=19.0919... m`，相对 20 m 清除半径保留约 0.908 m 几何余量。Q3 21/21 与全项目 93/93 自动回归通过。此前平均 5873.934 s 的滚动基准使用 20 m 网格，不能作为 27 m 版本的性能成绩；下一步需独立重跑配对基准。其余优化线索为：(1) 以小规模路径规划替代最近其他源中心的单步续程；(2) 为滚动后验/网格增加含状态哈希的缓存后扩充场景。详细未实施项见 `src/TODO.md`。
+- **Implemented grid thinning and route Part 1:** Q3 默认清除方格为 27 m，最远格点距离 `27/sqrt(2)=19.0919... m`，相对 20 m 清除半径保留约 0.908 m 几何余量。第一部分小规模路径规划已替代“只按最近中心一步续程”作为可选源排序层，并完成当前 27 m 参数下的独立配对；正式默认仍关闭。缓存与有限束搜索未实施，详见 `src/TODO.md`。
 - **Q4 audit:** `four_sided_points` 在满足条件时构造圆心东/北/西/南四个点，四点整体才有未知发射方向下至少一点可见的保证；但 `Q4Policy` 默认 `max_refinements=2`，实际最多只试前两个点，因此当前代码没有完整兑现四点证明。四点不可用时回退 Q2，而 Q2 的保证接收只含距离、不含未知方向可见性。Q4 正式在线测试前应优先补齐这一缺口。
 - **Confirmed rolling policy:** 默认 `rolling_time_mode="scenario"` 时，Q3 把 Q2 的离散基线、连续 FIM 多预算解、Pareto、顶层推荐及保证接收域候选放入同一池，按有限场景预计总虚拟时间选择测点或直接清除，并不固定执行单纯 FIM 或顶层推荐。`prefer_continuous_fim=True` 只在关闭滚动模式时生效；若必须在顶层混合推荐与单纯 FIM 之间选，保留含离散安全后备的顶层推荐。
-- **Confirmed multi-source route roadmap:** 第一部分只做“多源服务块 + 最便宜插入 + 2-opt”，保持单源候选、滚动 measure/clear 结论、后验和清除逻辑不变，并与当前策略在同一批场景配对。第一部分完成后必须返回完成率、总虚拟时间、resolve/跨源移动、长跳、P90、逐场差值和计算开销，然后暂停；只有用户再次明确要求继续，第二部分才实施缓存和有限束搜索。完整修改说明书见 `src/q2/路径规划修改.md`。
+- **Implemented multi-source route Part 1 and paused:** `src/q3/route.py` 已实现服务规格/块、开放路线估值、最便宜插入和确定性 2-opt；`policy.py` 接入显式开关和安全回退，`benchmark_route.py` 输出配对 JSON/Markdown。已观察到平均跨源移动和总虚拟时间下降，但有 1/4 反例和 39 次路线回退。正式默认是否开启由用户决定；只有用户随后明确要求，才实施缓存和有限束搜索。完整说明见 `src/q3/路径规划修改.md`。
 - 队员可按 `tests/q2/verify_manual.md` 人工验收两种确切点、分时限预算、Pareto 前沿、5%/10%近优域和局部放大图；正式报告不得把 200 例的 100% 写成全局最优概率。
 - 若后续需要标量化，可对归一化 lambda 做训练集网格扫描、Pareto拐点和独立种子验证；当前正式实现优先采用硬时间预算，未引入 lambda。
 - 队员决定 Q3/Q4 的独立对拍判据、参考实现与人工验收流程后，再建立完整测试体系。
@@ -90,4 +93,4 @@ python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 
 
 ## Handoff
 
-从 `快速上手指南.md` 查看结构和状态，从分题 README 找算法到代码的映射，从 API.md 获取测试数据契约。Q3 多源路线的后续实施必须先阅读 `src/q2/路径规划修改.md`：只完成第一部分“服务块 + 最便宜插入 + 2-opt”及同场景配对后就暂停，未经用户后续明确授权不得开始第二部分缓存和有限束搜索。Q3 既有滚动任务结果见 `test_res_q3_rolling_time.md`。不要把自动测试“通过”理解为人工验收或官方模拟器成绩。
+从 `快速上手指南.md` 查看结构和状态，从分题 README 找算法到代码的映射，从 API.md 获取测试数据契约。Q3 多源路线第一部分已完成并暂停；先查看 `src/q3/路径规划修改.md` 与 `output/q3_offline/route_benchmark.{json,md}`，未经用户后续明确授权不得开始第二部分缓存和有限束搜索。当前环境没有官方模拟器，本轮只完成本地 `FakeSimulator` 配对；不要把自动测试或离线配对理解为人工验收或官方模拟器成绩。

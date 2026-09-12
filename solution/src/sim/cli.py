@@ -86,6 +86,15 @@ def main(argv=None):
         choices=("p90", "cvar", "worst", "mean"), default="cvar",
         help="Q3有限场景风险汇总口径；Q4忽略该参数",
     )
+    parser.add_argument(
+        "--multi-source-route-mode",
+        choices=("off", "insertion_2opt"), default="off",
+        help="Q3多源顺序优化；Q4忽略该参数",
+    )
+    parser.add_argument(
+        "--route-cpu-time-limit-s", type=float, default=0.25,
+        help="Q3路线排序真实墙钟软截止；Q4忽略该参数",
+    )
     parser.add_argument("--exit-safety-margin-s", type=float, default=15.0)
     parser.add_argument("--log", help="新建的逐动作 JSONL 日志路径")
     parser.add_argument(
@@ -110,6 +119,8 @@ def main(argv=None):
         parser.error("--fim-cpu-time-limit-s 必须为正数。")
     if args.rolling_cpu_time_limit_s <= 0:
         parser.error("--rolling-cpu-time-limit-s 必须为正数。")
+    if args.route_cpu_time_limit_s <= 0:
+        parser.error("--route-cpu-time-limit-s 必须为正数。")
     if args.mode == "policy" and not args.confirm_policy:
         parser.error("未发送任何请求：policy 模式还必须添加 --confirm-policy。")
 
@@ -133,6 +144,10 @@ def main(argv=None):
                           args.rolling_cpu_time_limit_s
                       ),
                       rolling_risk_metric=args.rolling_risk_metric,
+                      multi_source_route_mode=(
+                          args.multi_source_route_mode
+                      ),
+                      route_cpu_time_limit_s=args.route_cpu_time_limit_s,
                   )
                   if args.problem == 3
                   else Q4Policy(

@@ -15,7 +15,8 @@ class Q4Policy(Q3Policy):
                          posterior_grid=False,
                          joint_batch_mode="off",
                          failed_clear_remeasure_mode="off",
-                         rolling_time_mode="off")
+                         rolling_time_mode="off",
+                         multi_source_route_mode="off")
 
     def _refinement_point(self, state, track):
         circle = track.region["minimum_enclosing_circle"]
@@ -26,4 +27,3 @@ class Q4Policy(Q3Policy):
             index = min(track.refinements, len(track.probe_points)-1)
             return track.probe_points[index]
         return super()._refinement_point(state, track)
-

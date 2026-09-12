@@ -12,6 +12,7 @@ from .coverage import ring7, strip_clear_points
 from .fallback_remeasure import evaluate_failed_clear_remeasure
 from .joint import (direct_clear_cost, fixed_point_evaluation,
                     marginal_saving, predicted_clear_cost)
+from .route import (SourceServiceSpec, plan_service_route)
 from .rolling_time import evaluate_total_time_decision
 
 
@@ -92,7 +93,10 @@ class Q3Policy:
                  rolling_candidate_limit=12,
                  rolling_risk_metric="cvar",
                  rolling_cvar_alpha=0.9,
-                 rolling_cpu_time_limit_s=1.0):
+                 rolling_cpu_time_limit_s=1.0,
+                 multi_source_route_mode="off",
+                 route_cpu_time_limit_s=0.25,
+                 route_max_2opt_iterations=20):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
         if max_refinements < 0:
@@ -125,6 +129,12 @@ class Q3Policy:
             raise ValueError("滚动CVaR分位必须位于(0,1)。")
         if rolling_cpu_time_limit_s <= 0.0:
             raise ValueError("滚动评价CPU时限必须为正数。")
+        if multi_source_route_mode not in ("off", "insertion_2opt"):
+            raise ValueError("多源路线模式必须为off或insertion_2opt。")
+        if route_cpu_time_limit_s <= 0.0:
+            raise ValueError("路线规划CPU软截止必须为正数。")
+        if route_max_2opt_iterations < 0:
+            raise ValueError("路线2-opt迭代上限不能为负。")
         self.coverage_points = list(coverage_points or ring7())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
@@ -152,6 +162,10 @@ class Q3Policy:
         self.rolling_risk_metric = rolling_risk_metric
         self.rolling_cvar_alpha = rolling_cvar_alpha
         self.rolling_cpu_time_limit_s = rolling_cpu_time_limit_s
+        self.multi_source_route_mode = multi_source_route_mode
+        self.route_cpu_time_limit_s = route_cpu_time_limit_s
+        self.route_max_2opt_iterations = route_max_2opt_iterations
+        self.route_planning_history = []
         self.q2_config = Q2Config(error_deg=error_deg, circle_sides=16,
                                   scenario_limit=4,
                                   continuous_fim_enabled=True,
@@ -312,7 +326,8 @@ class Q3Policy:
             track.rolling_measure_count += 1
         return decision
 
-    def _joint_plan(self, state, remaining):
+    def _build_joint_options(self, state, remaining):
+        """Build the existing single-source options without selecting one."""
         clear_costs = {}
         rejected = set()
 
@@ -336,6 +351,7 @@ class Q3Policy:
             except (RuntimeError, ValueError):
                 rejected.add(target_channel)
                 continue
+            decision = None
             if self.rolling_time_mode == "scenario":
                 decision = self._rolling_decision(state, target, q2_plan)
                 if decision["decision"] != "measure":
@@ -361,7 +377,9 @@ class Q3Policy:
 
             point = tuple(candidate["point"])
             entries = [(target_channel, target_saving)]
-            for channel in remaining:
+            extra_channels = (remaining
+                              if self.joint_batch_mode != "off" else ())
+            for channel in extra_channels:
                 if channel == target_channel:
                     continue
                 track = state.sources[channel]
@@ -390,15 +408,26 @@ class Q3Policy:
                 "target_channel": target_channel,
                 "estimated_saving_s": sum(value for _, value in entries),
                 "target_action_time_s": candidate["action_time_s"],
+                "single_source_decision": decision,
             })
+        return options, rejected
+
+    @staticmethod
+    def _select_joint_option(options):
         if not options:
-            return None, rejected
-        best = min(options, key=lambda item: (
+            return None
+        return min(options, key=lambda item: (
             item["target_action_time_s"],
             -len(item["channels"]),
             -item["estimated_saving_s"],
             item["target_channel"],
         ))
+
+    def _joint_plan(self, state, remaining):
+        options, rejected = self._build_joint_options(state, remaining)
+        best = self._select_joint_option(options)
+        if best is None:
+            return None, rejected
         return best, rejected-set(best["channels"])
 
     def _start_joint_batch(self, state, plan):
@@ -478,52 +507,135 @@ class Q3Policy:
         )
         track.fallback_index = 0
 
-    def _resolve_action(self, state, *, allow_exit=True):
-        if state.batch_channels:
-            action = self._next_joint_batch_action(state)
-            if action is not None:
-                return action
-        remaining = [channel for channel in sorted(state.sources)
-                     if channel not in state.cleared]
-        if not remaining:
-            if not allow_exit:
-                return None
-            if state.cleared | state.absent != set(range(1, 21)):
-                raise RuntimeError("频道终止证书不完整。")
-            state.phase = "exit"
-            return None
+    @staticmethod
+    def _source_version(track):
+        observations = tuple((
+            tuple(round(value, 7) for value in observation.position),
+            observation.result,
+            (None if observation.bearing_deg is None
+             else round(observation.bearing_deg, 7)),
+        ) for observation in track.observations)
+        vertices = tuple(
+            tuple(round(value, 7) for value in point)
+            for point in track.region.get("vertices", ())
+        )
+        return (
+            track.channel, observations, vertices, track.refinements,
+            track.stagnant_refinements, track.refinement_stopped,
+            track.certificate_failed, track.fallback_index,
+            tuple(track.failed_clear_points),
+        )
+
+    def _build_route_specs(self, state, remaining, options):
+        """Convert unchanged single-source conclusions into route summaries."""
+        by_channel = {item["target_channel"]: item for item in options}
+        specs = {}
         for channel in remaining:
             track = state.sources[channel]
-            if not track.fallback_remeasure_pending:
-                continue
-            action = self._failed_clear_remeasure_action(state, track)
-            if action is not None:
-                return action
-        certified = []
-        for channel in remaining:
-            candidate_track = state.sources[channel]
-            circle = candidate_track.region["minimum_enclosing_circle"]
-            if circle["radius"] <= 19.9 and not candidate_track.certificate_failed:
+            circle = track.region["minimum_enclosing_circle"]
+            source_version = self._source_version(track)
+            if circle["radius"] <= 19.9 and not track.certificate_failed:
                 center = tuple(circle["center"])
-                certified.append((center, channel))
-        if certified:
-            center, channel = min(
-                certified,
-                key=lambda item: (math.dist(state.position, item[0]), item[1]),
-            )
-            return self._action(state, "clear", center, channel,
-                                "certified_clear")
-        if self.adaptive_refinement and self.joint_batch_mode != "off":
-            plan, rejected = self._joint_plan(state, remaining)
-            if plan is not None:
-                for channel in rejected:
-                    state.sources[channel].refinement_stopped = True
-                self._start_joint_batch(state, plan)
-                return self._next_joint_batch_action(state)
-            for channel in rejected:
-                state.sources[channel].refinement_stopped = True
+                specs[channel] = SourceServiceSpec(
+                    channel=channel,
+                    mode="certified_clear",
+                    entry_point=center,
+                    entry_action_kind="clear",
+                    entry_action_channel=channel,
+                    route_points=(center,),
+                    source_version=source_version,
+                    diagnostics={"radius_m": circle["radius"]},
+                )
+                continue
 
-        track = state.sources[remaining[0]]
+            option = by_channel.get(channel)
+            if track.fallback_points:
+                clear_points = tuple(
+                    track.fallback_points[track.fallback_index:]
+                )
+                reorder = False
+            else:
+                clear_points = tuple(posterior_clear_points(track.region))
+                reorder = True
+            if option is not None:
+                point = tuple(option["point"])
+                specs[channel] = SourceServiceSpec(
+                    channel=channel,
+                    mode="measure_then_clear",
+                    entry_point=point,
+                    entry_action_kind="measure",
+                    entry_action_channel=channel,
+                    batch_channels=tuple(option["channels"]),
+                    route_points=clear_points,
+                    source_version=source_version,
+                    reorder_clear_points=True,
+                    diagnostics={
+                        "estimated_saving_s": option["estimated_saving_s"],
+                        "single_source_decision": option.get(
+                            "single_source_decision"
+                        ),
+                    },
+                )
+            else:
+                specs[channel] = SourceServiceSpec(
+                    channel=channel,
+                    mode="direct_clear",
+                    entry_point=None,
+                    entry_action_kind="clear",
+                    entry_action_channel=channel,
+                    route_points=clear_points,
+                    source_version=source_version,
+                    reorder_clear_points=reorder,
+                    diagnostics={"radius_m": circle["radius"]},
+                )
+        return specs
+
+    def _record_route_plan(self, plan):
+        estimate = plan.estimate
+        entry = {
+            "status": plan.status,
+            "reason": plan.reason,
+            "cpu_wall_time_s": plan.cpu_wall_time_s,
+            "insertion_order": list(plan.insertion_order),
+            "two_opt_iterations": plan.two_opt_iterations,
+            "order": list(estimate.order) if estimate else [],
+            "predicted_total_cost_s": (
+                estimate.total_virtual_time_s if estimate else None
+            ),
+            "predicted_movement_distance_m": (
+                estimate.total_movement_distance_m if estimate else None
+            ),
+            "predicted_long_jump_count": (
+                estimate.long_jump_count if estimate else None
+            ),
+            "predicted_first_block_cost_s": (
+                estimate.blocks[0].total_cost_s
+                if estimate and estimate.blocks else None
+            ),
+        }
+        self.route_planning_history.append(entry)
+        return entry
+
+    def _prepare_direct_clear(self, state, track):
+        if not track.fallback_points:
+            if self.posterior_grid:
+                raw_points = posterior_clear_points(track.region)
+                track.fallback_points = nearest_neighbor_order(
+                    raw_points, state.position
+                )
+            else:
+                first = track.observations[0]
+                track.fallback_points = list(strip_clear_points(
+                    first.position, first.bearing_deg
+                ))
+        if track.fallback_index >= len(track.fallback_points):
+            raise RuntimeError(f"频道{track.channel}有限清除保底耗尽。")
+        return self._action(
+            state, "clear", track.fallback_points[track.fallback_index],
+            track.channel, "fallback_clear",
+        )
+
+    def _single_source_action(self, state, track):
         radius = track.region["minimum_enclosing_circle"]["radius"]
         can_refine = self._can_refine(track)
         if can_refine:
@@ -562,22 +674,124 @@ class Q3Policy:
                 raw_points, state.position
             )
             track.refinement_stopped = True
-        if not track.fallback_points:
-            if self.posterior_grid:
-                raw_points = posterior_clear_points(track.region)
-                track.fallback_points = nearest_neighbor_order(
-                    raw_points, state.position
+        return self._prepare_direct_clear(state, track)
+
+    def _legacy_resolve_choice(self, state, remaining, *,
+                               options=None, rejected=None):
+        if self.adaptive_refinement and self.joint_batch_mode != "off":
+            if options is None or rejected is None:
+                options, rejected = self._build_joint_options(
+                    state, remaining
                 )
-            else:
-                first = track.observations[0]
-                track.fallback_points = list(strip_clear_points(
-                    first.position, first.bearing_deg
-                ))
-        if track.fallback_index >= len(track.fallback_points):
-            raise RuntimeError(f"频道{track.channel}有限清除保底耗尽。")
-        return self._action(state, "clear",
-                            track.fallback_points[track.fallback_index],
-                            track.channel, "fallback_clear")
+            plan = self._select_joint_option(options)
+            if plan is not None:
+                for channel in rejected-set(plan["channels"]):
+                    state.sources[channel].refinement_stopped = True
+                self._start_joint_batch(state, plan)
+                return self._next_joint_batch_action(state)
+            for channel in rejected:
+                state.sources[channel].refinement_stopped = True
+        return self._single_source_action(
+            state, state.sources[remaining[0]]
+        )
+
+    def _route_resolve_choice(self, state, remaining):
+        refinable = [
+            channel for channel in remaining
+            if (state.sources[channel].region["minimum_enclosing_circle"][
+                    "radius"] > 19.9
+                or state.sources[channel].certificate_failed)
+        ]
+        if self.adaptive_refinement:
+            options, rejected = self._build_joint_options(state, refinable)
+        else:
+            options, rejected = [], set()
+        try:
+            specs = self._build_route_specs(state, remaining, options)
+            route_plan = plan_service_route(
+                specs,
+                state.position,
+                state.current_channel,
+                cpu_time_limit_s=self.route_cpu_time_limit_s,
+                max_2opt_iterations=self.route_max_2opt_iterations,
+            )
+        except (RuntimeError, ValueError, KeyError) as error:
+            route_plan = None
+            self.route_planning_history.append({
+                "status": "error",
+                "reason": f"{type(error).__name__}:{error}",
+                "cpu_wall_time_s": 0.0,
+                "order": [],
+                "predicted_total_cost_s": None,
+                "predicted_first_block_cost_s": None,
+            })
+        if route_plan is None or route_plan.estimate is None:
+            if route_plan is not None:
+                self._record_route_plan(route_plan)
+            return self._legacy_resolve_choice(
+                state, remaining, options=options, rejected=rejected
+            )
+
+        self._record_route_plan(route_plan)
+        selected_channel = route_plan.estimate.order[0]
+        selected_spec = specs[selected_channel]
+        track = state.sources[selected_channel]
+        if selected_spec.mode == "certified_clear":
+            return self._action(
+                state, "clear", selected_spec.entry_point,
+                selected_channel, "certified_clear",
+            )
+        option = next((
+            item for item in options
+            if item["target_channel"] == selected_channel
+        ), None)
+        if option is not None:
+            self._start_joint_batch(state, option)
+            return self._next_joint_batch_action(state)
+
+        if selected_channel in rejected and self._can_refine(track):
+            track.refinement_stopped = True
+        return self._prepare_direct_clear(state, track)
+
+    def _resolve_action(self, state, *, allow_exit=True):
+        if state.batch_channels:
+            action = self._next_joint_batch_action(state)
+            if action is not None:
+                return action
+        remaining = [channel for channel in sorted(state.sources)
+                     if channel not in state.cleared]
+        if not remaining:
+            if not allow_exit:
+                return None
+            if state.cleared | state.absent != set(range(1, 21)):
+                raise RuntimeError("频道终止证书不完整。")
+            state.phase = "exit"
+            return None
+        for channel in remaining:
+            track = state.sources[channel]
+            if not track.fallback_remeasure_pending:
+                continue
+            action = self._failed_clear_remeasure_action(state, track)
+            if action is not None:
+                return action
+        if self.multi_source_route_mode == "insertion_2opt":
+            return self._route_resolve_choice(state, remaining)
+
+        certified = []
+        for channel in remaining:
+            candidate_track = state.sources[channel]
+            circle = candidate_track.region["minimum_enclosing_circle"]
+            if circle["radius"] <= 19.9 and not candidate_track.certificate_failed:
+                center = tuple(circle["center"])
+                certified.append((center, channel))
+        if certified:
+            center, channel = min(
+                certified,
+                key=lambda item: (math.dist(state.position, item[0]), item[1]),
+            )
+            return self._action(state, "clear", center, channel,
+                                "certified_clear")
+        return self._legacy_resolve_choice(state, remaining)
 
     def next_action(self, state):
         if state.pending is not None:
@@ -692,4 +906,3 @@ class Q3Policy:
             return
         if action.kind == "exit":
             state.exited = True
-

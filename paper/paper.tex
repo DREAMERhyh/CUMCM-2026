@@ -59,6 +59,16 @@
 
 定位区域的直径定义为区域内任意两点之间距离的最大值。对于凸多边形，需要进一步证明这一最大值必能在两个顶点之间取得，从而将区域直径转化为最远顶点对之间的距离。得到直径端点后，以两端点的中点为圆心、直径的一半为半径作圆；该圆不一定覆盖整个定位区域，还需建立相应的几何判据。利用定位区域与圆的凸性，只需判断凸多边形的全部顶点是否位于圆内，即可确定该圆能否覆盖整个定位区域。
 
+\subsection{问题二的分析}
+
+问题一只按题干要求使用示向误差角区的交集建立多边形定位区域。然而在问题二的单次示向情形下，一个向前延伸的误差角区本身无界，必须进一步利用目标圆域和成功接收所给出的距离上界，才能形成有界的源位置可行域。问题一末尾已指出，加入这两类圆域后，可行域边界会出现圆弧，不能继续把所有几何极值都简单归结为直线边界的交点。
+
+因此，问题二首先对含圆弧的可行域进行保守多边形化：对“源可能位于何处”使用圆域的外切正多边形，以保证不漏掉真实源；对“第二测点放在何处能保证接收”使用圆盘的内接正多边形，以保证计算得到的可行点真正安全。这一处理把问题一的凸多边形交会模型自然延伸到了含距离约束的情形。
+
+问题一还说明，以区域直径为直径作圆并不一定覆盖整个定位区域，故单独使用直径的一半不能始终作为可靠的定位误差上界。为此，问题二改用定位区域的最小包围圆半径衡量位置不确定性，并以“有限场景下的最坏后验半径”作为主要定位效果指标。
+
+第二测点的选择还需同时考虑接收可靠性、两次示向的交会几何和机器狗行动时间。本文先构造可审计的有限候选集鲁棒评分基线，再在保证接收域内进行带行动时间预算的连续 Fisher 信息优化。连续方法只负责生成几何质量较好的候选点，所有候选点最终均返回相同的后验区域指标进行复评分，并通过时间---定位半径 Pareto 前沿给出确定测点与近优候选区域。
+
 \section{模型假设}
 
 \subsection{问题一的模型假设}
@@ -66,6 +76,14 @@
 \begin{enumerate}
   \item 问题一题干原文要求“计算多边形定位区域直径”，故本问将每次示向误差区域视为由两条向前无限延伸的边界射线围成的角区域，定位区域只取这些角区域的公共部分，不再使用有效接收半径或半径为 $1800\ \mathrm{m}$ 的目标圆域对其进行裁剪；
   \item 主要讨论交会有效的情形，即多个角度误差区域的公共部分非空、有界且具有非零面积。若公共部分为空或无界，则不存在题目所述的有限多边形直径。
+\end{enumerate}
+
+\subsection{问题二的模型假设}
+
+\begin{enumerate}
+  \item 示向误差按题设的有界误差处理，不预设其服从特定概率分布。连续选点中的等方差局部扰动仅用于构造 Fisher 信息替代指标，不改变最终的有界误差后验评价口径；
+  \item 为保持源位置区域的凸性，不从首次示向区域中扣除半径为 $5\ \mathrm{m}$ 的“近距离”圆孔。该处理只可能放大可行域，不会排除真实源；
+  \item 对于无法保证接收的第二测点，将“未收到信号且定位区域未有效收缩”纳入不利分支，暂不利用无信号结果可能提供的排除信息。
 \end{enumerate}
 
 \section{符号说明}
@@ -98,6 +116,30 @@
   \end{tabularx}
 \end{table}
 
+\begin{table}[H]
+  \centering
+  \caption{问题二新增符号说明}
+  \label{tab:q2-symbols}
+  \begin{tabularx}{0.94\textwidth}{@{}cXc@{}}
+    \toprule
+    符号 & 含义 & 单位 \\
+    \midrule
+    $K_1$ & 一次示向后同时考虑示向误差、目标圆域和接收距离上界的可行域 & -- \\
+    $\widehat K_1$ & 用外切正多边形替换圆域后得到的 $K_1$ 保守外近似 & -- \\
+    $X=(x,y)$ & 干扰源的未知位置坐标 & $\mathrm{m}$ \\
+    $S_2=s$ & 待选择的第二检测点位置坐标 & $\mathrm{m}$ \\
+    $R_{\min},R_{\max}$ & 全向干扰源有效接收半径的下界与上界 & $\mathrm{m}$ \\
+    $\mathcal F_g$ & 第二检测点的保证接收域 & -- \\
+    $\mathcal F_p$ & 第二检测点的可能接收域 & -- \\
+    $\rho(A)$ & 集合 $A$ 的最小包围圆半径 & $\mathrm{m}$ \\
+    $R_{\mathrm{wc}}(s)$ & 测点 $s$ 的有限场景最坏后验半径 & $\mathrm{m}$ \\
+    $T(s)$ & 移动至 $s$ 并完成检测的行动时间 & $\mathrm{s}$ \\
+    $J(s)$ & 时间与最坏后验半径的工程综合分数 & $\mathrm{s}$ \\
+    $\Phi_{\mathrm{rob}}(s)$ & 对有限源位置场景取最小值的单位时间 Fisher 信息指标 & $\mathrm{m}^{-4}\mathrm{s}^{-1}$ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
 \section{模型建立与求解}
 
 \subsection{问题一的模型建立与求解}
@@ -119,6 +161,7 @@
 \begin{equation}
   AB\subseteq\bigcap_{i=1}^{n}C_i=\Omega.
 \end{equation}
+
 因此 $\Omega$ 为凸集。另一方面，$n$ 个角度误差区域总共只有 $2n$ 条边界射线，$\Omega$ 的边界只能落在相应的有限条边界直线上。若 $\Omega$ 非空、有界且具有非零面积，其边界不可能含有无限延伸的射线，只能由有限条线段首尾相接形成简单闭合多边形。结合 $\Omega$ 的凸性可知，$\Omega$ 必为凸多边形。\hfill$\square$
 
 由命题 1，定位多边形的顶点必为若干误差边界的有效交点。求解时，将所有满足每一次观测角度限制的边界交点保留下来，再取这些点的凸包，即可得到按逆时针排列的顶点集
@@ -126,6 +169,7 @@
   \Omega=\operatorname{conv}\{V_1,V_2,\ldots,V_m\},
   \label{eq:q1-convex-hull}
 \end{equation}
+
 其中 $\operatorname{conv}$ 表示凸包。
 
 图~\ref{fig:q1-region-intersection} 给出了两个角度误差区域交会形成有界凸定位区域的示意。
@@ -145,6 +189,7 @@
    =\max_{P,Q\in\Omega}\|P-Q\|_2.
   \label{eq:q1-diameter-definition}
 \end{equation}
+
 由于 $\Omega$ 是有界闭集，$\Omega\times\Omega$ 也是紧集，而距离函数连续，故式~\eqref{eq:q1-diameter-definition} 中的最大值必能取得。
 
 \noindent\textbf{命题 2：}{\kaishu 凸多边形的直径必由其两个顶点取得，即}
@@ -160,6 +205,7 @@
   Q=\sum_{j=1}^{m}\mu_jV_j,\qquad
   \sum_{i=1}^{m}\lambda_i=\sum_{j=1}^{m}\mu_j=1.
 \end{equation}
+
 于是
 \begin{align}
   \|P-Q\|_2
@@ -196,6 +242,7 @@
   X=\sum_{j=1}^{m}\lambda_jV_j,\qquad
   \lambda_j\geq0,\qquad \sum_{j=1}^{m}\lambda_j=1.
 \end{equation}
+
 利用三角不等式可得
 \begin{equation}
   \|X-O\|_2
@@ -203,6 +250,7 @@
   \leq\sum_{j=1}^{m}\lambda_j\|V_j-O\|_2
   \leq\sum_{j=1}^{m}\lambda_jr=r.
 \end{equation}
+
 因此 $\Omega$ 中任意一点均位于闭圆面内，直径圆能够覆盖整个定位区域。\hfill$\square$
 
 命题 3 同时说明，区域直径等于某两个顶点间的最大距离，并不能直接推出以这两点为直径的圆一定覆盖该区域；最终结论必须由式~\eqref{eq:q1-circle-criterion} 判定。图~\ref{fig:q1-diameter-circle} 给出了直径圆未覆盖第三个顶点的几何示意。
@@ -224,6 +272,7 @@
   \cap\bigcap_{i=1}^{n}\overline B(S_i,1500).
   \label{eq:q1-physical-region}
 \end{equation}
+
 这里的 $1500\ \mathrm{m}$ 只是未知有效接收半径的统一上界，不能将其理解为每个干扰源的实际有效接收半径，也不能由有效接收半径不小于 $1000\ \mathrm{m}$ 推出干扰源位置与检测点位置 $S_i$ 之间的欧氏距离不小于 $1000\ \mathrm{m}$。
 
 圆弧是否成为边界取决于相应圆盘是否真正截去 $\Omega$ 的一部分。图~\ref{fig:q1-curved-regions} 给出了两种可能情形：接收距离圆盘截断两个角度误差区域的公共部分时，一段接收圆周可能成为可行域边界；当交会多边形靠近目标区域边缘时，半径为 $1800\ \mathrm{m}$ 的目标圆周也可能截断 $\Omega$。由于角度误差区域、接收圆域和目标圆域均为凸集，$K$ 仍为凸集，但其边界可能由线段和圆弧共同组成，因而一般不再是凸多边形。
@@ -248,9 +297,441 @@
 
 上述圆弧问题将在问题二中处理。具体做法是用圆域的外接正多边形替代可能出现的圆弧约束，使所得区域 $\widehat K$ 仍为凸多边形，并满足 $K\subseteq\widehat K$，从而有 $\operatorname{diam}(K)\leq\operatorname{diam}(\widehat K)$。这种外近似不会排除真实可能位置，并可对 $\widehat K$ 继续使用凸多边形的顶点、直径和覆盖判据。若某个圆能够覆盖 $\widehat K$，则它必然覆盖 $K$；反之，某个圆不能覆盖 $\widehat K$ 时，不能仅据此断定它不能覆盖 $K$。因此该方法给出的是不遗漏真实位置的保守判定。问题一仍按题干规定的多边形定位区域求解，外接多边形的具体构造和近似精度留在问题二中说明，后续问题需要更新定位区域时可沿用该处理结果。
 
-\subsection{问题二的模型}
+\subsection{问题二的模型建立与求解}
 
-根据赛题问题数量增删本节。对所用公开数据、算法或他人成果，应在首次出现处给出引用。
+\subsubsection{单次检测后的源位置可行域}
+
+记第一检测点为 $S_1$，其对某全向干扰源测得的示向度为 $\theta_1$，相应误差角区为 $C_1$。题设给出目标圆域半径为 $1800\ \mathrm{m}$，全向干扰源的实际有效接收半径 $R_s$ 满足
+\begin{equation}
+  R_s\in[R_{\min},R_{\max}]=[1000,1500]\ \mathrm{m}.
+\end{equation}
+
+因为 $S_1$ 已获得示向度，真实源位置 $X$ 必满足 $\|X-S_1\|_2\leq R_s\leq R_{\max}$。因此，式~\eqref{eq:q1-physical-region} 在单次观测下具体化为
+\begin{equation}
+  K_1=C_1\cap\overline B(O_0,1800)
+  \cap\overline B(S_1,R_{\max}).
+  \label{eq:q2-physical-region}
+\end{equation}
+
+为处理式~\eqref{eq:q2-physical-region} 中的圆弧边界，对以 $A$ 为圆心、$R$ 为半径的圆盘，取 $N$ 个等分单位法向量
+\begin{equation}
+  n_k=\left(\cos\frac{2k\pi}{N},
+  \sin\frac{2k\pi}{N}\right)^{\mathsf T},
+  \qquad k=0,1,\ldots,N-1,
+\end{equation}
+
+并以相应切线半平面之交构造外切正多边形
+\begin{equation}
+  \widehat B_{\mathrm{out}}(A,R)
+  =\bigcap_{k=0}^{N-1}
+  \left\{Y:n_k^{\mathsf T}(Y-A)\leq R\right\}.
+  \label{eq:q2-outer-polygon}
+\end{equation}
+
+将两个圆盘分别替换为其外切正多边形，得到可计算的源位置区域
+\begin{equation}
+  \widehat K_1=C_1
+  \cap\widehat B_{\mathrm{out}}(O_0,1800)
+  \cap\widehat B_{\mathrm{out}}(S_1,R_{\max}).
+  \label{eq:q2-source-region}
+\end{equation}
+
+这一构造正是对问题一“建模边界及对后续问题的影响”中圆弧讨论的落实：问题一保留题干定义的纯角度交会多边形 $\Omega$，问题二则在更新可行域时，将目标圆域和接收上界圆域分别替换为外切正多边形。这样既保留了问题一的角区半平面，又能继续沿用半平面求交、凸包顶点和圆覆盖判据。$K_1$ 与 $\widehat K_1$ 的边界关系如图~\ref{fig:q2-k1-outer-approx} 所示。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.88\textwidth]{figures/q2-k1-outer-approx.pdf}
+  \caption{$K_1$ 的圆弧边界及其外切正多边形近似（左图为整体，右图为局部放大；为清楚显示边界关系，示意图适当放大了角度误差）}
+  \label{fig:q2-k1-outer-approx}
+\end{figure}
+
+\noindent\textbf{命题 4：}{\kaishu 式~\eqref{eq:q2-source-region} 所得区域是式~\eqref{eq:q2-physical-region} 的保守外近似，即 $K_1\subseteq\widehat K_1$。}
+
+\noindent\textbf{证明：}
+式~\eqref{eq:q2-outer-polygon} 中的每个半平面均由原圆的一条切线确定，且包含整个圆盘，故 $\overline B(A,R)\subseteq\widehat B_{\mathrm{out}}(A,R)$。将该包含关系分别用于目标圆域和接收上界圆域，并与相同的角度误差区域 $C_1$ 求交，即得 $K_1\subseteq\widehat K_1$。\hfill$\square$
+
+本文取 $N=24$。外切正 $N$ 边形的最大径向外扩量为
+\begin{equation}
+  \Delta_{\mathrm{out}}(R,N)
+  =R\left(\sec\frac{\pi}{N}-1\right).
+\end{equation}
+
+因而半径为 $1800\ \mathrm{m}$ 和 $1500\ \mathrm{m}$ 的圆域最多分别向外放宽约 $15.532\ \mathrm{m}$ 和 $12.943\ \mathrm{m}$。程序中将理论示向误差 $1^\circ$ 扩大为 $1.005^\circ$，仅用于避免真实源因边界浮点误差被错误排除。
+
+\subsubsection{定位不确定性指标}
+
+问题一已证明，以区域直径端点作直径圆时，该圆不一定覆盖整个定位区域。因此，问题二定义任意非空有界集合 $A$ 的最小包围圆半径为
+\begin{equation}
+  \rho(A)=\min_{Q\in\mathbb R^2}
+  \max_{Y\in A}\|Y-Q\|_2.
+  \label{eq:q2-mec-radius}
+\end{equation}
+
+由区域内任意直径端点都必须同时被包围圆覆盖，有
+\begin{equation}
+  \rho(A)\geq\frac{\operatorname{diam}(A)}{2}.
+  \label{eq:q2-diameter-mec}
+\end{equation}
+
+当问题一的直径圆能够覆盖 $A$ 时式~\eqref{eq:q2-diameter-mec} 取等号；不能覆盖时，最小包围圆半径必须大于直径的一半。故本文以
+\begin{equation}
+  R_0=\rho(\widehat K_1)
+\end{equation}
+
+表示第一次观测后的当前位置不确定性。下面给出实际计算过程。设 $\widehat K_1=\operatorname{conv}\{V_1,\ldots,V_m\}$。由问题一命题 3 中相同的凸性论证，一个圆覆盖全部顶点当且仅当它覆盖整个 $\widehat K_1$，因而只需针对顶点集求最小包围圆。
+
+平面最小包围圆的边界必有不超过三个支撑点：若边界上没有支撑点，圆还可继续缩小；若由两点支撑，两点必为一条直径的端点；否则至少需要三个不共线边界点唯一确定外接圆。因此依次构造以下候选圆。
+
+对单个顶点 $V_i$，取退化候选
+\begin{equation}
+  Q_i=V_i,\qquad r_i=0.
+\end{equation}
+
+对每一对顶点 $V_i,V_j$，构造以线段 $V_iV_j$ 为直径的圆
+\begin{equation}
+  Q_{ij}=\frac{V_i+V_j}{2},\qquad
+  r_{ij}=\frac{\|V_i-V_j\|_2}{2}.
+  \label{eq:q2-mec-pair}
+\end{equation}
+
+对每三个不共线顶点 $V_i,V_j,V_k$，记
+\begin{equation}
+  a=V_j-V_i=(a_x,a_y),\qquad
+  b=V_k-V_i=(b_x,b_y),
+\end{equation}
+
+\begin{equation}
+  \Delta=2(a_xb_y-a_yb_x).
+\end{equation}
+
+当 $\Delta\neq0$ 时，三点外接圆圆心和半径为
+\begin{equation}
+  Q_{ijk}=V_i+
+  \left(
+  \frac{\|a\|_2^2b_y-\|b\|_2^2a_y}{\Delta},
+  \frac{a_x\|b\|_2^2-b_x\|a\|_2^2}{\Delta}
+  \right),
+  \qquad
+  r_{ijk}=\|Q_{ijk}-V_i\|_2.
+  \label{eq:q2-mec-triple}
+\end{equation}
+
+三点共线时 $\Delta=0$，不能唯一确定外接圆，该组合直接跳过，其可能的最小支撑圆已包含在两点候选中。对上述每个候选圆 $(Q,r)$，逐一检查
+\begin{equation}
+  \max_{1\leq l\leq m}\|V_l-Q\|_2\leq r+\tau,
+  \label{eq:q2-mec-cover-test}
+\end{equation}
+
+其中 $\tau$ 是小量数值容差。保留所有能覆盖顶点集的候选，再取半径最小者，即得 $\rho(\widehat K_1)$ 及其圆心。两点与三点候选数分别为 $O(m^2)$ 和 $O(m^3)$，每个候选需检查 $m$ 个顶点，因而该直接算法的最坏时间复杂度为 $O(m^4)$。本题的定位多边形顶点数较少，该方法虽非渐近最快，但过程确定、支撑点和覆盖性均可逐项复核。
+
+\subsubsection{第二检测点的候选区域}
+
+若要求无论真实源位于当前可行域中何处、其有效接收半径在题设区间中取何值，第二测点 $s$ 都能收到信号，则必须有
+\begin{equation}
+  \mathcal F_g(\widehat K_1)
+  =\left\{s:\max_{X\in\widehat K_1}
+  \|s-X\|_2\leq R_{\min}\right\}.
+  \label{eq:q2-guaranteed-region}
+\end{equation}
+
+\noindent\textbf{命题 5：}{\kaishu 设 $\widehat K_1=\operatorname{conv}\{V_1,\ldots,V_m\}$，则式~\eqref{eq:q2-guaranteed-region} 中的最大距离只需在顶点上计算，从而}
+\begin{equation}
+  \mathcal F_g(\widehat K_1)
+  =\bigcap_{j=1}^{m}\overline B(V_j,R_{\min}).
+  \label{eq:q2-guaranteed-vertices}
+\end{equation}
+
+\noindent\textbf{证明：}
+任取 $X\in\widehat K_1$，存在 $\lambda_j\geq0$ 使得 $X=\sum_j\lambda_jV_j$ 且 $\sum_j\lambda_j=1$。对固定测点 $s$，由三角不等式得
+\begin{equation}
+  \|s-X\|_2
+  \leq\sum_j\lambda_j\|s-V_j\|_2
+  \leq\max_j\|s-V_j\|_2.
+\end{equation}
+
+反之，每个 $V_j$ 均属于 $\widehat K_1$，因而两个最大值相等，式~\eqref{eq:q2-guaranteed-vertices} 成立。\hfill$\square$
+
+式~\eqref{eq:q2-guaranteed-vertices} 中每个圆盘仍含有圆弧。为保证输出域中的点确实可行，此处与源区域的外近似方向相反，用每个半径为 $R_{\min}$ 的圆盘的内接 $72$ 边形求交，记结果为 $\widehat{\mathcal F}_g$。则
+\begin{equation}
+  \widehat{\mathcal F}_g
+  \subseteq\mathcal F_g(\widehat K_1)
+  \subseteq\mathcal F_g(K_1).
+  \label{eq:q2-guaranteed-inclusion}
+\end{equation}
+
+其最大径向收缩量为
+\begin{equation}
+  R_{\min}\left(1-\cos\frac{\pi}{72}\right)
+  \approx0.952\ \mathrm{m}.
+\end{equation}
+
+故落在 $\widehat{\mathcal F}_g$ 中的测点对当前全向距离接收模型具有保守的接收保证。若 $\widehat{\mathcal F}_g$ 为空，只说明当前内近似未能给出可认证的保证接收点，不由此断言理论保证域必然为空。
+
+另一方面，若只要求存在某个相容源位置使测点可能收到信号，则计算可能接收域
+\begin{equation}
+  \mathcal F_p
+  =\left\{s:\operatorname{dist}(s,\widehat K_1)
+  \leq R_{\max}\right\}
+  =\widehat K_1\oplus\overline B(O_0,R_{\max}),
+  \label{eq:q2-possible-region}
+\end{equation}
+
+其中 $\oplus$ 表示 Minkowski 和，其一般定义为 $A\oplus B=\{a+b:a\in A,b\in B\}$。当 $B$ 为以原点为圆心、半径为 $R_{\max}$ 的圆盘时，该运算等价于将 $\widehat K_1$ 中每个点都向外扩张 $R_{\max}$，即合并所有以 $X\in\widehat K_1$ 为圆心的半径 $R_{\max}$ 圆盘。计算时沿 $72$ 个支撑方向建立外包半平面，得到 $\mathcal F_p$ 的外近似 $\widehat{\mathcal F}_p$。$\widehat{\mathcal F}_g$ 给出安全选点范围，$\widehat{\mathcal F}_p$ 则用于展示仍可能接收的区域。
+
+图~\ref{fig:q2-reception-regions} 给出了同一首次观测下源位置区域、保证接收域与可能接收域的相对关系。保证接收域位于源位置区域附近且较小，候选点落入其中时可获得保守的接收保证；可能接收域是向外扩张后的较大范围，主要用于限制无需搜索的远处区域。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.68\textwidth]{figures/q2-reception-regions.pdf}
+  \caption{源位置外近似 $\widehat K_1$、保证接收内近似 $\widehat{\mathcal F}_g$ 与可能接收外近似 $\widehat{\mathcal F}_p$ 的关系}
+  \label{fig:q2-reception-regions}
+\end{figure}
+
+\subsubsection{后验定位半径与行动时间}
+
+为评价任意候选点 $s$，从 $\widehat K_1$ 的顶点、边中点和中心选取有限源位置场景集 $\mathcal S_A$，默认最多保留 $8$ 个场景。对假定源位置 $X\in\mathcal S_A$，从 $s$ 指向 $X$ 的真实方位角记为 $\theta(s,X)$。以
+\begin{equation}
+  \mathcal E=\{-\varepsilon,0,+\varepsilon\},
+  \qquad \varepsilon=1.005^\circ
+\end{equation}
+
+表示有限误差场景，则第二次有效示向后的计算后验区域为
+\begin{equation}
+  \widehat K_2(s;X,e)
+  =\widehat K_1
+  \cap\widehat B_{\mathrm{out}}(s,R_{\max})
+  \cap C\bigl(s,\theta(s,X)+e,\varepsilon\bigr),
+  \label{eq:q2-posterior-region}
+\end{equation}
+
+其中 $C(s,\theta,\varepsilon)$ 表示以 $s$ 为顶点、方向为 $\theta$、左右误差界为 $\varepsilon$ 的角区。当 $\|s-X\|_2\leq5\ \mathrm{m}$ 时，将近距离结果的定位半径记为 $\min\{5,R_0\}$。综合两类有效检测结果，定义单个场景的后验半径为
+\begin{equation}
+  r_2(s;X,e)=
+  \begin{cases}
+    \min\{5,R_0\}, & \|s-X\|_2\leq5,\\
+    \rho\bigl(\widehat K_2(s;X,e)\bigr),
+      & 5<\|s-X\|_2\leq R_{\max}.
+  \end{cases}
+\end{equation}
+
+若候选点不能保证接收，实际接收半径的未知性可能导致无信号结果。为保守起见，将该分支的后验半径记为 $R_0$。由此定义有限场景最坏后验半径
+\begin{equation}
+  R_{\mathrm{wc}}(s)
+  =\max\left(
+  \left\{
+  r_2(s;X,e):
+  X\in\mathcal S_A,\ e\in\mathcal E,\
+  \|s-X\|_2\leq R_{\max}
+  \right\}
+  \cup\mathcal R_{\mathrm{no}}(s)
+  \right),
+  \label{eq:q2-worst-radius}
+\end{equation}
+
+其中
+\begin{equation}
+  \mathcal R_{\mathrm{no}}(s)=
+  \begin{cases}
+    \varnothing, & s\in\widehat{\mathcal F}_g,\\
+    \{R_0\}, & s\notin\widehat{\mathcal F}_g.
+  \end{cases}
+\end{equation}
+
+这一指标的“最坏”仅针对当前有限源位置和误差场景，不是对连续可行域的严格最坏性证明。
+
+问题二中机器狗由 $S_1$ 直接前往 $s$，且检测频道不变，故行动时间为
+\begin{equation}
+  T(s)=\frac{\|s-S_1\|_2}{v}+\tau_{\mathrm{meas}}
+  =\frac{\|s-S_1\|_2}{5}+5.
+  \label{eq:q2-action-time}
+\end{equation}
+
+若该模型在后续问题中从其他位置或其他频道调用，则再将当前位置替换为 $p_c$，并在频道不同时加入 $1\ \mathrm{s}$ 换频时间。
+
+\subsubsection{方案一：有限候选集鲁棒评分}
+
+将以度为单位的首次示向角转换为弧度 $\vartheta_1=\pi\theta_1/180$，记其方向及左法向分别为
+\begin{equation}
+  u_1=(\cos\vartheta_1,\sin\vartheta_1)^{\mathsf T},
+  \qquad
+  n_1=(-\sin\vartheta_1,\cos\vartheta_1)^{\mathsf T}.
+\end{equation}
+
+首先构造前向---横向组合候选点
+\begin{equation}
+  s=S_1+d u_1+\ell n_1,
+  \label{eq:q2-directional-candidates}
+\end{equation}
+
+其中
+\begin{equation}
+  d\in\{100,250,500,750\}\ \mathrm{m},
+  \qquad
+  \ell\in\{0,\pm d/2,\pm d\}.
+\end{equation}
+
+前向移动用于接近可能的干扰源，横向移动用于打破两次示向近似共线的不利几何。此外，在 $\widehat K_1$ 的最小包围圆中心附近按 $250,500,750\ \mathrm{m}$ 三个半径和八个方向生成环状候选，并加入源区域中心、$S_1$ 与该中心的中点以及保证接收域中心等特殊点，得到确定性有限候选集 $\mathcal C_A$。
+
+为同时衡量定位效果和行动代价，定义离散基线的工程综合分数
+\begin{equation}
+  J(s)=T(s)+\lambda_RR_{\mathrm{wc}}(s),
+  \qquad \lambda_R=0.5\ \mathrm{s/m}.
+  \label{eq:q2-engineering-score}
+\end{equation}
+
+$\lambda_R$ 表示离散基线对时间与定位半径的工程折算，并非题设常数。若有限候选集中存在保证接收点，则离散基线为
+\begin{equation}
+  s_A=\operatorname*{arg\,min}_{s\in
+  \mathcal C_A\cap\widehat{\mathcal F}_g}J(s).
+  \label{eq:q2-baseline-choice}
+\end{equation}
+
+若该交集为空，则退回全部 $\mathcal C_A$ 中求 $J(s)$ 最小的点，并通过式~\eqref{eq:q2-worst-radius} 中的无信号分支惩罚接收风险。该方案的最优性仅针对当前有限候选点、有限源场景和式~\eqref{eq:q2-engineering-score} 成立。
+
+\subsubsection{方案二：带时间预算的连续 Fisher 信息选点}
+
+离散候选可能遗漏候选点之间交会几何更好的位置，因此再以 Fisher 信息矩阵衡量局部方位观测对源位置的辨识能力~\cite{fisher1922}。对检测点 $S_i=(x_i,y_i)$ 和源位置 $X=(x,y)$，理想方位观测为
+\begin{equation}
+  h_i(X)=\operatorname{atan2}(y-y_i,x-x_i),
+\end{equation}
+
+其对 $X$ 的梯度为
+\begin{equation}
+  q_i(X)=\nabla_X h_i(X)
+  =\frac{1}{d_i^2}
+  \begin{bmatrix}
+    -(y-y_i)\\ x-x_i
+  \end{bmatrix},
+  \qquad d_i=\|X-S_i\|_2.
+\end{equation}
+
+为构造信息量替代目标，暂将两次角度扰动视为相互独立且具有相同局部方差 $\sigma_\theta^2$，则
+\begin{equation}
+  \mathcal I(s;X)
+  =\frac{1}{\sigma_\theta^2}
+  \left(q_1q_1^{\mathsf T}+q_2q_2^{\mathsf T}\right),
+  \qquad S_2=s.
+  \label{eq:q2-fim}
+\end{equation}
+
+设从两个检测点指向源的视线夹角为 $\phi(s;X)$。利用二维恒等式 $\det(aa^{\mathsf T}+bb^{\mathsf T})=(a_1b_2-a_2b_1)^2$，由式~\eqref{eq:q2-fim} 直接得
+\begin{equation}
+  \det\mathcal I(s;X)
+  =\frac{\sin^2\phi(s;X)}
+  {\sigma_\theta^4d_1^2d_2^2}.
+  \label{eq:q2-fim-determinant}
+\end{equation}
+
+式~\eqref{eq:q2-fim-determinant} 表明，两条视线近似平行时定位几何病态；在距离相当时，较大的交会角通常提供更多定位信息；而观测距离过大会放大角度误差所导致的位置不确定性。
+
+略去对所有候选点相同的 $\sigma_\theta^{-4}$，引入仅用于调整数值尺度的常数 $\kappa=10^{12}$，并用行动时间归一化，定义
+\begin{equation}
+  \Phi(s;X)=
+  \frac{\kappa\sin^2\phi(s;X)}
+  {d_1^2d_2^2T(s)}.
+\end{equation}
+
+当 $d_2\leq5\ \mathrm{m}$ 时，检测将进入近距离分支，不再适用常规示向 Fisher 指标，因而在数值搜索中使用有界的有利近似 $\Phi(s;X)=\kappa/(25d_1^2T(s))$。又因首次结果已为有效示向，Fisher 场景构造时排除 $d_1\leq5\ \mathrm{m}$ 的退化点。
+对 $\widehat K_1$ 每条边上的若干等分点及区域中心构造确定性场景集 $\mathcal S_F$，再取
+\begin{equation}
+  \Phi_{\mathrm{rob}}(s)
+  =\min_{X\in\mathcal S_F}\Phi(s;X),
+  \label{eq:q2-robust-fim}
+\end{equation}
+
+表示当前所检查源位置中的最小单位时间信息量。
+
+记离散基线的行动时间为 $T_A=T(s_A)$。对额外时间预算 $b\in\{15,30,60\}\ \mathrm{s}$，分别求解
+\begin{equation}
+  s_F^{(b)}
+  =\operatorname*{arg\,max}_{s\in\widehat{\mathcal F}_g}
+  \Phi_{\mathrm{rob}}(s),
+  \qquad T(s)\leq T_A+b.
+  \label{eq:q2-fim-budget}
+\end{equation}
+
+求解时从保证域中心、边界顶点、边中点及离散候选中选取多个初始点，在 $16$ 个方向上进行投影模式搜索。试探点越出 $\widehat{\mathcal F}_g$ 时将其投影回可行多边形；若没有找到更优点，则将步长减半，直至步长由 $200\ \mathrm{m}$ 缩小至 $2\ \mathrm{m}$，或达到迭代和计算时间上限。该方法在测点坐标上连续搜索，但式~\eqref{eq:q2-robust-fim} 仍基于有限源场景，且模式搜索不提供非凸问题的全局最优证书，因而其结果应表述为 Fisher 替代目标的数值近优解。
+
+\subsubsection{同口径复评分与混合裁决}
+
+方案一的 $J(s)$ 与方案二的 $\Phi_{\mathrm{rob}}(s)$ 量纲和物理含义均不同，不能直接根据两个数值判断测点优劣。因此，Fisher 信息优化只负责产生连续候选点，三档预算所得候选均重新使用式~\eqref{eq:q2-worst-radius} 和式~\eqref{eq:q2-action-time} 计算
+\begin{equation}
+  \bigl(R_{\mathrm{wc}}(s),T(s),J(s)\bigr).
+\end{equation}
+
+在实际执行时，首先保留满足 $T(s)\leq T_A+30\ \mathrm{s}$ 的连续候选，再按照
+\begin{equation}
+  \left(R_{\mathrm{wc}}(s),T(s),
+  -\Phi_{\mathrm{rob}}(s),s_x,s_y\right)
+\end{equation}
+
+的词典序取最小者，得到连续方案代表点 $s_F$。其含义是先优先降低最坏后验半径，再比较行动时间，Fisher 信息指标只用于消除前两项相同时的并列。
+
+对离散基线和三档连续候选，若 $s_a$ 满足
+\begin{equation}
+  T(s_a)\leq T(s_b),\qquad
+  R_{\mathrm{wc}}(s_a)\leq R_{\mathrm{wc}}(s_b),
+\end{equation}
+
+且至少有一个不等式严格成立，则称 $s_a$ 支配 $s_b$。不被其他候选支配的点组成时间---定位半径 Pareto 前沿
+\begin{equation}
+  \mathcal P_{TR}
+  =\left\{s:\nexists s'
+  \text{ 同时在 $T$ 与 $R_{\mathrm{wc}}$ 上支配 $s$}
+  \right\}.
+  \label{eq:q2-pareto}
+\end{equation}
+
+该前沿保留了“更快但定位稍差”与“更慢但定位更准”的有效折中。
+
+最终执行点只在离散基线 $s_A$ 和连续代表点 $s_F$ 之间，按照“最坏后验半径优先、行动时间次之”的规则选取
+\begin{equation}
+  s^*=\operatorname*{lex\,arg\,min}_{s\in\{s_A,s_F\}}
+  \left(R_{\mathrm{wc}}(s),T(s),s_x,s_y\right).
+  \label{eq:q2-final-choice}
+\end{equation}
+
+若连续优化不可用，则直接令 $s^*=s_A$。
+
+\noindent\textbf{命题 6：}{\kaishu 式~\eqref{eq:q2-final-choice} 所得最终推荐点在当前统一有限场景评分口径下不劣于离散基线，即}
+\begin{equation}
+  R_{\mathrm{wc}}(s^*)\leq R_{\mathrm{wc}}(s_A).
+  \label{eq:q2-safe-choice}
+\end{equation}
+
+\noindent\textbf{证明：}
+式~\eqref{eq:q2-final-choice} 的候选集显式包含 $s_A$，且词典序首先最小化 $R_{\mathrm{wc}}$，因而所得结果的最坏后验半径不可能大于 $R_{\mathrm{wc}}(s_A)$。\hfill$\square$
+
+该不劣性仅针对相同有限源场景、相同误差样本、相同几何近似和相同后验评分器成立，不将其扩大为连续原问题的全局最优性证明。
+
+\subsubsection{近优候选区域与求解流程}
+
+题目除要求给出一个第二检测点外，还要求给出候选区域。因此，在保证接收域 $\widehat{\mathcal F}_g$ 和可能接收域 $\widehat{\mathcal F}_p$ 之外，再对离散与连续两个代表点分别给出定位效果近优区域。对参考点 $s_{\mathrm{ref}}$ 和容差 $\eta\in\{0.05,0.10\}$，定义
+\begin{equation}
+  \mathcal C_\eta(s_{\mathrm{ref}})
+  =\left\{s\in\widehat{\mathcal F}_g:
+  R_{\mathrm{wc}}(s)\leq
+  (1+\eta)R_{\mathrm{wc}}(s_{\mathrm{ref}}),\quad
+  T(s)\leq T(s_{\mathrm{ref}})+10
+  \right\}.
+  \label{eq:q2-near-optimal-region}
+\end{equation}
+
+计算时在代表点附近进行局部采样，保留满足式~\eqref{eq:q2-near-optimal-region} 的已评分点，并用其凸包作为 $5\%$ 与 $10\%$ 近优域的绘图近似。该凸包内部并未逐点评分，故它是候选区间的可审计数值近似，不是概率意义的置信区间或连续近优性证书。
+
+综上，问题二的完整求解流程为：
+\begin{enumerate}
+  \item 由 $S_1$ 和 $\theta_1$ 构造示向误差角区，再加入目标圆域和最大接收距离；
+  \item 将含圆弧的 $K_1$ 保守多边形化为 $\widehat K_1$，并计算当前最小包围圆半径 $R_0$；
+  \item 构造保证接收域 $\widehat{\mathcal F}_g$ 和可能接收域 $\widehat{\mathcal F}_p$；
+  \item 生成前向---横向、中心环状及特殊离散候选，以 $J(s)$ 选出基线点 $s_A$；
+  \item 在三档额外行动时间预算下优化 $\Phi_{\mathrm{rob}}(s)$，生成连续 Fisher 候选；
+  \item 对所有连续候选重新计算 $R_{\mathrm{wc}}(s)$ 与 $T(s)$，构造 Pareto 前沿并选出代表点 $s_F$；
+  \item 在 $s_A$ 与 $s_F$ 中以最坏后验半径优先、行动时间次之的规则得到最终检测点 $s^*$；
+  \item 围绕代表点局部采样，输出 $5\%$ 和 $10\%$ 近优候选区域。
+\end{enumerate}
+
+若以半平面数为 $H$、源区域顶点数为 $m$、离散候选数为 $N_A$、源场景数为 $N_S$，则半平面交的直接枚举主要为 $O(H^3)$，最小包围圆的小规模支撑点枚举最高为 $O(m^4)$，离散复评分需对 $N_AN_S$ 组源位置场景及三个误差样本计算后验区域。连续搜索的计算量由时间预算数、初始点数、迭代上限和固定的 $16$ 个试探方向共同控制。对本题中不超过数十个顶点和场景的规模，上述方法能够保持计算过程确定且可逐项核验。
 
 \section{模型检验与结果分析}
 
@@ -273,6 +754,12 @@
   \newblock Solving geometric problems with the rotating calipers[C/OL]//Proceedings of IEEE MELECON'83.
   \newblock Athens, Greece: IEEE, 1983: A10.02/1--4[2026-09-11].
   \newblock \url{https://www-cgrl.cs.mcgill.ca/~godfried/research/calipers.html}.
+
+  \bibitem{fisher1922}
+  Fisher R A.
+  \newblock On the mathematical foundations of theoretical statistics[J].
+  \newblock Philosophical Transactions of the Royal Society of London. Series A,
+  1922, 222: 309--368. DOI: \url{https://doi.org/10.1098/rsta.1922.0009}.
 
   \bibitem{cumcmthesis}
   LaTeX Studio.

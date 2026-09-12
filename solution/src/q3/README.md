@@ -14,6 +14,10 @@
 
 总时间任务默认启用 `rolling_time_mode="scenario"`。它不会修改 Q2：只读取 Q2 的顶层、离散、连续多预算、Pareto 和保证接收区域候选。对每个候选，从当前后验区域确定性抽取有限源位置场景，并枚举测角误差端点和零误差；每个分支真正构造测后后验、生成 27 m 清除覆盖并计算路线。估值同时加入该路线终点到最近其他未处理源后验中心的续程时间，避免单源局部最优造成跨源长距离折返。训练种子在 P90、CVaR 和最坏值三种口径中选择了 CVaR；只有“测量动作 + CVaR 后续成本 + 10 s 余量”小于立即清除成本才测量。单次评价墙钟软截止为 1 s，截止前已有完整候选时返回 `partial` 最优候选，否则安全回退清除。该方法只能称为“有限场景下的总虚拟时间滚动优化”，不是严格全局最优。
 
+多源路线第一部分已经实现，但正式默认保持关闭，必须显式设置 `multi_source_route_mode="insertion_2opt"` 才启用。路线层把每个活动源表示为“入口—既有单源处理—保守出口”服务块，用最便宜插入构造开放路线，再用确定性 2-opt 消除局部折返；实际每次仍只执行一个动作，响应后重新规划。它不改变 Q2 候选、单源 measure/clear 结论、联合批测、27 m 清除点集合或失败复测，路线超时和异常会回退现有一步选择器。路线排序默认有独立的 0.25 s 真实墙钟软截止；缓存和有限束搜索属于尚未获授权的第二部分，未实施。
+
+固定种子 20263912 的 4 场景同场景离线配对中，当前策略与 `insertion_2opt` 均 4/4 完整清除。新路线 3/4 场更快：平均总虚拟时间由 5966.309 s 降至 5377.612 s，P90/最坏值由 6717.235 s 降至 5876.333 s；平均 resolve 移动由 17285.294 m 降至 14399.309 m，平均跨源移动由 14914.362 m 降至 12767.182 m，平均长跳次数由 4.50 降至 3.25。平均真实墙钟由 137.362 s 增至 149.947 s。第 2 场总虚拟时间反增 391.246 s；118 次路线调用中 `ok/partial/fallback=72/7/39`，因此小样本结果只说明路线方向有实际收益迹象，不足以自动改正式默认。完整结果见 `output/q3_offline/route_benchmark.{json,md}`。
+
 单次 FIM 真实墙钟上限默认 10 s，5%/10%近优域计算在线关闭。较早的“扫描点后立即单频道局部折返”在 8 组配对中平均增加 1359.27 s，仍只保留在 `tests/q3/benchmark_adaptive.py`。新的共享点批测见 `tests/q3/benchmark_joint.py`：在当时 6 s 单步上限的 8 组历史基准中，三种策略均完整清除；保证接收模式平均虚拟时间由 7553.85 s 降至 6880.95 s，6/8 场景更快，因此进入正式默认；`all_active` 仅作实验对照。10 s 默认值尚未重跑该正式基准。
 
 固定种子 20260911 的 8 场景独立配对中，当前基线和“仅清除失败条件复测”均 8/8 完整清除。任务一平均虚拟时间由 6880.952 s 降至 6679.347 s，6/8 场景更快，P90 由 8085.280 s 降至 7511.044 s；平均失败清除数由 113.750 降至 74.125。60 次复测均得到有效示向，单场平均真实墙钟仅增加约 2.344 s，因此 Q3 默认启用。完整结果见 `output/q3_offline/failed_clear_remeasure_benchmark.json` 和 `test_res_q3_failed_clear_remeasure.md`。
@@ -29,7 +33,9 @@
 | 清除失败后的同点条件复测 | `q3/fallback_remeasure.py` |
 | 后验网格、路线和旧半径平方判据 | `q3/adaptive.py` |
 | 同点多频道联合批测 | `q3/joint.py` |
+| 多源服务块、开放路线估值、最便宜插入和2-opt | `q3/route.py` |
 | 四策略训练/验证基准 | `tests/q3/benchmark_rolling_time.py` |
+| 当前策略与多源路线同场景配对 | `tests/q3/benchmark_route.py` |
 
 `cli.py` 仍只运行本地 `sim.fake.FakeSimulator`，但默认参数已与在线策略一致：最多五次细化、单次 FIM 10 s。上线前可运行：
 
@@ -44,6 +50,7 @@ python -B tests/q3/benchmark_adaptive.py --cases 8 --workers 4 --output output/q
 python -B tests/q3/benchmark_joint.py --cases 8 --workers 4 --output output/q3_offline/joint_benchmark.json
 python -B tests/q3/benchmark_failed_clear_remeasure.py --cases 8 --workers 4 --fim-cpu-time-limit-s 10 --output output/q3_offline/failed_clear_remeasure_benchmark.json
 python -B tests/q3/benchmark_rolling_time.py --train-cases 2 --validation-cases 4 --train-seed 20260912 --validation-seed 20262912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --output output/q3_offline/rolling_time_benchmark.json
+python -B tests/q3/benchmark_route.py --cases 4 --seed 20263912 --workers 4 --fim-cpu-time-limit-s 10 --rolling-cpu-time-limit-s 1 --route-cpu-time-limit-s 0.25 --output output/q3_offline/route_benchmark.json
 ```
 
 官方通信、三动作演练烟雾测试和现场日志入口位于 `src/sim/`。必须先按 `tests/sim/verify_manual.md` 完成 smoke；在人工核对通过前，不得把本地通过理解为 Q3 官方策略通过。

@@ -41,6 +41,12 @@ def main(argv=None):
         "--rolling-risk-metric",
         choices=("p90", "cvar", "worst", "mean"), default="cvar",
     )
+    parser.add_argument(
+        "--multi-source-route-mode",
+        choices=("off", "insertion_2opt"), default="off",
+        help="多源顺序：保持当前策略或启用最便宜插入加2-opt",
+    )
+    parser.add_argument("--route-cpu-time-limit-s", type=float, default=0.25)
     args = parser.parse_args(argv)
     if args.max_actions < 1:
         parser.error("--max-actions 必须为正整数。")
@@ -50,6 +56,8 @@ def main(argv=None):
         parser.error("--fim-cpu-time-limit-s 必须为正数。")
     if args.rolling_cpu_time_limit_s <= 0:
         parser.error("--rolling-cpu-time-limit-s 必须为正数。")
+    if args.route_cpu_time_limit_s <= 0:
+        parser.error("--route-cpu-time-limit-s 必须为正数。")
     client = FakeSimulator([FakeSource(3, (1200.0, 100.0), 1000.0)])
     policy = Q3Policy(
         max_refinements=args.max_refinements,
@@ -59,6 +67,8 @@ def main(argv=None):
         rolling_time_mode=args.rolling_time_mode,
         rolling_cpu_time_limit_s=args.rolling_cpu_time_limit_s,
         rolling_risk_metric=args.rolling_risk_metric,
+        multi_source_route_mode=args.multi_source_route_mode,
+        route_cpu_time_limit_s=args.route_cpu_time_limit_s,
     )
     summary = run_policy(policy, client, max_actions=args.max_actions)
     path = Path(args.output)
@@ -74,6 +84,7 @@ def main(argv=None):
     print(f"清除失败复测模式：{args.failed_clear_remeasure_mode}")
     print(f"总时间滚动模式：{args.rolling_time_mode}")
     print(f"滚动风险口径：{args.rolling_risk_metric}")
+    print(f"多源路线模式：{args.multi_source_route_mode}")
     return 0
 
 
