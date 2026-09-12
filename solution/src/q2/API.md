@@ -6,9 +6,9 @@
 
 ### `Q2Config`
 
-`Q2Config(error_deg=1.005, arena_radius=1800.0, min_receive_radius=1000.0, max_receive_radius=1500.0, circle_sides=24, candidate_region_sides=72, scenario_limit=8, uncertainty_seconds_per_metre=0.5, continuous_fim_enabled=True, fim_samples_per_edge=4, fim_initial_step_m=200.0, fim_min_step_m=2.0, fim_max_iterations=120, fim_seed_limit=10, fim_extra_time_budgets_s=(15.0,30.0,60.0), fim_execution_extra_time_s=30.0, fim_cpu_time_limit_s=8.0, near_optimal_region_mode="online", near_optimal_region_cpu_limit_s=5.0, near_optimal_time_slack_s=10.0, near_optimal_tolerances=(0.05,0.10))`
+`Q2Config(error_deg=1.005, arena_radius=1800.0, min_receive_radius=1000.0, max_receive_radius=1500.0, circle_sides=24, q2_version="new", candidate_region_sides=72, scenario_limit=8, uncertainty_seconds_per_metre=0.5, continuous_fim_enabled=True, fim_samples_per_edge=4, fim_initial_step_m=200.0, fim_min_step_m=2.0, fim_max_iterations=120, fim_seed_limit=10, fim_extra_time_budgets_s=(15.0,30.0,60.0), fim_execution_extra_time_s=30.0, fim_cpu_time_limit_s=8.0, near_optimal_region_mode="online", near_optimal_region_cpu_limit_s=5.0, near_optimal_time_slack_s=10.0, near_optimal_tolerances=(0.05,0.10))`
 
-各半径和 FIM 步长单位 m，`error_deg` 单位 °；`circle_sides` 和 `candidate_region_sides` 是圆的多边形近似边数；`scenario_limit` 是集合评分场景上限；`uncertainty_seconds_per_metre` 只用于报告工程折中分数。`fim_extra_time_budgets_s` 是相对离散基线增加的虚拟动作时间预算，默认分别多 15/30/60 s；`fim_execution_extra_time_s` 指定连续分支可作为执行点的最大额外虚拟时间。`fim_cpu_time_limit_s` 是本地 CPU 墙钟保护上限，与机器狗虚拟时间不同。`near_optimal_region_mode` 可取 `off/online/offline`，后两种分别使用稀疏/较密局部采样。
+各半径和 FIM 步长单位 m，`error_deg` 单位 °。`q2_version` 可取 `new/legacy`，默认 `new`：新版从 `circle_sides` 边粗外包出发，在实际交会边界补充端点切线和超差切线；旧版只使用固定 `circle_sides` 边外切正多边形。该开关只改变源位置圆域的保守近似方式，不改变离散候选、连续 FIM、Pareto 或近优域流程。`candidate_region_sides` 仍是保证/可能接收域的圆近似方向数。`scenario_limit` 是集合评分场景上限；`uncertainty_seconds_per_metre` 只用于报告工程折中分数。`fim_extra_time_budgets_s` 是相对离散基线增加的虚拟动作时间预算，默认分别多 15/30/60 s；`fim_execution_extra_time_s` 指定连续分支可作为执行点的最大额外虚拟时间。`fim_cpu_time_limit_s` 是本地 CPU 墙钟保护上限，与机器狗虚拟时间不同。`near_optimal_region_mode` 可取 `off/online/offline`，后两种分别使用稀疏/较密局部采样。
 
 ### `build_candidate_regions(source_region, *, min_receive_radius=1000.0, max_receive_radius=1500.0, circle_sides=72)`
 
@@ -25,6 +25,8 @@
 ### `plan_second_point(first_observation, *, current_channel=None, config=Q2Config())`
 
 Q2 常用入口。`first_observation` 必须是 `BearingObservation(..., result="direction", bearing_deg=...)`；函数先构造物理源位置域，再调用 `plan_measurement`。
+
+命令行 `src/q2/cli.py`、`src/q3/cli.py`、`src/q4/cli.py` 和 `src/sim/cli.py` 均接受 `--q2-version new|legacy`，默认 `new`。必须在一次新测试启动前选择版本；正在运行的策略状态不支持中途换版。
 
 ## 输入 JSON
 
@@ -50,7 +52,7 @@ Q2 常用入口。`first_observation` 必须是 `BearingObservation(..., result=
 | `result` | 字符串 | 必须为 `direction` | 第一检测结果 |
 | `bearing_deg` | 数值 | °；当前模型按角度制使用 | 第一示向度 |
 | `current_channel` | 整数或省略 | `1..20` | 移动前机器人频道 |
-| `config_overrides` | 对象 | `Q2Config` 同名字段 | 可选试验配置 |
+| `config_overrides` | 对象 | `Q2Config` 同名字段 | 可选试验配置；可用 `{"q2_version":"legacy"}` 切换旧版 |
 
 最小合法输入即上例去掉 `current_channel` 和 `config_overrides`。边界示例：
 
@@ -133,6 +135,7 @@ plan = plan_second_point(obs)
 
 - 第一观测必须为有效 `direction`，频道为 `1..20`。
 - 物理源位置域同时使用示向扇区、半径 1800 m 目标域和距首测点不超过 1500 m 的接收约束。
+- `q2_version="new"` 时，源位置域保留初始整圆外切半平面，并只增加包含相应真实圆盘的切线，因此自适应结果不会排除真实源且嵌套于原粗外包；`legacy` 时完整保留固定外切正多边形。`region.approximation.q2_version` 和 `kind` 可审计实际分支。
 - 保证接收域是 `max distance ≤ min_receive_radius` 的保守内近似；可能接收域是 Minkowski 和的保守外近似。
 - 单次测量时间为移动距离/5 + 换频道 0 或 1 s + 检测 5 s。
 - `worst_case_radius_m` 只覆盖有限代表点与有限误差样本，不是连续最坏情形证明。

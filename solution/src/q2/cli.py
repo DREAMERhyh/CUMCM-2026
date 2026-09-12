@@ -28,6 +28,10 @@ def main(argv=None):
                         metavar=("X", "Y", "BEARING_DEG"))
     parser.add_argument("--channel", type=int, default=1)
     parser.add_argument("--error-deg", type=float, default=1.005)
+    parser.add_argument(
+        "--q2-version", choices=("new", "legacy"), default="new",
+        help="Q2源区域算法版本；默认new，legacy为固定外切正多边形",
+    )
     parser.add_argument("--output")
     parser.add_argument("--result-json")
     parser.add_argument("--no-show", action="store_true")
@@ -47,11 +51,13 @@ def main(argv=None):
     plan = plan_second_point(
         observation,
         config=Q2Config(error_deg=args.error_deg,
+                        q2_version=args.q2_version,
                         near_optimal_region_mode=args.region_mode,
                         near_optimal_region_cpu_limit_s=(
                             25.0 if args.region_mode == "offline" else 5.0
                         )),
     )
+    print(f"Q2版本：{args.q2_version}")
     selected = plan["baseline"]["selected"]
     print("离散搜索基线：")
     print(f"  第二检测点：({selected['point'][0]:.3f}, {selected['point'][1]:.3f})")
