@@ -14,7 +14,10 @@ PAPER_DIR = Path(__file__).resolve().parents[1]
 SOLUTION_SRC = PAPER_DIR.parent / "solution" / "src"
 sys.path.insert(0, str(SOLUTION_SRC))
 
-from common.domain import build_region_from_observations  # noqa: E402
+from common.domain import (  # noqa: E402
+    build_region_from_observations,
+    representative_points,
+)
 from common.models import BearingObservation  # noqa: E402
 from q1.geometry import bearing_planes, contains  # noqa: E402
 from q2.candidates import (  # noqa: E402
@@ -58,8 +61,8 @@ def _draw_k1_layers(axis, exact_vertices, outer_vertices, sensor,
                            lw=1.2, alpha=0.55, label=r"$K_1$", zorder=3))
     _draw_wedge(axis, sensor, bearing_deg, error_deg, 1900.0)
     axis.plot(*sensor, marker="o", ms=4, color="black", zorder=6)
-    axis.text(sensor[0]+25.0, sensor[1]-55.0, r"$S_1$",
-              ha="left", va="top", zorder=6, clip_on=True)
+    axis.text(sensor[0]-25.0, sensor[1]+45.0, r"$S_1$",
+              ha="right", va="bottom", zorder=6, clip_on=True)
     axis.set_aspect("equal", adjustable="box")
     axis.grid(alpha=0.13)
     axis.set_xlabel(r"$x/\mathrm{m}$")
@@ -173,6 +176,74 @@ def plot_reception_regions():
     save_figure(fig, "q2-reception-regions")
 
 
+def plot_source_scenarios():
+    """Illustrate the three raw point types and the eight-point cap."""
+    vertices = [
+        (-2.6, -0.9), (0.7, -1.35), (2.45, 0.25),
+        (1.05, 2.25), (-1.85, 1.75),
+    ]
+    midpoints = [
+        ((first[0]+second[0])/2, (first[1]+second[1])/2)
+        for first, second in zip(vertices, vertices[1:]+vertices[:1])
+    ]
+    center = (
+        sum(point[0] for point in vertices)/len(vertices),
+        sum(point[1] for point in vertices)/len(vertices),
+    )
+    selected = representative_points(vertices, limit=8)
+
+    fig, ax = plt.subplots(figsize=(6.6, 4.8))
+    ax.add_patch(Polygon(
+        vertices, closed=True, facecolor="#dbeafe", edgecolor="#315f7d",
+        lw=1.4, alpha=0.78, zorder=1,
+    ))
+    ax.scatter(
+        [point[0] for point in vertices],
+        [point[1] for point in vertices],
+        marker="s", s=42, color="#1d4ed8", label=r"vertices $V_i$",
+        zorder=3,
+    )
+    ax.scatter(
+        [point[0] for point in midpoints],
+        [point[1] for point in midpoints],
+        marker="^", s=48, color="#d97706", label=r"midpoints $M_i$",
+        zorder=3,
+    )
+    ax.scatter(
+        [center[0]], [center[1]], marker="*", s=115, color="#7e22ce",
+        label=r"vertex-mean center $G$", zorder=4,
+    )
+    ax.scatter(
+        [point[0] for point in selected],
+        [point[1] for point in selected],
+        marker="o", s=135, facecolors="none", edgecolors="#dc2626",
+        linewidths=1.45, label=r"retained in $\mathcal{S}_A$", zorder=5,
+    )
+    for index, point in enumerate(vertices, start=1):
+        ax.annotate(
+            rf"$V_{index}$", point, xytext=(5, 6),
+            textcoords="offset points", fontsize=9,
+        )
+    for index, point in enumerate(midpoints, start=1):
+        ax.annotate(
+            rf"$M_{index}$", point, xytext=(5, -13),
+            textcoords="offset points", fontsize=9,
+        )
+    ax.annotate(r"$G$", center, xytext=(7, 5),
+                textcoords="offset points", fontsize=9)
+    ax.text(-0.85, 0.75, r"$\widehat K_1$", fontsize=13,
+            ha="center", va="center", color="#315f7d")
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlim(-3.15, 3.0)
+    ax.set_ylim(-1.8, 2.75)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.16), ncol=2,
+              frameon=False, fontsize=9)
+    fig.subplots_adjust(left=0.05, right=0.98, bottom=0.04, top=0.82)
+    save_figure(fig, "q2-source-scenarios")
+
+
 def main():
     plt.rcParams.update({
         "font.family": "DejaVu Serif",
@@ -181,6 +252,7 @@ def main():
     })
     plot_source_outer_approximation()
     plot_reception_regions()
+    plot_source_scenarios()
 
 
 if __name__ == "__main__":
