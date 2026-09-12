@@ -13,9 +13,11 @@ SRC = SOLUTION / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from common.domain import build_region_from_observations
+from common.domain import (build_region_from_observations,
+                           circle_outer_planes,
+                           extend_region_with_observation)
 from common.models import BearingObservation
-from q1.geometry import contains
+from q1.geometry import bearing_planes, contains, intersect_halfplanes
 from q2.planner import Q2Config, plan_second_point
 
 
@@ -33,6 +35,150 @@ class Q2AlgorithmTestbench(unittest.TestCase):
         self.assertEqual(region["status"], "bounded")
         self.assertTrue(contains(region["planes"], self.source))
         self.assertTrue(region["approximation"]["conservative"])
+
+    def test_adaptive_outer_region_is_nested_and_tighter(self):
+        sides = 24
+        uniform_planes = [
+            *circle_outer_planes((0.0, 0.0), 1800.0, sides),
+            *circle_outer_planes(self.sensor, 1500.0, sides),
+            *bearing_planes(
+                self.sensor, self.observation.bearing_deg, 1.005
+            ),
+        ]
+        uniform = intersect_halfplanes(uniform_planes)
+        adaptive = build_region_from_observations(
+            [self.observation], circle_sides=sides
+        )
+        self.assertEqual(
+            adaptive["approximation"]["kind"],
+            "adaptive_circumscribed_polygon",
+        )
+        self.assertTrue(adaptive["approximation"]["target_met"])
+        self.assertTrue(all(
+            contains(uniform_planes, vertex)
+            for vertex in adaptive["vertices"]
+        ))
+        uniform_excess = max(
+            math.dist(vertex, self.sensor)-1500.0
+            for vertex in uniform["vertices"]
+        )
+        adaptive_excess = max(
+            math.dist(vertex, self.sensor)-1500.0
+            for vertex in adaptive["vertices"]
+        )
+        self.assertLess(adaptive_excess, uniform_excess)
+        self.assertLess(adaptive["area"], uniform["area"])
+
+    def test_version_switch_keeps_new_default_and_exact_legacy_branch(self):
+        current = build_region_from_observations([self.observation])
+        legacy = build_region_from_observations(
+            [self.observation], circle_sides=24, q2_version="legacy"
+        )
+        self.assertEqual(current["approximation"]["q2_version"], "new")
+        self.assertEqual(
+            current["approximation"]["kind"],
+            "adaptive_circumscribed_polygon",
+        )
+        self.assertEqual(legacy["approximation"]["q2_version"], "legacy")
+        self.assertEqual(
+            legacy["approximation"]["kind"],
+            "circumscribed_regular_polygon",
+        )
+        legacy_planes = [
+            *circle_outer_planes((0.0, 0.0), 1800.0, 24),
+            *circle_outer_planes(self.sensor, 1500.0, 24),
+            *bearing_planes(
+                self.sensor, self.observation.bearing_deg, 1.005
+            ),
+        ]
+        exact_legacy = intersect_halfplanes(legacy_planes)
+        self.assertEqual(legacy["planes"], legacy_planes)
+        self.assertEqual(legacy["vertices"], exact_legacy["vertices"])
+        self.assertTrue(contains(current["planes"], self.source))
+        self.assertTrue(contains(legacy["planes"], self.source))
+        self.assertLessEqual(current["area"], legacy["area"] + 1e-7)
+
+    def test_legacy_extension_stays_on_legacy_branch(self):
+        region = build_region_from_observations(
+            [self.observation], circle_sides=24, q2_version="legacy"
+        )
+        second_sensor = (400.0, -450.0)
+        true = math.degrees(math.atan2(
+            self.source[1]-second_sensor[1],
+            self.source[0]-second_sensor[0],
+        )) % 360.0
+        second = BearingObservation(
+            second_sensor, 1, "direction", true-0.4
+        )
+        posterior = extend_region_with_observation(
+            region, second, circle_sides=24, q2_version="legacy"
+        )
+        self.assertEqual(posterior["status"], "bounded")
+        self.assertEqual(posterior["approximation"]["q2_version"], "legacy")
+        self.assertEqual(
+            posterior["approximation"]["kind"],
+            "circumscribed_regular_polygon",
+        )
+        self.assertTrue(contains(posterior["planes"], self.source))
+
+    def test_q2_version_rejects_invalid_value_and_mixed_extension(self):
+        with self.assertRaises(ValueError):
+            Q2Config(q2_version="unknown")
+        legacy = build_region_from_observations(
+            [self.observation], q2_version="legacy"
+        )
+        with self.assertRaises(ValueError):
+            extend_region_with_observation(
+                legacy, self.observation, q2_version="new"
+            )
+
+    def test_adaptive_extension_keeps_compatible_truth(self):
+        region = build_region_from_observations([self.observation])
+        second_sensor = (400.0, -450.0)
+        true = math.degrees(math.atan2(
+            self.source[1]-second_sensor[1],
+            self.source[0]-second_sensor[0],
+        )) % 360.0
+        second = BearingObservation(
+            second_sensor, 1, "direction", true-0.4
+        )
+        posterior = extend_region_with_observation(
+            region, second, circle_sides=24
+        )
+        self.assertEqual(posterior["status"], "bounded")
+        self.assertTrue(contains(posterior["planes"], self.source))
+        self.assertTrue(posterior["approximation"]["conservative"])
+        self.assertTrue(posterior["approximation"]["target_met"])
+
+    def test_inactive_circle_boundaries_do_not_change_region(self):
+        observations = [
+            BearingObservation((-500.0, 0.0), 1, "direction", 0.0),
+            BearingObservation((500.0, 0.0), 1, "direction", 180.0),
+            BearingObservation((0.0, -500.0), 1, "direction", 90.0),
+        ]
+        sides = 16
+        uniform_planes = circle_outer_planes(
+            (0.0, 0.0), 1800.0, sides
+        )
+        for observation in observations:
+            uniform_planes.extend(circle_outer_planes(
+                observation.position, 1500.0, sides
+            ))
+            uniform_planes.extend(bearing_planes(
+                observation.position, observation.bearing_deg, 1.005
+            ))
+        uniform = intersect_halfplanes(uniform_planes)
+        adaptive = build_region_from_observations(
+            observations, circle_sides=sides
+        )
+        self.assertEqual(adaptive["vertices"], uniform["vertices"])
+        self.assertAlmostEqual(adaptive["area"], uniform["area"])
+        self.assertEqual(
+            adaptive["approximation"]["endpoint_tangent_count"], 0
+        )
+        self.assertEqual(
+            adaptive["approximation"]["adaptive_tangent_count"], 0
+        )
 
     def test_plan_is_deterministic_and_selected_from_candidates(self):
         first = plan_second_point(self.observation)
@@ -195,6 +341,10 @@ class Q2CliTestbench(unittest.TestCase):
             self.assertEqual(len(data["selected_point"]), 2)
             self.assertIn("candidate_regions", data)
             self.assertEqual(data["continuous_fim"]["status"], "ok")
+            self.assertEqual(data["config"]["q2_version"], "new")
+            self.assertEqual(
+                data["region"]["approximation"]["q2_version"], "new"
+            )
             self.assertIn("selected_score", data["continuous_fim"])
             self.assertIn("离散搜索基线", process.stdout)
             self.assertIn("连续FIM优化", process.stdout)
@@ -202,6 +352,27 @@ class Q2CliTestbench(unittest.TestCase):
             self.assertIn("near_optimal_regions", data["baseline"])
             self.assertIn("near_optimal_regions", data["continuous_fim"])
             self.assertTrue(data["candidates"][0]["candidate_id"].startswith("C"))
+
+    def test_cli_can_select_legacy_before_plotting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            json_path = Path(directory) / "legacy.json"
+            image_path = Path(directory) / "legacy.png"
+            process = subprocess.run(
+                [sys.executable, str(SRC/"q2"/"cli.py"), "--demo",
+                 "--q2-version", "legacy", "--region-mode", "off",
+                 "--no-show", "--output", str(image_path),
+                 "--result-json", str(json_path)],
+                capture_output=True, text=True, timeout=60,
+            )
+            self.assertEqual(process.returncode, 0, process.stderr)
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+            self.assertEqual(data["config"]["q2_version"], "legacy")
+            self.assertEqual(
+                data["region"]["approximation"]["kind"],
+                "circumscribed_regular_polygon",
+            )
+            self.assertIn("Q2版本：legacy", process.stdout)
+            self.assertGreater(image_path.stat().st_size, 10_000)
 
 
 def _inside_convex(polygon, point, tolerance=1e-6):

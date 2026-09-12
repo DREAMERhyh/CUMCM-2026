@@ -11,13 +11,15 @@ SRC = Path(__file__).resolve().parents[2] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from common.domain import build_region_from_observations
 from common.models import Action, BearingObservation
 from q1.geometry import intersect_halfplanes
+from q2.planner import Q2Config
 from q3.adaptive import (CLEAR_RADIUS_M, DEFAULT_CLEAR_GRID_SPACING_M,
                          measurement_is_worthwhile,
                          posterior_clear_points)
 from q3.coverage import nearest_coverage_distance, ring7, strip_clear_points
-from q3.cache import Q3ComputationCache
+from q3.cache import Q3ComputationCache, config_fingerprint
 from q3.fallback_remeasure import evaluate_failed_clear_remeasure
 from q3.policy import Q3Policy, Q3State, SourceTrack
 from q3.route import (RouteEstimate, RoutePlan, SourceServiceSpec,
@@ -25,7 +27,8 @@ from q3.route import (RouteEstimate, RoutePlan, SourceServiceSpec,
                       improve_two_opt, materialize_service_block,
                       plan_beam_cached_route, plan_service_route)
 from q3.rolling_time import (clear_plan_cost, evaluate_candidate,
-                             evaluate_total_time_decision, risk_summary)
+                             evaluate_total_time_decision, risk_summary,
+                             _posterior_branch)
 from q4.policy import Q4Policy
 from runtime.runner import run_policy
 from sim.fake import FakeSimulator, FakeSource
@@ -545,7 +548,7 @@ class Q3TheoryTestbench(unittest.TestCase):
         self.assertEqual(set(track.fallback_points), {(20.0, 0.0),
                                                        (40.0, 0.0)})
 
-    def test_failed_fallback_clear_sets_one_pending_check_and_q4_disables_it(self):
+    def test_failed_clear_pending_check_and_q4_uses_its_own_gate(self):
         policy = Q3Policy(joint_batch_mode="off")
         track = SourceTrack(
             3, region=self._small_region(), refinement_stopped=True,
@@ -564,7 +567,10 @@ class Q3TheoryTestbench(unittest.TestCase):
         })
         self.assertTrue(track.fallback_remeasure_pending)
         self.assertEqual(track.failed_clear_disks, [((0.0, 0.0), 20.0)])
-        self.assertEqual(Q4Policy().failed_clear_remeasure_mode, "off")
+        q4_policy = Q4Policy()
+        self.assertEqual(q4_policy.failed_clear_remeasure_mode, "gated")
+        self.assertEqual(q4_policy.rolling_time_mode, "off")
+        self.assertEqual(q4_policy.directional_rolling_mode, "scenario")
 
     def test_refinement_consumes_q2_hybrid_recommendation(self):
         policy = Q3Policy()
@@ -590,9 +596,37 @@ class Q3TheoryTestbench(unittest.TestCase):
         self.assertTrue(policy.q2_config.continuous_fim_enabled)
         self.assertEqual(policy.q2_config.fim_cpu_time_limit_s, 10.0)
         self.assertEqual(policy.q2_config.near_optimal_region_mode, "off")
+        self.assertEqual(policy.q2_config.q2_version, "new")
         self.assertEqual(policy.max_opportunistic_per_source, 3)
-        self.assertEqual(policy.rolling_cpu_time_limit_s, 1.0)
+        self.assertEqual(policy.rolling_cpu_time_limit_s, 3.0)
         planner.assert_called_once()
+
+    def test_q3_legacy_version_reaches_measurement_and_rolling_posteriors(self):
+        policy = Q3Policy(q2_version="legacy")
+        state = Q3State()
+        action = Action("measure", "measure-version", (-600.0, -300.0), 3)
+        policy._record_measurement(state, action, {
+            "measure_result": "direction", "svd_deg": 35.0,
+        })
+        track = state.sources[3]
+        self.assertEqual(policy.q2_config.q2_version, "legacy")
+        self.assertEqual(
+            track.region["approximation"]["kind"],
+            "circumscribed_regular_polygon",
+        )
+        with patch(
+            "q3.rolling_time.build_region_from_observations",
+            wraps=build_region_from_observations,
+        ) as builder:
+            _posterior_branch(
+                track, (400.0, -450.0), (220.0, 280.0), 0.0,
+                policy.q2_config,
+            )
+        self.assertEqual(builder.call_args.kwargs["q2_version"], "legacy")
+        self.assertNotEqual(
+            config_fingerprint(Q2Config()),
+            config_fingerprint(Q2Config(q2_version="legacy")),
+        )
 
     def test_posterior_grid_uses_27_metres_with_safe_cover_radius(self):
         self.assertEqual(DEFAULT_CLEAR_GRID_SPACING_M, 27.0)

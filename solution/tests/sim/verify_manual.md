@@ -51,10 +51,16 @@ python src/sim/cli.py --problem 3 --robot-id "202601101010" --confirm-ready
 Q3 当前与离线演练对齐的完整策略命令为：
 
 ```powershell
-python src/sim/cli.py --problem 3 --mode policy --robot-id "202601101010" --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 1 --confirm-ready --confirm-policy
+python src/sim/cli.py --problem 3 --mode policy --robot-id "202601101010" --q2-version new --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 3 --confirm-ready --confirm-policy
 ```
 
-其中 10 s 是每次 Q2/FIM 规划的真实墙钟上限，1 s 是每次 Q3 滚动分支评价的额外真实墙钟软截止；默认仍有 15 s 退出安全余量。运行结束后还应核对 `平均用时 = 虚拟时间 / 清除成功数`；无清除成功源时应显示无法计算。运行前检查日志目标不存在，并确认界面仍为 Q3 演练测试。
+Q4 当前与离线演练对齐、保持多源路线关闭的命令为：
+
+```powershell
+python src/sim/cli.py --problem 4 --mode policy --robot-id "202601101010" --q2-version new --max-refinements 2 --q4-scan-mode triangular37 --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 3 --q4-long-clear-tail-mode adaptive --multi-source-route-mode off --confirm-ready --confirm-policy
+```
+
+其中 `--q2-version new` 是默认新版；需要回归旧版时只能在开始新测试前改成 `legacy`。10 s 是每次 Q2/FIM 规划的真实墙钟上限，3 s 是每次 Q3/Q4 滚动分支评价的额外真实墙钟软截止；默认仍有 15 s 退出安全余量。Q4 长尾救援默认开启，多源路线因尚无稳定逐场收益而保持关闭；如要测试 `insertion_2opt`，必须新开一次演练并重新核对，不能在运行中切换。运行结束后还应核对 `平均用时 = 虚拟时间 / 清除成功数`；无清除成功源时应显示无法计算。运行前检查日志目标不存在，并确认界面与 `--problem` 对应。
 
 ## 五 正式测试门禁
 

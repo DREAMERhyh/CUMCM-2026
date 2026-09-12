@@ -346,7 +346,7 @@ def main(argv=None):
     parser.add_argument("--validation-seed", type=int, default=20261912)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--fim-cpu-time-limit-s", type=float, default=10.0)
-    parser.add_argument("--rolling-cpu-time-limit-s", type=float, default=1.0)
+    parser.add_argument("--rolling-cpu-time-limit-s", type=float, default=3.0)
     parser.add_argument(
         "--output", default="output/q3_offline/rolling_time_benchmark.json"
     )

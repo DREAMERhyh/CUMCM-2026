@@ -32,7 +32,7 @@ def main(argv=None):
     for width in args.widths:
         for case in cases:
             tasks.append((
-                case, "beam_cached", 10.0, 1.0, 0.25, 1.0,
+                case, "beam_cached", 10.0, 3.0, 0.25, 1.0,
                 4096, width, 512,
             ))
             labels.append((width, case["case_id"]))
@@ -77,7 +77,7 @@ def main(argv=None):
         "widths": list(args.widths),
         "fixed_parameters": {
             "fim_cpu_time_limit_s": 10.0,
-            "rolling_cpu_time_limit_s": 1.0,
+            "rolling_cpu_time_limit_s": 3.0,
             "route_cpu_time_limit_s": 1.0,
             "cache_capacity": 4096,
             "beam_max_expansions": 512,
