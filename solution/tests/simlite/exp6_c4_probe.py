@@ -1,7 +1,7 @@
-"""[实验轮6-猜4] 探针条带（probe_strip）快筛（30 局）。
+"""[实验轮6-猜4] 保底清除点条带（probe_strip）快筛（30 局）。
 
 臂 A= Q3BatchPolicy() 磁盘默认（strip 链保底）；臂 B= Q3BatchPolicy(probe_strip=True)
-（蜂窝密排探针：r=27 区域 ~7-19 探针 vs 条带 76-228 点）。
+（蜂窝密排保底清除点：r=27 区域 ~7-19 保底清除点 vs 条带 76-228 点）。
 """
 
 import os

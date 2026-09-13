@@ -51,12 +51,12 @@ def nearest_coverage_distance(point, centers):
 
 
 def probe_plan(region, cover_radius=20.0, max_probes=76):
-    """确定性探针计划：逐环六边形密排，覆盖区域 MEC 圆盘（几何保证）。
+    """确定性保底清除点计划：逐环六边形密排，覆盖区域 MEC 圆盘（几何保证）。
 
-    对 MEC(c, r)：探针 = 中心 + 环 j (j=1..k) 半径 20j 上 6j 个均匀点，
+    对 MEC(c, r)：保底清除点 = 中心 + 环 j (j=1..k) 半径 20j 上 6j 个均匀点，
     k = ceil(r/20)。相邻环点间距 2·20j·sin(π/6j) < 40 = 盘径 2×20（重叠），
     半径方向相邻环差 20（相切）→ 蜂窝密排覆盖 B(c, 20k) ⊇ B(c, r)。
-    源 ∈ region ⊆ B(c, r) → 探针并集内必有命中点（每源 ≤1+3k(k+1) 次
+    源 ∈ region ⊆ B(c, r) → 保底清除点并集内必有命中点（每源 ≤1+3k(k+1) 次
     clear，而非条带链 76-228 次）。确定性最坏语义，无需概率假设。
     """
     if region.get("status") != "bounded":

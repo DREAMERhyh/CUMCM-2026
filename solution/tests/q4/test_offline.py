@@ -166,7 +166,7 @@ class Q4OfflineClearTestbench(unittest.TestCase):
         self.assertEqual(summary.exit_reason, "user_exit")
 
     def test_probe_plan_is_bounded_for_large_posterior(self):
-        """B2 轮6 蜂窝探针的清除次数上界 1+3k(k+1)，k=ceil(r/20)。"""
+        """B2 轮6 蜂窝保底清除点的清除次数上界 1+3k(k+1)，k=ceil(r/20)。"""
         observations = [
             BearingObservation((1000.0, 0.0), 7, "direction", 180.0),
             BearingObservation((0.0, 1000.0), 7, "direction", 270.0),
