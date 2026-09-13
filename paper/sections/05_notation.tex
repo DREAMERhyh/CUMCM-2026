@@ -60,3 +60,28 @@
   \end{tabularx}
 \end{table}
 
+\begin{table}[H]
+  \centering
+  \caption{问题三符号说明}
+  \label{tab:q3-symbols}
+  \begin{tabularx}{0.94\textwidth}{@{}cXc@{}}
+    \toprule
+    符号 & 含义 & 单位 \\
+    \midrule
+    $\mathcal D$ & 以 $O_0$ 为圆心、半径为 $1800\ \mathrm{m}$ 的目标圆域 & -- \\
+    $a$ & 八点扫描布局的环半径，本文取 $960$ & $\mathrm{m}$ \\
+    $P_k$ & 第 $k$ 个扫描停点，$k=0,1,\ldots,7$ & $\mathrm{m}$ \\
+    $p$ & 机器狗的当前位置坐标 & $\mathrm{m}$ \\
+    $v$ & 机器狗移动速度，题设取 $5$ & $\mathrm{m/s}$ \\
+    $\tau_{\mathrm{sw}},\tau_{\mathrm{meas}}$ & 换频时间和单次检测时间 & $\mathrm{s}$ \\
+    $\mathcal C_f,\mathcal C_a,\mathcal C_c$ & 已发现、判定无源和已经清除的频道集合 & -- \\
+    $\widehat K_j^{(m)}$ & 频道 $j$ 获得 $m$ 次有效示向度后的源位置外近似 & -- \\
+    $c_j,r_j$ & $\widehat K_j^{(m)}$ 的最小包围圆圆心和半径 & $\mathrm{m}$ \\
+    $r_{\mathrm{cert}}$ & 可靠清除证书阈值，程序取 $19.9$ & $\mathrm{m}$ \\
+    $r_{\mathrm{try}}$ & 中心试清除阈值，程序取 $40$ & $\mathrm{m}$ \\
+    $M$ & 每个源在扫描后允许的补充定位次数上限，程序取 $2$ & 次 \\
+    $F(A,j)$ & 访问中心集合 $A$ 且以中心 $j$ 结束的最短内部路径长度 & $\mathrm{m}$ \\
+    $Q_j$ & 频道 $j$ 的有序清除点队列 & -- \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

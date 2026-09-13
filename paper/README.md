@@ -24,6 +24,7 @@ latexmk -xelatex main.tex
 - `figures/`：论文图片；建议使用含义明确的英文文件名。
 - `code/`：完整、可运行的源程序副本；支撑材料中也应包含相同源文件。
 - `code/q2_region_figures.py`：复用现有 Q1/Q2 几何函数生成问题二的固定外切正多边形局部放大图、接收域关系图、有限源位置场景抽样图和离散候选点构造图，同时核对粗外包最大径向误差公式及候选点与实际生成函数的一致性。
+- `code/q3_figures.py`：生成问题三的八点等角扫描覆盖图和搜索、定位、排序、清除决策树，同时保留 PDF 矢量图与 PNG 预览图。
 
 ## 本次章节拆分
 
@@ -36,7 +37,7 @@ latexmk -xelatex main.tex
 - `03_problem_analysis.tex`：问题分析。
 - `04_model_assumptions.tex`：模型假设。
 - `05_notation.tex`：符号说明。
-- `06_q1_model.tex` 至 `09_q4_model.tex`：模型建立与求解的四个问题；问题三、问题四目前仅为不输出正文的占位文件，后续直接在对应文件写入其 `\subsection` 及内容。
+- `06_q1_model.tex` 至 `09_q4_model.tex`：模型建立与求解的四个问题；问题三已写入按执行流程展开的模型初稿，问题四目前仍为不输出正文的占位文件。
 - `10_validation_results.tex`：模型检验与结果分析。
 - `11_evaluation_improvement.tex`：模型评价与改进。
 - `12_conclusion.tex`：结论。
