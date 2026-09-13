@@ -90,7 +90,7 @@ def _clamp_to_polygon(point, vertices):
 
 
 def scan_path_length(points, start=(0.0, 0.0)):
-    """从 ``start`` 出发依次访问全部停点的总路程（最后不回原点）。"""
+    """从 ``start`` 出发依次访问全部驻留点的总路程（最后不回原点）。"""
     total = 0.0
     previous = start
     for point in points:
@@ -102,9 +102,9 @@ def scan_path_length(points, start=(0.0, 0.0)):
 def scan_phase_virtual_time(points, *, start=(0.0, 0.0), start_channel=1):
     """扫描阶段虚拟时间拆分为移动/检测/切换三段（复用官方时间模型）。
 
-    与 Q3State 扫描顺序一致：每个停点以"当前频道"开头依次测 20 个频道
-    （首测不切换，其余 19 次各计 1s 切换），上一停点末尾频道即下一停点
-    的首测频道，因此停点之间不产生额外切换。时间全部由 ``measure_cost``
+    与 Q3State 扫描顺序一致：每个驻留点以"当前频道"开头依次测 20 个频道
+    （首测不切换，其余 19 次各计 1s 切换），上一驻留点末尾频道即下一驻留点
+    的首测频道，因此驻留点之间不产生额外切换。时间全部由 ``measure_cost``
     累计，禁止手写秒数。
     """
     movement = switching = measurement = 0.0
@@ -219,7 +219,7 @@ def pure_ring8_analytical_bounds(ring_radius=960.0, *, worst_edge_deg=22.5,
 
 def maximum_coverage_distance(points, *, rho_step=5.0, theta_step_deg=0.5,
                               max_rho=1800.0):
-    """极坐标网格遍历 D(0,1800)，返回最大的最近停点距离及其位置。"""
+    """极坐标网格遍历 D(0,1800)，返回最大的最近驻留点距离及其位置。"""
     worst = -1.0
     worst_point = None
     rho_count = int(round(max_rho / rho_step)) + 1
@@ -247,7 +247,7 @@ def maximum_coverage_distance(points, *, rho_step=5.0, theta_step_deg=0.5,
 
 def verify_coverage_numerically(points, *, rho_step=5.0, theta_step_deg=0.5,
                                 coverage_radius=1000.0, max_rho=1800.0):
-    """按规格断言数值覆盖：网格上最大最近停点距离 ≤ coverage_radius。"""
+    """按规格断言数值覆盖：网格上最大最近驻留点距离 ≤ coverage_radius。"""
     result = maximum_coverage_distance(
         points, rho_step=rho_step, theta_step_deg=theta_step_deg,
         max_rho=max_rho,

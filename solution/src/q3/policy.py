@@ -97,7 +97,7 @@ class Q3Policy:
     def _scan_action(self, state):
         while state.scan_point_index < len(self.coverage_points):
             # 鸽笼早停（默认关闭）：题目保证总源数 <=16，发现满 16 源后
-            # 剩余频道 absent 是逻辑必然，跳过剩余扫描停点（确定性语义，
+            # 剩余频道 absent 是逻辑必然，跳过剩余扫描驻留点（确定性语义，
             # 不依赖任何概率假设）。absent 判定在扫描收尾统一完成。
             if (self.pigeonhole_early_stop
                     and len(state.sources) >= 16):
@@ -116,7 +116,7 @@ class Q3Policy:
                 if channel in state.sources:
                     # 猜1'（默认关闭）：已发现频道的重复测量按交会价值跳测——
                     # 源区中心对既有的最大观测张角 < 阈值 或 区域已收缩到
-                    # 阈值内（快到证书）时，该停点的测量无新增保证，省
+                    # 阈值内（快到证书）时，该驻留点的测量无新增保证，省
                     # 5s+切换（移动照走）。规则前提：每频道至多一源（附件2
                     # 保证）→ 该频道不可能再发现新源。
                     track = state.sources[channel]

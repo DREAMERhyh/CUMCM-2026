@@ -23,7 +23,7 @@ def main(argv=None):
     parser.add_argument("--fim-cpu-time-limit-s", type=float, default=6.0)
     parser.add_argument("--scan-layout", choices=sorted(SCAN_LAYOUTS),
                         default="ring7",
-                        help="扫描停点布局（默认 ring7，保持线上行为）")
+                        help="扫描驻留点布局（默认 ring7，保持线上行为）")
     args = parser.parse_args(argv)
     if args.max_actions < 1:
         parser.error("--max-actions 必须为正整数。")

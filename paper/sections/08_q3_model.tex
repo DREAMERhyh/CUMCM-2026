@@ -29,14 +29,14 @@
 
 式~\eqref{eq:q3-measure-time} 和式~\eqref{eq:q3-clear-time} 贯穿后续选点与路径排序；数值优化所消耗的现实计算时间只受程序墙钟上限控制，不混入上述虚拟行动时间。
 
-\subsubsection{八个等角停点的初始扫描}
+\subsubsection{八个等角驻留点的初始扫描}
 
 目标分布区域记为
 \begin{equation}
   \mathcal D=\overline B(O_0,1800).
 \end{equation}
 
-由于每个全向干扰源的有效接收半径至少为 $1000\ \mathrm{m}$，只要扫描停点集合对 $\mathcal D$ 的覆盖半径不超过 $1000\ \mathrm{m}$，就能保证每个源至少在一个停点被发现。本文取环半径 $a=960\ \mathrm{m}$，在圆周上设置八个等角停点
+由于每个全向干扰源的有效接收半径至少为 $1000\ \mathrm{m}$，只要扫描驻留点集合对 $\mathcal D$ 的覆盖半径不超过 $1000\ \mathrm{m}$，就能保证每个源至少在一个驻留点被发现。本文取环半径 $a=960\ \mathrm{m}$，在圆周上设置八个等角驻留点
 \begin{equation}
   P_k=O_0+a
   \left(\cos\frac{k\pi}{4},\sin\frac{k\pi}{4}\right),
@@ -44,26 +44,26 @@
   \label{eq:q3-eight-points}
 \end{equation}
 
-机器狗从原点出发，按照 $P_0,P_1,\ldots,P_7$ 的顺序移动。在每个停点先检测当前频道，再依次检测其他频道，以避免在停点切换时增加一次无意义的换频。八点分布、行进顺序及半径为 $1000\ \mathrm{m}$ 的保证接收圆如图~\ref{fig:q3-eight-point-scan} 所示。
+机器狗从原点出发，按照 $P_0,P_1,\ldots,P_7$ 的顺序移动。在每个驻留点先检测当前频道，再依次检测其他频道，以避免在驻留点切换时增加一次无意义的换频。八点分布、行进顺序及半径为 $1000\ \mathrm{m}$ 的保证接收圆如图~\ref{fig:q3-eight-point-scan} 所示。
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.78\textwidth]{figures/q3-eight-point-scan.pdf}
-  \caption{问题三初始扫描的八个等角停点及其保证接收覆盖。机器狗由 $O_0$ 前往 $P_0$，再沿红色箭头依次访问其余停点；$X^*$ 为相邻两停点角平分方向上的最不利边界位置}
+  \caption{问题三初始扫描的八个等角驻留点及其保证接收覆盖。机器狗由 $O_0$ 前往 $P_0$，再沿红色箭头依次访问其余驻留点；$X^*$ 为相邻两驻留点角平分方向上的最不利边界位置}
   \label{fig:q3-eight-point-scan}
 \end{figure}
 
-\noindent\textbf{命题 6：}{\kaishu 式~\eqref{eq:q3-eight-points} 给出的八个停点能够以小于 $1000\ \mathrm{m}$ 的覆盖半径覆盖整个目标圆域 $\mathcal D$。}
+\noindent\textbf{命题 6：}{\kaishu 式~\eqref{eq:q3-eight-points} 给出的八个驻留点能够以小于 $1000\ \mathrm{m}$ 的覆盖半径覆盖整个目标圆域 $\mathcal D$。}
 
 \noindent\textbf{证明：}
-任取 $X\in\mathcal D$，以 $O_0$ 为极点写成极坐标 $(\rho,\theta)$，其中 $0\leq\rho\leq1800$。八个停点将圆周方向等分，因此必存在某个 $P_k$，使 $X$ 与 $P_k$ 的极角差 $\Delta$ 满足 $|\Delta|\leq\pi/8$。由余弦定理，
+任取 $X\in\mathcal D$，以 $O_0$ 为极点写成极坐标 $(\rho,\theta)$，其中 $0\leq\rho\leq1800$。八个驻留点将圆周方向等分，因此必存在某个 $P_k$，使 $X$ 与 $P_k$ 的极角差 $\Delta$ 满足 $|\Delta|\leq\pi/8$。由余弦定理，
 \begin{equation}
   \|X-P_k\|_2^2
   =\rho^2+a^2-2a\rho\cos\Delta.
   \label{eq:q3-cover-distance}
 \end{equation}
 
-对固定 $\Delta$，式~\eqref{eq:q3-cover-distance} 关于 $\rho$ 是凸二次函数，故其在闭区间 $[0,1800]$ 上的最大值出现在端点；对固定 $\rho$，距离随 $|\Delta|$ 在 $[0,\pi/8]$ 上单调增加。因此只需比较圆心处和目标圆周角平分方向处。记最大最近停点距离为 $d_{\mathrm{cov}}$，代入 $a=960$ 得
+对固定 $\Delta$，式~\eqref{eq:q3-cover-distance} 关于 $\rho$ 是凸二次函数，故其在闭区间 $[0,1800]$ 上的最大值出现在端点；对固定 $\rho$，距离随 $|\Delta|$ 在 $[0,\pi/8]$ 上单调增加。因此只需比较圆心处和目标圆周角平分方向处。记最大最近驻留点距离为 $d_{\mathrm{cov}}$，代入 $a=960$ 得
 \begin{equation}
   \begin{aligned}
     d_{\mathrm{cov}}
@@ -75,11 +75,11 @@
   \end{aligned}
 \end{equation}
 
-故任一干扰源均落入至少一个扫描停点的最小有效接收圆内，八点布局覆盖整个目标圆域。\hfill$\square$
+故任一干扰源均落入至少一个扫描驻留点的最小有效接收圆内，八点布局覆盖整个目标圆域。\hfill$\square$
 
 在扫描点 $P_k$ 检测频道 $j$ 后，根据返回结果分别处理。
 
-当返回近距离结果时，题设表明机器狗距干扰源不超过 $5\ \mathrm{m}$。由于清除作用距离为 $20\ \mathrm{m}$，策略立即在 $P_k$ 对频道 $j$ 执行清除；若返回有效示向度，则把观测加入频道 $j$ 的历史并更新源位置区域；若返回无信号，则继续当前扫描，默认不据此切除源位置区域。
+当返回近距离结果时，题设表明机器狗距干扰源不超过 $5\ \mathrm{m}$。由于清除作用距离为 $20\ \mathrm{m}$，策略立即在 $P_k$ 对频道 $j$ 执行清除；若返回有效示向度，则把观测加入频道 $j$ 的历史并更新源位置区域；若返回无信号，则继续当前扫描。
 
 设频道 $j$ 已在位置 $S_{j,1},\ldots,S_{j,m}$ 获得示向度 $\theta_{j,1},\ldots,\theta_{j,m}$。沿用问题一的角度误差半平面交，并加入问题二的目标圆域与接收距离上界，实时计算使用的源位置外近似为
 \begin{equation}
@@ -117,7 +117,7 @@
 
 若 $r_j\leq15\ \mathrm{m}$，或 $\alpha_j(P_k)<30^\circ$，则跳过该频道在 $P_k$ 的重复检测；否则利用机器狗已经到达 $P_k$ 的机会补充一次示向度。该规则不会影响对该频道“存在源”的判断，因为频道已经被发现；它只是一项减少低价值检测的工程筛选，不作为最优性结论。
 
-八个停点扫描完成后，根据命题6，每个真实干扰源至少在一个停点进入有效接收范围。因此，将至少返回过一次示向度但尚未清除的频道归入 $\mathcal C_f$，将其余从未发现的频道归入 $\mathcal C_a$，并满足
+八个驻留点扫描完成后，根据命题6，每个真实干扰源至少在一个驻留点进入有效接收范围。因此，将至少返回过一次示向度但尚未清除的频道归入 $\mathcal C_f$，将其余从未发现的频道归入 $\mathcal C_a$，并满足
 \begin{equation}
   \mathcal C_f\cup\mathcal C_a\cup\mathcal C_c
   =\{1,2,\ldots,20\},
