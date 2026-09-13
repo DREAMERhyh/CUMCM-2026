@@ -1,4 +1,4 @@
-"""Matplotlib desktop player for Q3 simulator action logs."""
+"""Matplotlib desktop player for Q3/Q4 simulator action logs."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from tools.log_visualize.model import load_replay, resolve_log_path
 ARENA_RADIUS_M = 1800.0
 SOLUTION_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_LOG_DIR = SOLUTION_ROOT / "output" / "sim"
+PLAYBACK_SPEEDS = (1, 2, 4, 16)
 
 
 def _format_virtual_clock(seconds):
@@ -46,6 +47,15 @@ def _response_text(frame):
     return "accepted" if frame.response.get("accepted") else "rejected"
 
 
+def _replay_view_limit(replay):
+    """Return one stable square limit that contains the arena and full route."""
+    extent = ARENA_RADIUS_M
+    for frame in replay.frames:
+        x, y = frame.robot_position
+        extent = max(extent, abs(x), abs(y))
+    return extent + max(150.0, extent * 0.05)
+
+
 class LogPlayer:
     def __init__(self, replay):
         import matplotlib.pyplot as plt
@@ -56,6 +66,7 @@ class LogPlayer:
         self.index = 0
         self.speed = 1
         self.playing = False
+        self.view_limit = _replay_view_limit(replay)
 
         plt.rcParams["font.sans-serif"] = [
             "Microsoft YaHei", "SimHei", "DejaVu Sans"
@@ -64,7 +75,7 @@ class LogPlayer:
         self.figure = plt.figure(figsize=(13.5, 8.2), facecolor="#f7f8f5")
         manager = self.figure.canvas.manager
         if manager is not None:
-            manager.set_window_title("Q3 模拟器日志回放")
+            manager.set_window_title(f"Q{replay.problem} 模拟器日志回放")
         self.axis = self.figure.add_axes([0.055, 0.18, 0.62, 0.76])
         self.info_axis = self.figure.add_axes([0.705, 0.22, 0.275, 0.67])
         self.info_axis.axis("off")
@@ -87,14 +98,14 @@ class LogPlayer:
         next_axis = self.figure.add_axes([0.185, 0.065, 0.10, 0.055])
         reset_axis = self.figure.add_axes([0.30, 0.065, 0.10, 0.055])
         play_axis = self.figure.add_axes([0.43, 0.065, 0.15, 0.055])
-        speed_axis = self.figure.add_axes([0.68, 0.035, 0.13, 0.11])
+        speed_axis = self.figure.add_axes([0.68, 0.02, 0.13, 0.145])
 
         self.previous_button = Button(previous_axis, "上一步")
         self.next_button = Button(next_axis, "下一步")
         self.reset_button = Button(reset_axis, "重置")
         self.play_button = Button(play_axis, "自动播放")
         self.speed_buttons = RadioButtons(
-            speed_axis, ("1x", "2x", "4x"), active=0,
+            speed_axis, tuple(f"{speed}x" for speed in PLAYBACK_SPEEDS), active=0,
             activecolor="#2a9d8f",
         )
         speed_axis.set_title("播放速度", fontsize=9)
@@ -205,6 +216,7 @@ class LogPlayer:
         warning = "；".join(frame.warnings[-2:]) if frame.warnings else "无"
         return (
             f"文件：{self.replay.path.name}\n"
+            f"模式：Q{self.replay.problem}\n"
             f"动作：{frame.index}/{len(self.replay.records)}\n"
             f"序号：{sequence}  类型：{action_name}  频道：{channel}\n"
             f"反馈：{_response_text(frame)}\n"
@@ -264,19 +276,20 @@ class LogPlayer:
             edgecolors="white", linewidths=0.8, s=110, zorder=10,
         )
 
-        axis.set_xlim(-1950, 1950)
-        axis.set_ylim(-1950, 1950)
+        axis.set_xlim(-self.view_limit, self.view_limit)
+        axis.set_ylim(-self.view_limit, self.view_limit)
         axis.set_aspect("equal", adjustable="box")
         axis.set_xlabel("x / m")
         axis.set_ylabel("y / m")
         axis.set_title(
-            f"Q3 动作日志回放  |  动作 {frame.index}/{len(self.replay.records)}"
+            f"Q{self.replay.problem} 动作日志回放  |  "
+            f"动作 {frame.index}/{len(self.replay.records)}"
         )
         axis.axhline(0, color="#b0bec5", linewidth=0.7, zorder=1)
         axis.axvline(0, color="#b0bec5", linewidth=0.7, zorder=1)
         axis.grid(color="#dfe7e3", linewidth=0.6, alpha=0.65)
         legend = [
-            Patch(facecolor="#dff3df", edgecolor="#75a875", label="1800 m 圆形区域"),
+            Patch(facecolor="#dff3df", edgecolor="#75a875", label="1800 m 圆域"),
             Patch(
                 facecolor="#f4a261", edgecolor="#d97706", alpha=0.5,
                 label="已测相交区域",
@@ -329,11 +342,11 @@ class LogPlayer:
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="逐动作播放 Q3 官方模拟器 JSONL 日志。"
+        description="逐动作播放 Q3/Q4 官方模拟器 JSONL 日志。"
     )
     parser.add_argument(
         "log", nargs="?",
-        help="日志路径或 output/sim 下的文件名；省略时读取最新 Q3 日志。",
+        help="日志路径或 output/sim 下的文件名；省略时读取最新 Q3/Q4 日志。",
     )
     parser.add_argument(
         "--log-dir", default=str(DEFAULT_LOG_DIR),
@@ -372,7 +385,8 @@ def main(argv=None):
             print(f"已保存：{output}")
         summary = replay.time_summary
         print(
-            f"日志：{path}\n动作：{len(replay.records)}；"
+            f"日志：{path}\n模式：Q{replay.problem}；"
+            f"动作：{len(replay.records)}；"
             f"成功清除：{replay.clear_successes}；"
             f"虚拟时间：{summary.total_virtual_s:.6f} s；"
             f"现实墙钟：{summary.real_wall_s:.3f} s"

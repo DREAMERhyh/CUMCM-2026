@@ -1,4 +1,4 @@
-"""Parse Q3 JSONL logs into deterministic action-by-action display frames."""
+"""Parse Q3/Q4 JSONL logs into deterministic action-by-action display frames."""
 
 from __future__ import annotations
 
@@ -63,6 +63,7 @@ class TimeSummary:
 @dataclass(frozen=True)
 class Replay:
     path: Path
+    problem: int
     records: tuple[dict, ...]
     frames: tuple[Frame, ...]
     time_summary: TimeSummary
@@ -101,8 +102,17 @@ def read_jsonl(path):
     return records
 
 
+def problem_from_log_path(path):
+    """Infer Q3 or Q4 from the required q3_/q4_ filename prefix."""
+    name = Path(path).name.lower()
+    for problem in (3, 4):
+        if name.startswith(f"q{problem}_"):
+            return problem
+    raise ValueError("日志文件名必须以 q3_ 或 q4_ 开头。")
+
+
 def resolve_log_path(value=None, *, log_dir=None):
-    """Resolve an explicit log or choose the newest q3_*.jsonl."""
+    """Resolve an explicit log or choose the newest Q3/Q4 JSONL log."""
     directory = Path(log_dir or "output/sim").resolve()
     if value is not None:
         candidate = Path(value)
@@ -113,9 +123,12 @@ def resolve_log_path(value=None, *, log_dir=None):
             if nested.is_file():
                 return nested.resolve()
         raise FileNotFoundError(f"找不到日志：{value}")
-    candidates = list(directory.glob("q3_*.jsonl"))
+    candidates = [
+        *directory.glob("q3_*.jsonl"),
+        *directory.glob("q4_*.jsonl"),
+    ]
     if not candidates:
-        raise FileNotFoundError(f"{directory} 中没有 q3_*.jsonl。")
+        raise FileNotFoundError(f"{directory} 中没有 q3_*.jsonl 或 q4_*.jsonl。")
     return max(candidates, key=lambda item: (item.stat().st_mtime_ns, item.name))
 
 
@@ -315,6 +328,7 @@ def build_replay(path, records, *, error_deg=1.005, circle_sides=16):
     )
     return Replay(
         path=Path(path).resolve(),
+        problem=problem_from_log_path(path),
         records=tuple(records),
         frames=tuple(frames),
         time_summary=summary,
