@@ -43,6 +43,7 @@
 - 2026-09-11 新增：Q2 规划统一墙钟预算 `Q2Config.planning_wall_clock_budget_s`（默认 120 s，`common/budget.py` 共享 deadline，候选评分/FIM/近优域三阶段 anytime，返回 `planning_wall_time_used_s`/`planning_timed_out`；`fim_cpu_time_limit_s` 仍作为子上限生效，默认行为不变）。基准：`tests/q2/benchmark_anytime.py`（3 区域 × 6/60/300 s，实测预算 ≥ ~5.7 s 时 FIM 自然收敛、输出逐位一致）。
 - 2026-09-11 新增：Q3 扫描布局 `scan_layout ∈ {ring7, hub_ring6, pure_ring8}`（`q3/coverage.py`）。hub_ring6（原点+6 环点 r=1200）覆盖最坏 968.9 m、扫描虚拟总时 2273.0 s；pure_ring8（8 环点 r=960）覆盖最坏 984.2 m、扫描虚拟总时 2172.7 s（比 ring7 的 2633.0 s 省 460 s）。2026-09-12 决策：**默认布局切换为 pure_ring8**（覆盖解析验证 984.21 m ≤ 995 设计裕量；扫描省 460 s）；回退方式：`Q3Policy(scan_layout="ring7")` 或 `run_drill.py --scan-layout ring7`。正式测试前若演练对账出现漏检，将按手册 E 节回退/切 hub_ring6。
 - 【考古修正 2026-09-12】历史文字"组合策略平均 5873.934 s"（≈6000s）来自并行策略轨道（rolling_time/adaptive/joint 全套、20m 清除网格）在 4 个合成场景上的**本地规则替身离线对拍**（见 `test_res_q3_rolling_time.md`），**从未在官方模拟器实测**；该轨道代码不在当前 HEAD 分支线。当前主线性能演进与 V 形曲线解释见 `docs/性能演进考古_20260912.md`；当前默认（pure_ring8 + max_actions 8000 + use_optimal_stop=True + Q3BatchPolicy 入口）为官方实测可比口径下的历史最优（今晨 5 局 5/5 对账通过、同源数比凌晨交错快 16%~48%），已冻结，改动须走决策表回滚路径。
+- 2026-09-13 新增问题三论文初稿：`paper/sections/08_q3_model.tex` 已按当前 `Q3BatchPolicy` 的执行流程写入八点扫描、观测区域递推、Q2 补充选点、Held--Karp 开放路径、TSPN 清除点和探针队列模型；`paper/sections/03_problem_analysis.tex`、`04_model_assumptions.tex`、`05_notation.tex` 已同步。图片由 `paper/code/q3_figures.py` 生成至 `paper/figures/q3-eight-point-scan.{pdf,png}` 与 `q3-decision-tree.{pdf,png}`。静态检查未发现缺失引用、重复标签或 LaTeX 环境不配对，Poppler 渲染确认两张 PDF 无裁切且中文字体已嵌入；Linux 无 XeLaTeX，整篇分页和交叉引用仍须在 Windows 连续编译两次后人工检查。论文明确保留实现边界：76 个探针只在进入保底时 `r<=80 m` 才保留完整覆盖证明。
 
 ## Important interfaces and nesting
 
@@ -76,8 +77,9 @@ python -B tests/q2/benchmark_200.py --count 200 --seed 20260911 --workers 16
 - 队员决定 Q3/Q4 的独立对拍判据、参考实现与人工验收流程后，再建立完整测试体系。
 - 队员按 `tests/sim/verify_manual.md` 启动 Q3、Q4 演练，先分别完成三动作 smoke 并核对模拟器界面与本地 JSONL；此前不要运行正式测试。
 - Q3 smoke 通过后，在线完整策略显式使用 `--max-refinements 2 --fim-cpu-time-limit-s 6`；6 s 是每次规划墙钟上限，不是虚拟动作时间。
+- 队员审阅问题三初稿中的执行参数和证明，重点决定是否修改“补充定位两次后仍有 `r>80 m` 时 76 探针不具备完整连续覆盖证书”的实现或论文表述；随后在 Windows XeLaTeX 连续编译 `paper/main.tex` 两次，检查新增符号表、两张图、分页和 Held--Karp 引用。
 - 正式提交前由人工审核历史记录、AI 使用日志、状态总表和生成测试数据。
 
 ## Handoff
 
-从 `快速上手指南.md` 查看结构和状态，从分题 README 找算法到代码的映射，从 API.md 获取测试数据契约。模拟器阶段先读 `src/sim/README.md`，再由队员执行 `tests/sim/verify_manual.md`。不要把自动测试“通过”理解为人工验收或官方模拟器成绩。
+从 `快速上手指南.md` 查看结构和状态，从分题 README 找算法到代码的映射，从 API.md 获取测试数据契约。问题三论文初稿及两图已完成静态核验，下一步先由队员审阅探针覆盖边界，再在 Windows XeLaTeX 检查整篇版式。模拟器阶段先读 `src/sim/README.md`，再由队员执行 `tests/sim/verify_manual.md`。不要把自动测试“通过”理解为人工验收或官方模拟器成绩。

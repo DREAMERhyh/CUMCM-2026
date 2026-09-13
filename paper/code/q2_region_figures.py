@@ -99,7 +99,7 @@ def plot_source_outer_approximation():
                   color="0.45", lw=0.8, ls=":", zorder=2)
         axis.scatter([contact[0]], [contact[1]], color="#245b78",
                      s=19, zorder=6)
-        axis.annotate(label, contact, xytext=(-17, vertical_offset),
+        axis.annotate(label, contact, xytext=(-34, vertical_offset),
                       textcoords="offset points", fontsize=9)
     axis.scatter([display_vertex[0]], [display_vertex[1]], marker="o",
                  facecolors="white", edgecolors="#ac4444", s=28, zorder=7)
@@ -109,9 +109,9 @@ def plot_source_outer_approximation():
               [circle_midpoint[1], display_vertex[1]],
               color="#ac4444", lw=2.0, zorder=6)
     axis.annotate(
-        r"$\Delta_{\mathrm{out}}=R\!\left(\sec\frac{\pi}{N}-1\right)$",
+        r"$\Delta_{\mathrm{out}}$",
         ((circle_midpoint[0] + display_vertex[0]) / 2.0, 0.0),
-        xytext=(radius * 0.43, -radius * 0.31), textcoords="data",
+        xytext=(radius * 0.28, -radius * 0.20), textcoords="data",
         fontsize=9, arrowprops={"arrowstyle": "-", "lw": 0.7},
     )
     angle_radius = radius * 0.23
