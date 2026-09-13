@@ -48,6 +48,11 @@ def main(argv=None):
         help=("Q3 扫描停点布局（仅 --problem 3 生效；缺省跟随 Q3Policy "
               "当前默认值）"),
     )
+    parser.add_argument(
+        "--q4-scan-mode", choices=("triangular25", "triangular37", "grid121"),
+        default="triangular25",
+        help="Q4发现扫描网（仅 --problem 4 生效）",
+    )
     parser.add_argument("--exit-safety-margin-s", type=float, default=15.0)
     parser.add_argument("--log", help="新建的逐动作 JSONL 日志路径")
     parser.add_argument(
@@ -91,6 +96,7 @@ def main(argv=None):
         policy = Q4Policy(
             max_refinements=args.max_refinements,
             fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+            scan_mode=args.q4_scan_mode,
         )
         max_actions = args.max_actions or 4000
     log_path = args.log or _default_log(args.problem)
