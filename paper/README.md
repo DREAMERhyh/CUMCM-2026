@@ -19,12 +19,31 @@ latexmk -xelatex main.tex
 
 - `main.tex`：电子版论文主文件，保留文档类、全局格式、标题、参考文献和附录环境；默认不生成承诺书和编号专用页。
 - `sections/`：按论文结构拆分的子文件，由 `main.tex` 通过 `\input` 按顺序载入；标签、公式、图表和文献引用仍在同一次编译中全局编号。
-- `paper.tex`：兼容入口，内容仅为 `\input{main}`；原有编辑器配置仍可继续编译，但建议改为直接编译 `main.tex`。
 - `cumcmthesis.cls`：原模板文档类，版本 2.9（2026-08-26）。
 - `cumcm2026.sty`：论文常用排版设置及 2026 年 AI 工具使用声明命令。
 - `figures/`：论文图片；建议使用含义明确的英文文件名。
 - `code/`：完整、可运行的源程序副本；支撑材料中也应包含相同源文件。
 - `code/q2_region_figures.py`：复用现有 Q1/Q2 几何函数生成问题二的固定外切正多边形局部放大图、接收域关系图、有限源位置场景抽样图和离散候选点构造图，同时核对粗外包最大径向误差公式及候选点与实际生成函数的一致性。
+
+## 本次章节拆分
+
+2026-09-13 起，论文从单一 `paper.tex` 拆分为 `main.tex` 与 `sections/`；已删除旧的 `paper.tex`，请只编译 `main.tex`。主文件按原来的顺序载入各子文件，并在其中保留参考文献和 `appendices` 环境，因此拆分本身不会重置章节、公式、图表、脚注或参考文献编号，也不会影响跨章节的 `\label`、`\ref`、`\eqref` 和 `\cite`。
+
+各子文件的职责如下：
+
+- `01_abstract.tex`：摘要和关键词。
+- `02_problem_statement.tex`：问题重述。
+- `03_problem_analysis.tex`：问题分析。
+- `04_model_assumptions.tex`：模型假设。
+- `05_notation.tex`：符号说明。
+- `06_q1_model.tex` 至 `09_q4_model.tex`：模型建立与求解的四个问题；问题三、问题四目前仅为不输出正文的占位文件，后续直接在对应文件写入其 `\subsection` 及内容。
+- `10_validation_results.tex`：模型检验与结果分析。
+- `11_evaluation_improvement.tex`：模型评价与改进。
+- `12_conclusion.tex`：结论。
+- `13_ai_statement.tex`：AI 工具使用声明，位置固定在参考文献之前。
+- `14_supporting_materials.tex`、`15_source_code.tex`：附录中的支撑材料文件列表和源程序。
+
+新增内容应写入对应的 `sections/` 文件；只有全局格式、标题、章节载入顺序、参考文献条目和附录环境才在 `main.tex` 中维护。新增公式、图表或文献引用后，使用 XeLaTeX 至少连续编译两次，并人工检查 PDF 的分页、图表位置和交叉引用。
 
 ## 论文建模写作规范
 
