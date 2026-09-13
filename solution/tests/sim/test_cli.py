@@ -87,6 +87,10 @@ class SimulatorCliOutputTestbench(unittest.TestCase):
             policy_class.call_args.kwargs["scan_mode"], "triangular25"
         )
         self.assertEqual(
+            policy_class.call_args.kwargs["q2_candidate_mode"],
+            "hybrid_pareto",
+        )
+        self.assertEqual(
             policy_class.call_args.kwargs["failed_clear_remeasure_mode"],
             "gated",
         )

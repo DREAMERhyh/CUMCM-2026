@@ -1,13 +1,18 @@
 """Q4 mixed-source policy built on the Q3 execution state machine."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
+import time
 
 from common.time_model import measure_cost
+from q2.planner import plan_measurement
+from q3.cache import (config_fingerprint, point_fingerprint,
+                      posterior_fingerprint)
 from q3.policy import Q3Policy, Q3State
 from q3.route import SourceServiceSpec, plan_service_route
 
 from .belief import Q4Measurement, build_joint_belief
+from .candidate_planner import build_integrated_probe_plan
 from .directional import (adaptive_four_sided_points,
                           certified_probe_points, grid121, triangular25,
                           triangular37)
@@ -22,6 +27,9 @@ class ProbeBundle:
     kind: str = "unknown"
     pending_point: tuple[float, float] | None = None
     outcomes: list[str] = field(default_factory=list)
+    candidate_sources: dict[tuple[float, float], str] = field(
+        default_factory=dict
+    )
 
 
 @dataclass
@@ -67,6 +75,11 @@ class Q4Policy(Q3Policy):
                  directional_rolling_candidate_limit=8,
                  directional_rolling_cpu_time_limit_s=3.0,
                  directional_probe_spacing_m=900.0,
+                 q2_candidate_mode="hybrid_pareto",
+                 q2_candidate_limit=4,
+                 q2_candidate_fim_cpu_time_limit_s=0.75,
+                 integrated_planning_cpu_time_limit_s=3.0,
+                 q2_candidate_cache_capacity=256,
                  long_clear_tail_mode="adaptive",
                  long_clear_rescue_failure_threshold=8,
                  max_long_clear_rescues_per_source=1,
@@ -110,6 +123,13 @@ class Q4Policy(Q3Policy):
                 or directional_probe_spacing_m
                 > 1000.0):
             raise ValueError("Q4滚动余量或定向探测网间距非法。")
+        if q2_candidate_mode not in ("off", "hybrid_pareto"):
+            raise ValueError("Q4的Q2候选模式必须为off或hybrid_pareto。")
+        if (q2_candidate_limit < 1
+                or q2_candidate_fim_cpu_time_limit_s <= 0.0
+                or integrated_planning_cpu_time_limit_s <= 0.0
+                or q2_candidate_cache_capacity < 1):
+            raise ValueError("Q4的Q2候选数、计算时限和缓存容量必须为正。")
         if long_clear_tail_mode not in ("off", "adaptive"):
             raise ValueError("Q4长清除尾模式必须为off或adaptive。")
         if (long_clear_rescue_failure_threshold < 1
@@ -140,6 +160,11 @@ class Q4Policy(Q3Policy):
             multi_source_route_mode=multi_source_route_mode,
             route_cpu_time_limit_s=route_cpu_time_limit_s,
             route_max_2opt_iterations=route_max_2opt_iterations,
+            computation_cache_mode=(
+                "bounded" if q2_candidate_mode == "hybrid_pareto"
+                else "off"
+            ),
+            cache_capacity=q2_candidate_cache_capacity,
         )
         self.scan_mode = scan_mode
         self.belief_position_limit = belief_position_limit
@@ -162,6 +187,14 @@ class Q4Policy(Q3Policy):
             directional_rolling_cpu_time_limit_s
         )
         self.directional_probe_spacing_m = directional_probe_spacing_m
+        self.q2_candidate_mode = q2_candidate_mode
+        self.q2_candidate_limit = q2_candidate_limit
+        self.q2_candidate_fim_cpu_time_limit_s = (
+            q2_candidate_fim_cpu_time_limit_s
+        )
+        self.integrated_planning_cpu_time_limit_s = (
+            integrated_planning_cpu_time_limit_s
+        )
         self.long_clear_tail_mode = long_clear_tail_mode
         self.long_clear_rescue_failure_threshold = (
             long_clear_rescue_failure_threshold
@@ -223,7 +256,111 @@ class Q4Policy(Q3Policy):
             phase_index=state.probe_bundle_counts.get(track.channel, 0),
         )
 
-    def _start_probe_bundle(self, state, track, points=None, kind=None):
+    @staticmethod
+    def _candidate_source_map(points):
+        return {
+            (round(point[0], 8), round(point[1], 8)): "certified"
+            for point in points
+        }
+
+    def _q2_candidate_plan(self, state, track):
+        config = replace(
+            self.q2_config,
+            fim_cpu_time_limit_s=min(
+                self.q2_config.fim_cpu_time_limit_s,
+                self.q2_candidate_fim_cpu_time_limit_s,
+            ),
+        )
+        key = (
+            posterior_fingerprint(track), point_fingerprint(state.position),
+            state.current_channel, track.channel, config_fingerprint(config),
+        )
+        return self.computation_cache.get_or_compute(
+            "q4_q2_candidate_plan", key,
+            lambda: plan_measurement(
+                track.region, track.observations,
+                current_position=state.position,
+                current_channel=state.current_channel,
+                target_channel=track.channel,
+                config=config,
+            ),
+            clone=True,
+        )
+
+    def _integrated_probe_points(self, state, track):
+        """Add Q2 candidates without removing any certified probe point."""
+        certified, kind = self._probe_points(state, track)
+        certified = list(dict.fromkeys(tuple(point) for point in certified))
+        source_map = self._candidate_source_map(certified)
+        if (self.q2_candidate_mode == "off"
+                or self.directional_rolling_mode != "scenario"):
+            return (
+                certified, kind, source_map,
+                self.directional_rolling_cpu_time_limit_s,
+            )
+
+        started = time.perf_counter()
+        cache_before = self.computation_cache.snapshot()
+        try:
+            q2_plan = self._q2_candidate_plan(state, track)
+            belief = state.joint_beliefs.get(track.channel)
+            if belief is None:
+                belief = self._refresh_belief(state, track)
+            integrated = build_integrated_probe_plan(
+                certified, q2_plan, belief,
+                current_position=state.position,
+                current_channel=state.current_channel,
+                target_channel=track.channel,
+                candidate_limit=self.q2_candidate_limit,
+            )
+            points = integrated["points"]
+            source_map = integrated["source_by_point"]
+            status = "ok"
+            reason = "q2_candidates_added"
+        except (RuntimeError, ValueError, KeyError, ZeroDivisionError) as error:
+            integrated = {
+                "q2_candidate_count": 0,
+                "q4_static_pareto_front": [],
+                "extra_point_count": 0,
+                "certified_point_count": len(certified),
+            }
+            points = certified
+            status = "fallback"
+            reason = f"candidate_planning_error:{type(error).__name__}"
+        elapsed = time.perf_counter()-started
+        cache_after = self.computation_cache.snapshot()
+        remaining = max(
+            0.05,
+            min(
+                self.directional_rolling_cpu_time_limit_s,
+                self.integrated_planning_cpu_time_limit_s-elapsed,
+            ),
+        )
+        state.probe_diagnostics.append({
+            "event": "q2_candidate_planning",
+            "channel": track.channel,
+            "status": status,
+            "reason": reason,
+            "cpu_wall_time_s": elapsed,
+            "remaining_rolling_budget_s": remaining,
+            "cache_hit": cache_after["hits"] > cache_before["hits"],
+            "q2_candidate_count": integrated["q2_candidate_count"],
+            "q4_static_pareto_front": integrated[
+                "q4_static_pareto_front"
+            ],
+            "extra_point_count": integrated["extra_point_count"],
+            "certified_point_count": integrated[
+                "certified_point_count"
+            ],
+        })
+        integrated_kind = (
+            f"{kind}+q2_hybrid_pareto"
+            if integrated["extra_point_count"] else kind
+        )
+        return points, integrated_kind, source_map, remaining
+
+    def _start_probe_bundle(self, state, track, points=None, kind=None,
+                            candidate_sources=None):
         circle = track.region["minimum_enclosing_circle"]
         if points is None:
             points, kind = self._probe_points(state, track)
@@ -235,6 +372,7 @@ class Q4Policy(Q3Policy):
             remaining=list(points),
             initial_radius_m=float(circle["radius"]),
             kind=kind or "unknown",
+            candidate_sources=(candidate_sources or {}),
         )
         state.probe_bundles[track.channel] = bundle
         state.probe_bundle_counts[track.channel] = (
@@ -279,7 +417,9 @@ class Q4Policy(Q3Policy):
                                  remaining_clear_points=None,
                                  risk_metric=None, savings_margin_s=None,
                                  candidate_limit=None,
-                                 one_step_replan=False):
+                                 one_step_replan=False,
+                                 cpu_time_limit_s=None,
+                                 candidate_sources=None):
         try:
             belief = state.joint_beliefs.get(track.channel)
             if belief is None:
@@ -305,8 +445,12 @@ class Q4Policy(Q3Policy):
                     self.directional_rolling_candidate_limit
                     if candidate_limit is None else candidate_limit
                 ),
-                cpu_time_limit_s=self.directional_rolling_cpu_time_limit_s,
+                cpu_time_limit_s=(
+                    self.directional_rolling_cpu_time_limit_s
+                    if cpu_time_limit_s is None else cpu_time_limit_s
+                ),
                 one_step_replan=one_step_replan,
+                candidate_sources=candidate_sources,
             )
         except (RuntimeError, ValueError, KeyError, ZeroDivisionError) as error:
             decision = {
@@ -334,7 +478,9 @@ class Q4Policy(Q3Policy):
                                 remaining_clear_points=None,
                                 risk_metric=None, savings_margin_s=None,
                                 candidate_limit=None,
-                                one_step_replan=False):
+                                one_step_replan=False,
+                                cpu_time_limit_s=None,
+                                candidate_sources=None):
         decision = self._evaluate_probe_decision(
             state, track, points,
             remaining_clear_points=remaining_clear_points,
@@ -342,6 +488,8 @@ class Q4Policy(Q3Policy):
             savings_margin_s=savings_margin_s,
             candidate_limit=candidate_limit,
             one_step_replan=one_step_replan,
+            cpu_time_limit_s=cpu_time_limit_s,
+            candidate_sources=candidate_sources,
         )
         return self._record_rolling_decision(state, track, decision)
 
@@ -370,7 +518,9 @@ class Q4Policy(Q3Policy):
                     state, track, "probe_bundle_limit",
                 )
             try:
-                points, kind = self._probe_points(state, track)
+                points, kind, candidate_sources, rolling_limit = (
+                    self._integrated_probe_points(state, track)
+                )
             except (RuntimeError, ValueError, KeyError):
                 return self._prepare_directional_clear(
                     state, track, "no_certified_probe_bundle",
@@ -378,6 +528,8 @@ class Q4Policy(Q3Policy):
             if self.directional_rolling_mode == "scenario":
                 decision = self._rolling_probe_decision(
                     state, track, points,
+                    cpu_time_limit_s=rolling_limit,
+                    candidate_sources=candidate_sources,
                 )
                 if decision["decision"] != "measure":
                     track.refinement_stopped = True
@@ -387,6 +539,7 @@ class Q4Policy(Q3Policy):
                 initial_selected_point = tuple(decision["selected_point"])
             bundle = self._start_probe_bundle(
                 state, track, points=points, kind=kind,
+                candidate_sources=candidate_sources,
             )
             if bundle is None:
                 return self._prepare_directional_clear(
@@ -404,6 +557,7 @@ class Q4Policy(Q3Policy):
             decision = self._rolling_probe_decision(
                 state, track, bundle.remaining,
                 remaining_clear_points=self._remaining_clear_points(track),
+                candidate_sources=bundle.candidate_sources,
             )
             if decision["decision"] != "measure":
                 state.probe_bundles.pop(track.channel, None)
@@ -472,9 +626,10 @@ class Q4Policy(Q3Policy):
         )
 
     def _start_selected_probe(self, state, track, points, kind, decision,
-                              *, rescue=False):
+                              *, rescue=False, candidate_sources=None):
         bundle = self._start_probe_bundle(
             state, track, points=points, kind=kind,
+            candidate_sources=candidate_sources,
         )
         if bundle is None:
             return None
@@ -512,12 +667,16 @@ class Q4Policy(Q3Policy):
             state.long_clear_rescue_counts.get(track.channel, 0)+1
         )
         try:
-            points, kind = self._probe_points(state, track)
+            points, kind, candidate_sources, rolling_limit = (
+                self._integrated_probe_points(state, track)
+            )
             decision = self._rolling_probe_decision(
                 state, track, points,
                 remaining_clear_points=remaining,
                 risk_metric="mean",
                 one_step_replan=True,
+                cpu_time_limit_s=rolling_limit,
+                candidate_sources=candidate_sources,
             )
         except (RuntimeError, ValueError, KeyError):
             return None
@@ -532,6 +691,7 @@ class Q4Policy(Q3Policy):
         track.refinement_stopped = False
         return self._start_selected_probe(
             state, track, points, kind, decision, rescue=True,
+            candidate_sources=candidate_sources,
         )
 
     def _route_service_spec(self, state, track):

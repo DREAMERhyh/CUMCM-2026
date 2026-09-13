@@ -20,6 +20,7 @@ from q3.adaptive import nearest_neighbor_order
 from q3.policy import SourceTrack
 from q3.route import RouteEstimate, RoutePlan
 from q4.belief import Q4Measurement, build_joint_belief
+from q4.candidate_planner import extract_q2_candidates
 from q4.directional import (adaptive_four_sided_points,
                             certified_probe_points, four_sided_points,
                             grid121, is_visible, triangular_scan_mesh,
@@ -232,13 +233,92 @@ class Q4TheoryTestbench(unittest.TestCase):
             )
         ]
         policy._refresh_belief(state, track)
+        certified, _ = policy._probe_points(state, track)
         action = policy.next_action(state)
         self.assertEqual(action.kind, "measure")
         self.assertEqual(state.pending_mode, "directional_probe")
         self.assertEqual(track.last_rolling_decision["decision"], "measure")
-        self.assertEqual(
-            state.probe_bundles[7].kind, "triangular_local",
+        self.assertTrue(track.last_rolling_decision["q4_pareto_front"])
+        self.assertNotEqual(
+            track.last_rolling_decision["candidate_source"], "certified",
         )
+        bundle = state.probe_bundles[7]
+        self.assertIn("triangular_local", bundle.kind)
+        self.assertIn("q2_hybrid_pareto", bundle.kind)
+        self.assertTrue(set(certified) <= set(bundle.points))
+
+    def test_q2_hybrid_candidates_are_cached_and_keep_certificate(self):
+        policy = Q4Policy(
+            max_refinements=1,
+            q2_candidate_mode="hybrid_pareto",
+            q2_candidate_fim_cpu_time_limit_s=0.1,
+        )
+        state = policy.initial_state()
+        observation = BearingObservation(
+            (900.0, 0.0), 7, "direction", 180.0,
+        )
+        region = build_region_from_observations(
+            [observation], error_deg=policy.error_deg, circle_sides=16,
+        )
+        track = SourceTrack(7, observations=[observation], region=region)
+        state.sources[7] = track
+        state.position = observation.position
+        state.current_channel = 7
+        state.measure_history[7] = [
+            Q4Measurement(
+                observation.position, "direction", observation.bearing_deg,
+            )
+        ]
+        policy._refresh_belief(state, track)
+        certified, _ = policy._probe_points(state, track)
+
+        discrete = {
+            "point": (125.0, 225.0), "worst_case_radius_m": 120.0,
+        }
+        continuous = {
+            "point": (-175.0, 325.0), "worst_case_radius_m": 80.0,
+        }
+        pareto = {
+            "point": (275.0, -125.0), "worst_case_radius_m": 95.0,
+        }
+        fake_plan = {
+            "selected": continuous,
+            "baseline": {"selected": discrete},
+            "candidates": [discrete],
+            "continuous_fim": {
+                "status": "ok", "selected": continuous,
+                "candidates": [continuous],
+            },
+            "pareto_front": [discrete, continuous, pareto],
+            "region": region,
+        }
+        extracted_sources = {
+            source
+            for item in extract_q2_candidates(fake_plan)
+            for source in item["sources"]
+        }
+        self.assertTrue({
+            "discrete", "continuous_fim", "continuous_fim_budget",
+            "q2_pareto",
+        } <= extracted_sources)
+        with patch("q4.policy.plan_measurement", return_value=fake_plan) as plan:
+            points, kind, sources, _ = policy._integrated_probe_points(
+                state, track,
+            )
+            policy._integrated_probe_points(state, track)
+
+        self.assertEqual(plan.call_count, 1)
+        self.assertTrue(set(certified) <= set(points))
+        self.assertGreater(len(points), len(certified))
+        self.assertIn("q2_hybrid_pareto", kind)
+        self.assertTrue(any(value != "certified" for value in sources.values()))
+        diagnostics = [
+            item for item in state.probe_diagnostics
+            if item.get("event") == "q2_candidate_planning"
+        ]
+        self.assertFalse(diagnostics[0]["cache_hit"])
+        self.assertTrue(diagnostics[1]["cache_hit"])
+        self.assertGreater(diagnostics[0]["extra_point_count"], 0)
 
     def test_failed_clear_gate_can_remeasure_without_moving(self):
         policy = Q4Policy(
@@ -540,6 +620,8 @@ class Q4TheoryTestbench(unittest.TestCase):
             policy.directional_rolling_cpu_time_limit_s, 3.0,
         )
         self.assertEqual(policy.multi_source_route_mode, "off")
+        self.assertEqual(policy.q2_candidate_mode, "hybrid_pareto")
+        self.assertTrue(policy.computation_cache.enabled)
         self.assertEqual(policy.q2_config.q2_version, "new")
         legacy = Q4Policy(q2_version="legacy")
         self.assertEqual(legacy.q2_config.q2_version, "legacy")

@@ -92,6 +92,19 @@ def main(argv=None):
         help="每次Q3/Q4滚动评价的真实墙钟秒数",
     )
     parser.add_argument(
+        "--q4-q2-candidate-mode", choices=("off", "hybrid_pareto"),
+        default="hybrid_pareto",
+        help="Q4接入Q2离散/FIM/Pareto候选；Q3忽略",
+    )
+    parser.add_argument(
+        "--q4-q2-candidate-fim-cpu-time-limit-s", type=float,
+        default=0.75, help="Q4候选生成中连续FIM的真实墙钟软截止",
+    )
+    parser.add_argument(
+        "--q4-integrated-planning-cpu-time-limit-s", type=float,
+        default=3.0, help="Q4候选生成与首轮方向评价的共享墙钟软截止",
+    )
+    parser.add_argument(
         "--rolling-risk-metric",
         choices=("p90", "cvar", "worst", "mean"), default="cvar",
         help="Q3/Q4有限场景风险汇总口径",
@@ -136,6 +149,9 @@ def main(argv=None):
         parser.error("--fim-cpu-time-limit-s 必须为正数。")
     if args.rolling_cpu_time_limit_s <= 0:
         parser.error("--rolling-cpu-time-limit-s 必须为正数。")
+    if (args.q4_q2_candidate_fim_cpu_time_limit_s <= 0
+            or args.q4_integrated_planning_cpu_time_limit_s <= 0):
+        parser.error("Q4候选FIM时限和整合规划时限必须为正数。")
     if args.route_cpu_time_limit_s <= 0:
         parser.error("--route-cpu-time-limit-s 必须为正数。")
     if (args.cache_capacity < 1 or args.beam_width < 1
@@ -191,6 +207,13 @@ def main(argv=None):
                        ),
                        directional_rolling_risk_metric=(
                            args.rolling_risk_metric
+                       ),
+                       q2_candidate_mode=args.q4_q2_candidate_mode,
+                       q2_candidate_fim_cpu_time_limit_s=(
+                           args.q4_q2_candidate_fim_cpu_time_limit_s
+                       ),
+                       integrated_planning_cpu_time_limit_s=(
+                           args.q4_integrated_planning_cpu_time_limit_s
                        ),
                        long_clear_tail_mode=args.q4_long_clear_tail_mode,
                        multi_source_route_mode=args.multi_source_route_mode,

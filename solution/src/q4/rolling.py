@@ -164,7 +164,31 @@ def _clear_decision(clear_now_s, *, reason, status="ok", timed_out=False,
         "timed_out": timed_out,
         "evaluated_sequence_count": evaluated_sequence_count,
         "cpu_wall_time_s": elapsed_s,
+        "q4_pareto_front": [],
     }
+
+
+def _sequence_pareto_front(items):
+    fields = (
+        "estimated_total_cost_s", "first_action_time_s",
+        "no_signal_weight",
+    )
+
+    def dominates(first, second):
+        return (
+            all(first[field] <= second[field]+1e-12 for field in fields)
+            and any(first[field] < second[field]-1e-12 for field in fields)
+        )
+
+    front = [
+        item for item in items
+        if not any(other is not item and dominates(other, item)
+                   for other in items)
+    ]
+    return sorted(front, key=lambda item: (
+        item["estimated_total_cost_s"], item["first_action_time_s"],
+        item["no_signal_weight"], item["selected_point"],
+    ))
 
 
 def evaluate_directional_probe_decision(
@@ -172,7 +196,7 @@ def evaluate_directional_probe_decision(
         config, continuation_points=(), remaining_clear_points=None,
         savings_margin_s=10.0, risk_metric="cvar", cvar_alpha=0.9,
         scenario_limit=48, candidate_limit=8, cpu_time_limit_s=1.0,
-        one_step_replan=False):
+        one_step_replan=False, candidate_sources=None):
     """Compare immediate clearing with one certified sequential probe group.
 
     In bundle mode, each scenario walks through the proposed point order until
@@ -211,7 +235,7 @@ def evaluate_directional_probe_decision(
         )
 
     scenarios = _sample_scenarios(belief.scenarios, scenario_limit)
-    ranked_starts = sorted(points, key=lambda point: (
+    ranked_all = sorted(points, key=lambda point: (
         -sum(
             weight for scenario, weight in scenarios
             if is_visible(
@@ -223,7 +247,21 @@ def evaluate_directional_probe_decision(
             current_position, point, current_channel, track.channel,
         ).total_s,
         point,
-    ))[:candidate_limit]
+    ))
+    candidate_sources = candidate_sources or {}
+    preferred = [
+        point for point in ranked_all
+        if candidate_sources.get(_point_key(point), "certified")
+        != "certified"
+    ]
+    # Reserve at most half the bounded starts for Q2/FIM/Pareto additions;
+    # the rest remain certified points even when the evaluator times out.
+    preferred = preferred[:max(1, candidate_limit//2)]
+    ranked_starts = list(preferred)
+    ranked_starts.extend(
+        point for point in ranked_all if point not in ranked_starts
+    )
+    ranked_starts = ranked_starts[:candidate_limit]
 
     current_radius = track.region["minimum_enclosing_circle"]["radius"]
     base_clear_cache = {}
@@ -327,13 +365,31 @@ def evaluate_directional_probe_decision(
         if not complete:
             break
         risk_cost, risk = _weighted_risk(values, risk_metric, cvar_alpha)
+        first_action_time = measure_cost(
+            current_position, first, current_channel, track.channel,
+        ).total_s
+        visible_weight = sum(
+            weight for scenario, weight in scenarios
+            if is_visible(
+                scenario.position, scenario.direction_deg, first,
+                scenario.receive_radius,
+            )
+        )
+        total_weight = sum(weight for _, weight in scenarios)
         evaluated.append({
             "selected_point": first,
+            "candidate_source": candidate_sources.get(
+                _point_key(first), "certified",
+            ),
             "probe_order": order,
             "estimated_total_cost_s": risk_cost,
             "estimated_saving_s": clear_now-risk_cost,
             "risk_summary_s": risk,
             "scenario_count": len(scenarios),
+            "first_action_time_s": first_action_time,
+            "no_signal_weight": max(
+                0.0, 1.0-visible_weight/max(total_weight, 1e-12),
+            ),
         })
 
     elapsed = time.perf_counter()-started
@@ -344,7 +400,8 @@ def evaluate_directional_probe_decision(
                     else "no_complete_sequence"),
             status="fallback", timed_out=timed_out, elapsed_s=elapsed,
         )
-    best = min(evaluated, key=lambda item: (
+    pareto_front = _sequence_pareto_front(evaluated)
+    best = min(pareto_front, key=lambda item: (
         item["estimated_total_cost_s"], item["selected_point"],
     ))
     if best["estimated_total_cost_s"]+savings_margin_s >= clear_now:
@@ -355,10 +412,12 @@ def evaluate_directional_probe_decision(
             evaluated_sequence_count=len(evaluated), elapsed_s=elapsed,
         )
         decision["best_rejected_sequence"] = best
+        decision["q4_pareto_front"] = pareto_front
         return decision
     return {
         "decision": "measure",
         "selected_point": best["selected_point"],
+        "candidate_source": best["candidate_source"],
         "probe_order": best["probe_order"],
         "clear_now_cost_s": clear_now,
         "clear_now_base_cost_s": clear_now_base,
@@ -373,4 +432,5 @@ def evaluate_directional_probe_decision(
         "evaluated_sequence_count": len(evaluated),
         "cpu_wall_time_s": elapsed,
         "horizon_mode": "one_step" if one_step_replan else "bundle",
+        "q4_pareto_front": pareto_front,
     }

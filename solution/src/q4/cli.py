@@ -45,6 +45,16 @@ def main(argv=None):
         "--directional-rolling-cpu-time-limit-s", type=float, default=3.0,
     )
     parser.add_argument(
+        "--q2-candidate-mode", choices=("off", "hybrid_pareto"),
+        default="hybrid_pareto",
+    )
+    parser.add_argument(
+        "--q2-candidate-fim-cpu-time-limit-s", type=float, default=0.75,
+    )
+    parser.add_argument(
+        "--integrated-planning-cpu-time-limit-s", type=float, default=3.0,
+    )
+    parser.add_argument(
         "--long-clear-tail-mode", choices=("off", "adaptive"),
         default="adaptive",
     )
@@ -68,6 +78,13 @@ def main(argv=None):
         directional_rolling_cpu_time_limit_s=(
             args.directional_rolling_cpu_time_limit_s
         ),
+        q2_candidate_mode=args.q2_candidate_mode,
+        q2_candidate_fim_cpu_time_limit_s=(
+            args.q2_candidate_fim_cpu_time_limit_s
+        ),
+        integrated_planning_cpu_time_limit_s=(
+            args.integrated_planning_cpu_time_limit_s
+        ),
         long_clear_tail_mode=args.long_clear_tail_mode,
         multi_source_route_mode=args.multi_source_route_mode,
         route_cpu_time_limit_s=args.route_cpu_time_limit_s,
@@ -84,6 +101,7 @@ def main(argv=None):
     print(f"Q2版本：{args.q2_version}")
     print(f"清除失败原地补测：{args.failed_clear_remeasure_mode}")
     print(f"方向探测组滚动：{args.directional_rolling_mode}")
+    print(f"Q2/FIM/Pareto候选接入：{args.q2_candidate_mode}")
     print(f"长清除尾优化：{args.long_clear_tail_mode}")
     print(f"多源路径规划：{args.multi_source_route_mode}")
     return 0
