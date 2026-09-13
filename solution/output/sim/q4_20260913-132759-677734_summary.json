@@ -1,6 +1,6 @@
 {
   "problem": 4,
-  "robot_id": "202601101010",
+  "robot_id": "参赛队号",
   "mode": "policy",
   "scan_layout": "pure_ring8",
   "log_path": "D:\\competitions\\CUMCM-2026\\solution\\output\\sim\\q4_20260913-132759-677734.jsonl",

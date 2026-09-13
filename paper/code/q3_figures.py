@@ -211,7 +211,7 @@ def plot_decision_tree():
     trial_ready = _diamond(ax, (0.50, 0.245),
                            r"$r_j\leq40\,\mathrm{m}$", height=0.045)
     trial_queue = _box(ax, (0.50, 0.145),
-                       "加入中心试清除队列\n并附加探针保底点",
+                       "加入中心试清除队列\n并附加保底清除点",
                        width=0.22, height=0.075,
                        face="#fff5d6", edge="#b07d16")
     refine = _diamond(ax, (0.82, 0.255), "细化次数\n是否小于 2",
@@ -220,12 +220,12 @@ def plot_decision_tree():
                    "调用问题二选取保证接收测点\n执行检测并用问题一更新区域",
                    width=0.25, height=0.075)
     probe_queue = _box(ax, (0.82, 0.055),
-                       "达到上限：加入中心\n及有限探针清除队列",
+                       "达到上限：加入中心\n及有限保底清除点队列",
                        width=0.22, height=0.070,
                        face="#fff5d6", edge="#b07d16")
     finish = _box(ax, (0.18, 0.080),
                   "全部源入队后：Held-Karp 排序\n"
-                  "TSPN 偏移清除；失败则取下一探针\n"
+                  "TSPN 偏移清除；失败则取下一保底清除点\n"
                   "全部频道定性后退出",
                   width=0.27, height=0.105,
                   face="#e0e7ff", edge="#4338ca",

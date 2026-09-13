@@ -4,12 +4,7 @@
 
 \subsubsection{执行状态与行动时间}
 
-记机器狗当前位置为 $p$，当前检测频道为 $h$，累计虚拟时间为 $t$。对 $20$ 个频道分别维护已发现集合 $\mathcal C_f$、无源集合 $\mathcal C_a$ 和已清除集合 $\mathcal C_c$；对每个已发现频道 $j$，保存其全部有效示向度、当前源位置区域 $\widehat K_j$、最小包围圆 $(c_j,r_j)$、补充定位次数以及清除点队列 $Q_j$。于是决策状态可写成
-\begin{equation}
-  Z=\left(p,h,t,\mathcal C_f,\mathcal C_a,\mathcal C_c,
-  \{\widehat K_j,c_j,r_j,Q_j\}_{j\in\mathcal C_f}\right).
-  \label{eq:q3-state}
-\end{equation}
+记机器狗当前位置、检测频道和累计虚拟时间为 $p,h,t$。将频道分为已发现未清除、无源和已清除三类，分别记为 $\mathcal C_f,\mathcal C_a,\mathcal C_c$；每个已发现频道 $j$ 保存历史示向度、源位置区域 $\widehat K_j$、最小包围圆 $(c_j,r_j)$、补充定位次数和清除点队列 $Q_j$。
 
 机器狗每次只发出进入、检测、清除或退出中的一个动作，收到并处理该动作的响应后才生成下一动作。设机器狗从 $p$ 移动到 $s$，速度为 $v=5\ \mathrm{m/s}$，换频时间为 $\tau_{\mathrm{sw}}=1\ \mathrm{s}$，检测时间为 $\tau_{\mathrm{meas}}=5\ \mathrm{s}$，则检测动作的虚拟时间为
 \begin{equation}
@@ -31,10 +26,7 @@
 
 \subsubsection{八个等角驻留点的初始扫描}
 
-目标分布区域记为
-\begin{equation}
-  \mathcal D=\overline B(O_0,1800).
-\end{equation}
+记目标分布区域为 $\mathcal D=\overline B(O_0,1800)$。
 
 由于每个全向干扰源的有效接收半径至少为 $1000\ \mathrm{m}$，只要扫描驻留点集合对 $\mathcal D$ 的覆盖半径不超过 $1000\ \mathrm{m}$，就能保证每个源至少在一个驻留点被发现。本文取环半径 $a=960\ \mathrm{m}$，在圆周上设置八个等角驻留点
 \begin{equation}
@@ -49,11 +41,11 @@
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.78\textwidth]{figures/q3-eight-point-scan.pdf}
-  \caption{问题三初始扫描的八个等角驻留点及其保证接收覆盖。机器狗由 $O_0$ 前往 $P_0$，再沿红色箭头依次访问其余驻留点；$X^*$ 为相邻两驻留点角平分方向上的最不利边界位置}
+  \caption{八点扫描及保证接收覆盖：箭头表示访问顺序，$X^*$ 为最不利边界位置}
   \label{fig:q3-eight-point-scan}
 \end{figure}
 
-\noindent\textbf{命题 6：}{\kaishu 式~\eqref{eq:q3-eight-points} 给出的八个驻留点能够以小于 $1000\ \mathrm{m}$ 的覆盖半径覆盖整个目标圆形区域 $\mathcal D$。}
+\noindent\textbf{命题 3：}{\kaishu 式~\eqref{eq:q3-eight-points} 给出的八个驻留点能够以小于 $1000\ \mathrm{m}$ 的覆盖半径覆盖整个目标圆形区域 $\mathcal D$。}
 
 \noindent\textbf{证明：}
 任取 $X\in\mathcal D$，以 $O_0$ 为极点写成极坐标 $(\rho,\theta)$，其中 $0\leq\rho\leq1800$。八个驻留点将圆周方向等分，因此必存在某个 $P_k$，使 $X$ 与 $P_k$ 的极角差 $\Delta$ 满足 $|\Delta|\leq\pi/8$。由余弦定理，
@@ -77,9 +69,7 @@
 
 故任一干扰源均落入至少一个扫描驻留点的最小有效接收圆内，八点布局覆盖整个目标圆形区域。\hfill$\square$
 
-在扫描点 $P_k$ 检测频道 $j$ 后，根据返回结果分别处理。
-
-当返回近距离结果时，题设表明机器狗距干扰源不超过 $5\ \mathrm{m}$。由于清除作用距离为 $20\ \mathrm{m}$，策略立即在 $P_k$ 对频道 $j$ 执行清除；若返回有效示向度，则把观测加入频道 $j$ 的历史并更新源位置区域；若返回无信号，则继续当前扫描。
+扫描检测返回近距离结果时，源距驻留点不超过 $5\ \mathrm m$，可立即原地清除；返回有效示向度时更新该频道区域；无信号时继续扫描。
 
 设频道 $j$ 已在位置 $S_{j,1},\ldots,S_{j,m}$ 获得示向度 $\theta_{j,1},\ldots,\theta_{j,m}$。沿用问题一的角度误差半平面交，并加入问题二的目标圆形区域与接收距离上界，实时计算使用的源位置外近似为
 \begin{equation}
@@ -117,17 +107,7 @@
 
 若 $r_j\leq15\ \mathrm{m}$，或 $\alpha_j(P_k)<30^\circ$，则跳过该频道在 $P_k$ 的重复检测；否则利用机器狗已经到达 $P_k$ 的机会补充一次示向度。该规则不会影响对该频道“存在源”的判断，因为频道已经被发现；它只是一项减少低价值检测的工程筛选，不作为最优性结论。
 
-八个驻留点扫描完成后，根据命题6，每个真实干扰源至少在一个驻留点进入有效接收范围。因此，将至少返回过一次示向度但尚未清除的频道归入 $\mathcal C_f$，将其余从未发现的频道归入 $\mathcal C_a$，并满足
-\begin{equation}
-  \mathcal C_f \cup \mathcal C_a \cup \mathcal C_c
-  = \{1,2,\ldots,20\},
-  \qquad
-  \mathcal C_f \cap \mathcal C_a
-  = \mathcal C_f \cap \mathcal C_c
-  = \mathcal C_a \cap \mathcal C_c
-  = \varnothing.
-  \label{eq:q3-channel-partition}
-\end{equation}
+由扫描覆盖结论，八点扫描后仍未发现的频道可归入 $\mathcal C_a$；已发现未清除及已清除频道分别归入 $\mathcal C_f,\mathcal C_c$。三类互不相交，合起来包含全部 $20$ 个频道。
 
 \subsubsection{批量补充定位与停止规则}
 
@@ -139,13 +119,11 @@
 
 选取距当前位置最近的源作为暂定的下一处理对象。
 
-对选中的频道 $j^*$，根据 $r_{j^*}$ 分三种情况处理。
-
-本文所称的“保底清除点”是指定位尚不够精确时预先生成的候选清除位置。机器狗到达一个保底清除点后，对相应频道执行一次清除动作；若未成功，则继续访问队列中的下一个保底清除点。它与问题二中的补充检测点作用不同：补充检测点用于获得新的示向度并缩小 $\widehat K_j$，保底清除点则不再承担定位任务，而是利用清除距离为 $20\ \mathrm{m}$ 的条件，以若干半径为 $20\ \mathrm{m}$ 的清除圆覆盖可能的源位置区域，从而为定位精度不足的频道提供有限步保底。具体构造与覆盖条件将在后文给出。
+保底清除点用于定位不够精确时，以多个半径为 $20\ \mathrm m$ 的清除圆覆盖可能源区域，失败后依次访问后续点。对选中频道按定位半径分三种情况处理。
 
 当 $r_{j^*}\leq r_{\mathrm{loc}}=19.9\ \mathrm{m}$ 时，认为该频道已完成可靠定位，直接把 $c_{j^*}$ 加入可靠清除队列；当 $19.9<r_{j^*}\leq r_{\mathrm{try}}=40\ \mathrm{m}$ 时，把区域中心和后续的保底清除点加入试清除队列，等待清除路线经过该区域时先在中心试探；当 $r_{j^*}>40\ \mathrm{m}$ 且补充定位次数小于 $M=2$ 时，需要选择新的检测点。
 
-新的检测点直接沿用问题二的递推选点方法：以当前 $\widehat K_{j^*}$ 和该频道的全部历史示向度为输入，重新构造式~\eqref{eq:q2-guaranteed-region} 的保证接收域，在其中分别生成有限离散候选和连续 Fisher 信息候选；所有候选使用式~\eqref{eq:q2-worst-radius} 的最坏情况定位不确定性半径重新评价，并按式~\eqref{eq:q2-final-choice} 得到执行点 $s^*$。机器狗在 $s^*$ 完成检测后，再按式~\eqref{eq:q3-region-update} 用真实响应更新区域，而不把问题二的事先预测当作真实定位结果。若连续优化不可用，则执行问题二的离散候选回退点。
+补充检测沿用问题二：基于当前区域和历史示向度构造保证接收域，生成离散与 Fisher 候选，以最坏场景定位半径和行动时间复评分，并按式~\eqref{eq:q2-final-choice} 选点；连续优化不可用时回退至离散点。完成检测后，用真实响应按式~\eqref{eq:q3-region-update} 更新区域。
 
 每个源最多执行两次上述补充定位。达到次数上限仍未满足可靠清除条件时，将中心和有限个保底清除点加入该频道的清除队列。
 
@@ -181,10 +159,7 @@ $40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在
 
 并通过保存的前驱状态回溯得到访问次序。
 
-\noindent\textbf{命题 7：}{\kaishu 式~\eqref{eq:q3-held-karp} 得到中心集合之间的最短开放访问路径。}
-
-\noindent\textbf{证明：}
-对集合大小 $|A|$ 作归纳。当 $|A|=1$ 时，路径不含边，$F(\{j\},j)=0$ 显然最优。设所有大小小于 $|A|$ 的状态均已给出最短路径。任一恰好访问 $A$ 且以 $c_j$ 结束的路径，在到达 $c_j$ 前必以某个 $c_i$ 结束，并已恰好访问 $A\setminus\{j\}$；由归纳假设，该前缀的最短长度为 $F(A\setminus\{j\},i)$。遍历所有可能前驱 $i$ 并取最小值即得到式~\eqref{eq:q3-held-karp}。最后遍历终点 $j$，即得到式~\eqref{eq:q3-open-tsp} 的全体中心最短开放路径。\hfill$\square$
+递推式枚举到达末点前的所有可能前驱，并利用最短路径的最优子结构求解；其正确性沿用 Held--Karp 动态规划~\cite{heldkarp1962}。
 
 该方法包含 $n\,2^{n-1}$ 量级的状态，每个状态最多检查 $n-1$ 个前驱，故时间复杂度为 $O(n^2 2^n)$，空间复杂度为 $O(n2^n)$。题设干扰源数量不超过 $16$，当前规模下可以直接求解。需要说明的是，该模型精确优化的是各清除中心之间的内部路径；从机器狗当前位置到首个清除中心的距离未进入式~\eqref{eq:q3-open-tsp}，后续清除点的邻域偏移也未与访问顺序联合优化，因此它是分阶段模型中的中心顺序最优，而不是整个搜索、定位和清除过程的全局最优。
 
@@ -197,7 +172,7 @@ $40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在
   \label{fig:q3-clear-route}
 \end{figure}
 
-\subsubsection{清除邻域偏移与保底清除点保底}
+\subsubsection{清除邻域偏移与保底覆盖}
 
 按照开放式旅行商顺序清除已完成可靠定位的频道时，可以利用 $20\ \mathrm{m}$ 清除半径提前向下一目标移动。设当前源的最小包围圆为 $\overline B(c_j,r_j)$，下一队列中心为 $c_q$。当 $c_q\ne c_j$ 时，定义实际清除点
 \begin{equation}
@@ -208,17 +183,14 @@ $40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在
 
 若当前源为最后一个源，或两中心重合，则取 $y_j=c_j$。
 
-\noindent\textbf{命题 8：}{\kaishu 式~\eqref{eq:q3-tspn-point} 在保持可靠清除的同时，使清除点沿下一目标方向前移 $20-r_j$ 米。}
-
-\noindent\textbf{证明：}
-对任意真实源位置 $X_j\in\widehat K_j$，由三角不等式和式~\eqref{eq:q3-mec}，
+对任意真实源位置 $X_j\in\widehat K_j$，由三角不等式，
 \begin{equation}
   \|X_j-y_j\|_2
   \leq\|X_j-c_j\|_2+\|c_j-y_j\|_2
-  \leq r_j+(20-r_j)=20\ \mathrm{m}.
+  \leq r_j+(20-r_j)=20\ \mathrm m.
 \end{equation}
 
-因此 $y_j$ 始终位于真实源的清除范围内；又因为偏移方向与 $c_q-c_j$ 同向，机器狗相对下一目标中心前移 $20-r_j$ 米。\hfill$\square$
+因此，该偏移在保持可靠清除的同时，沿下一目标方向前移 $20-r_j$ 米。
 
 对尚未完成可靠定位的频道，策略先在 $c_j$ 试清除；失败后依次访问有限个保底清除点。为说明完整保底清除点构造，设 $k=\lceil r_j/20\rceil$，在中心放置一个保底清除点，并在第 $\ell$ 个同心圆上均匀放置 $6\ell$ 个保底清除点：
 \begin{equation}
@@ -237,7 +209,7 @@ $40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在
   \label{eq:q3-probe-count}
 \end{equation}
 
-\noindent\textbf{命题 9：}{\kaishu 式~\eqref{eq:q3-probes} 生成的不经过投影的保底清除点集合，以每个点 $20\ \mathrm{m}$ 的作用半径覆盖最小包围圆 $\overline B(c_j,r_j)$；将其中落在凸区域 $\widehat K_j$ 外的点投影到 $\widehat K_j$ 边界后，对 $\widehat K_j$ 内任意真实源位置的覆盖性质仍然成立。}
+\noindent\textbf{命题 4：}{\kaishu 式~\eqref{eq:q3-probes} 生成的不经过投影的保底清除点集合，以每个点 $20\ \mathrm{m}$ 的作用半径覆盖最小包围圆 $\overline B(c_j,r_j)$；将其中落在凸区域 $\widehat K_j$ 外的点投影到 $\widehat K_j$ 边界后，对 $\widehat K_j$ 内任意真实源位置的覆盖性质仍然成立。}
 
 \noindent\textbf{证明：}
 先不考虑投影。任取 $X\in\overline B(c_j,r_j)$，记 $\rho=\|X-c_j\|_2$。若 $\rho\leq10$，中心保底清除点到 $X$ 的距离不超过 $10$。若 $\rho>10$，取与 $\rho/20$ 最近的整数环号 $\ell\in\{1,\ldots,k\}$，则 $|\rho-20\ell|\leq10$；再取该环上与 $X$ 极角最近的保底清除点，其角差满足 $|\Delta|\leq\pi/(6\ell)$。由余弦定理及不等式 $2(1-\cos\Delta)\leq\Delta^2$，
@@ -258,7 +230,7 @@ $40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在
 
 所以把保底清除点投影回定位区域不会增大它到任一可行源位置的距离，覆盖性质保持。\hfill$\square$
 
-当前程序为控制最坏动作数，每个频道最多保留 $76$ 个保底清除点。由式~\eqref{eq:q3-probe-count}，当 $k\leq4$，即 $r_j\leq80\ \mathrm{m}$ 时，完整保底清除点数量至多为 $61$，命题9的覆盖保证完整保留；特别地，$r_j\leq40\ \mathrm{m}$ 先在中心试清除，这种情况只需 $19$ 个完整保底清除点。当两次补充定位后仍有 $r_j>80\ \mathrm{m}$ 时，队列被截断，只能算有限次尝试，命题9的覆盖保证不再适用，这一情形需要在模拟演练中单独记录，后续再改进。
+当前程序为控制最坏动作数，每个频道最多保留 $76$ 个保底清除点。由式~\eqref{eq:q3-probe-count}，当 $k\leq4$，即 $r_j\leq80\ \mathrm{m}$ 时，完整保底清除点数量至多为 $61$，命题4的覆盖保证完整保留；特别地，$r_j\leq40\ \mathrm{m}$ 先在中心试清除，这种情况只需 $19$ 个完整保底清除点。当两次补充定位后仍有 $r_j>80\ \mathrm{m}$ 时，队列被截断，只能算有限次尝试，命题4的覆盖保证不再适用，这一情形需要在模拟演练中单独记录，后续再改进。
 
 执行清除队列时，若当前点清除成功，则将频道加入 $\mathcal C_c$ 并转向下一队列；若失败，则删除当前队首并尝试下一个保底清除点。若所有频道最终满足
 \begin{equation}
@@ -267,7 +239,7 @@ $40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在
   \label{eq:q3-exit-condition}
 \end{equation}
 
-机器狗发出退出动作。由命题6可知八点扫描在有限步内完成；每个源最多执行两次补充定位；在 $r_j\leq80\ \mathrm{m}$ 的完整保底清除点条件下，每个清除队列也在有限步内命中。因此，在模拟器响应与题设距离规则一致且所有保底分支满足该半径条件时，策略能够在有限动作数内满足式~\eqref{eq:q3-exit-condition} 所示的任务完成条件。当前问题三的完整决策过程如图~\ref{fig:q3-decision-tree} 所示。
+机器狗发出退出动作。由命题3可知八点扫描在有限步内完成；每个源最多执行两次补充定位；在 $r_j\leq80\ \mathrm{m}$ 的完整保底清除点条件下，每个清除队列也在有限步内命中。因此，在模拟器响应与题设距离规则一致且所有保底分支满足该半径条件时，策略能够在有限动作数内满足式~\eqref{eq:q3-exit-condition} 所示的任务完成条件。当前问题三的完整决策过程如图~\ref{fig:q3-decision-tree} 所示。
 
 \begin{figure}[H]
   \centering

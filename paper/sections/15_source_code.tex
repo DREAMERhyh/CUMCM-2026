@@ -1,7 +1,176 @@
 \section{源程序}
 
-提交时应附上建模所用的全部完整、可运行源程序，并保证运行结果与论文一致。篇幅适合时，可用下面的命令将代码纳入附录；同时应将源文件放入支撑材料。
+本附录列出问题一至问题四正式求解程序及模拟器接口运行链路的完整
+Python 源代码。文件名均以支撑材料文件夹“支撑材料/”为根目录；
+代码内容直接从相应支撑材料文件载入。离线测试、旧版实现及日志分析
+工具不在本附录中重复列出。
 
-% 示例：\lstinputlisting[language=Python,caption={问题一求解程序}]{code/problem1.py}
+问题三和问题四的在线测试代码如下：
+\begin{lstlisting}
+  # Q3在线测试
+  python run_drill.py --problem 3 --mode policy --robot-id "参赛队号" --confirm-ready --confirm-policy --max-actions 8000
+  # Q4在线测试
+  python run_drill.py --problem 4 --robot-id "参赛队号" --confirm-ready --confirm-policy
+\end{lstlisting}
 
-若论文确实没有使用程序，请删除本段说明并明确写出：“本论文没有用到程序”。
+\begingroup
+\lstset{
+  language=Python,
+  basicstyle=\fontspec{DejaVu Sans Mono}\scriptsize,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=6pt,
+  frame=single,
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=4,
+  literate=
+    {≤}{{$\leq$}}1
+    {≥}{{$\geq$}}1
+    {∈}{{$\in$}}1
+    {⊇}{{$\supseteq$}}1
+    {⊆}{{$\subseteq$}}1
+    {∩}{{$\cap$}}1
+    {π}{{$\pi$}}1
+    {ρ}{{$\rho$}}1
+    {θ}{{$\theta$}}1
+}
+
+\subsection{公共模型与时间预算}
+
+\subsubsection*{\path{solution/src/common/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/common/__init__.py}
+
+\subsubsection*{\path{solution/src/common/budget.py}}
+\lstinputlisting{../支撑材料/solution/src/common/budget.py}
+
+\subsubsection*{\path{solution/src/common/domain.py}}
+\lstinputlisting{../支撑材料/solution/src/common/domain.py}
+
+\subsubsection*{\path{solution/src/common/models.py}}
+\lstinputlisting{../支撑材料/solution/src/common/models.py}
+
+\subsubsection*{\path{solution/src/common/time_model.py}}
+\lstinputlisting{../支撑材料/solution/src/common/time_model.py}
+
+\subsection{问题一源程序}
+
+\subsubsection*{\path{solution/src/q1/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/q1/__init__.py}
+
+\subsubsection*{\path{solution/src/q1/bearing_plot.py}}
+\lstinputlisting{../支撑材料/solution/src/q1/bearing_plot.py}
+
+\subsubsection*{\path{solution/src/q1/cli.py}}
+\lstinputlisting{../支撑材料/solution/src/q1/cli.py}
+
+\subsubsection*{\path{solution/src/q1/geometry.py}}
+\lstinputlisting{../支撑材料/solution/src/q1/geometry.py}
+
+\subsection{问题二源程序}
+
+\subsubsection*{\path{solution/src/q2/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/__init__.py}
+
+\subsubsection*{\path{solution/src/q2/candidates.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/candidates.py}
+
+\subsubsection*{\path{solution/src/q2/cli.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/cli.py}
+
+\subsubsection*{\path{solution/src/q2/continuous_diameter.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/continuous_diameter.py}
+
+\subsubsection*{\path{solution/src/q2/continuous_fim.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/continuous_fim.py}
+
+\subsubsection*{\path{solution/src/q2/near_optimal.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/near_optimal.py}
+
+\subsubsection*{\path{solution/src/q2/planner.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/planner.py}
+
+\subsubsection*{\path{solution/src/q2/plot.py}}
+\lstinputlisting{../支撑材料/solution/src/q2/plot.py}
+
+\subsection{问题三源程序}
+
+\subsubsection*{\path{solution/src/q3/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/__init__.py}
+
+\subsubsection*{\path{solution/src/q3/batch_policy.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/batch_policy.py}
+
+\subsubsection*{\path{solution/src/q3/cli.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/cli.py}
+
+\subsubsection*{\path{solution/src/q3/coverage.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/coverage.py}
+
+\subsubsection*{\path{solution/src/q3/minimax_leg.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/minimax_leg.py}
+
+\subsubsection*{\path{solution/src/q3/policy.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/policy.py}
+
+\subsubsection*{\path{solution/src/q3/refine_selector.py}}
+\lstinputlisting{../支撑材料/solution/src/q3/refine_selector.py}
+
+\subsection{问题四源程序}
+
+\subsubsection*{\path{solution/src/q4/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/q4/__init__.py}
+
+\subsubsection*{\path{solution/src/q4/belief.py}}
+\lstinputlisting{../支撑材料/solution/src/q4/belief.py}
+
+\subsubsection*{\path{solution/src/q4/cli.py}}
+\lstinputlisting{../支撑材料/solution/src/q4/cli.py}
+
+\subsubsection*{\path{solution/src/q4/directional.py}}
+\lstinputlisting{../支撑材料/solution/src/q4/directional.py}
+
+\subsubsection*{\path{solution/src/q4/policy.py}}
+\lstinputlisting{../支撑材料/solution/src/q4/policy.py}
+
+\subsubsection*{\path{solution/src/q4/rolling.py}}
+\lstinputlisting{../支撑材料/solution/src/q4/rolling.py}
+
+\subsection{正式运行层}
+
+\subsubsection*{\path{solution/src/runtime/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/runtime/__init__.py}
+
+\subsubsection*{\path{solution/src/runtime/runner.py}}
+\lstinputlisting{../支撑材料/solution/src/runtime/runner.py}
+
+\subsection{模拟器接口}
+
+\subsubsection*{\path{solution/src/sim/__init__.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/__init__.py}
+
+\subsubsection*{\path{solution/src/sim/cli.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/cli.py}
+
+\subsubsection*{\path{solution/src/sim/client.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/client.py}
+
+\subsubsection*{\path{solution/src/sim/errors.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/errors.py}
+
+\subsubsection*{\path{solution/src/sim/fake.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/fake.py}
+
+\subsubsection*{\path{solution/src/sim/live_runner.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/live_runner.py}
+
+\subsubsection*{\path{solution/src/sim/protocol.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/protocol.py}
+
+\subsubsection*{\path{solution/src/sim/smoke.py}}
+\lstinputlisting{../支撑材料/solution/src/sim/smoke.py}
+
+\endgroup
