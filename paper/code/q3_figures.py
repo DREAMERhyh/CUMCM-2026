@@ -8,7 +8,13 @@ os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib-cumcm-q3-paper")
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.patches import Circle, FancyArrowPatch, Polygon, Rectangle
+from matplotlib.patches import (
+    Circle,
+    FancyArrowPatch,
+    FancyBboxPatch,
+    Polygon,
+    Rectangle,
+)
 
 
 PAPER_DIR = Path(__file__).resolve().parents[1]
@@ -116,11 +122,22 @@ def plot_scan_layout():
 def _box(ax, center, text, *, width=0.19, height=0.065,
          face="#eef4f8", edge="#245b78", fontsize=9.0, rounded=False):
     x, y = center
-    style = "round,pad=0.32" if rounded else "square,pad=0.25"
+    lower_left = (x - width / 2, y - height / 2)
+    if rounded:
+        patch = FancyBboxPatch(
+            lower_left, width, height,
+            boxstyle="round,pad=0.006,rounding_size=0.008",
+            facecolor=face, edgecolor=edge, linewidth=1.0, zorder=4,
+        )
+    else:
+        patch = Rectangle(
+            lower_left, width, height,
+            facecolor=face, edgecolor=edge, linewidth=1.0, zorder=4,
+        )
+    ax.add_patch(patch)
     ax.text(x, y, text, ha="center", va="center", fontsize=fontsize,
-            linespacing=1.25,
-            bbox={"boxstyle": style, "facecolor": face,
-                  "edgecolor": edge, "linewidth": 1.0}, zorder=5)
+            linespacing=1.25, zorder=5)
+    return {"center": center, "patch": patch}
 
 
 def _diamond(ax, center, text, *, width=0.12, height=0.055,
@@ -128,21 +145,31 @@ def _diamond(ax, center, text, *, width=0.12, height=0.055,
     x, y = center
     vertices = [(x, y + height), (x + width, y),
                 (x, y - height), (x - width, y)]
-    ax.add_patch(Polygon(vertices, closed=True, facecolor=face,
-                         edgecolor=edge, lw=1.0, zorder=4))
+    patch = Polygon(vertices, closed=True, facecolor=face,
+                    edgecolor=edge, lw=1.0, zorder=4)
+    ax.add_patch(patch)
     ax.text(x, y, text, ha="center", va="center", fontsize=fontsize,
             linespacing=1.18, zorder=5)
+    return {"center": center, "patch": patch}
 
 
-def _arrow(ax, start, end, text=None, *, rad=0.0, color="0.28"):
+def _arrow(ax, source, target, text=None, *, rad=0.0, color="0.28",
+           label_pos=None):
+    start = source["center"]
+    end = target["center"]
     ax.add_patch(FancyArrowPatch(
-        start, end, arrowstyle="-|>", mutation_scale=9, lw=0.9,
+        start, end, arrowstyle="-|>", mutation_scale=10, lw=0.9,
         color=color, connectionstyle=f"arc3,rad={rad}", zorder=2,
+        patchA=source["patch"], patchB=target["patch"],
+        shrinkA=0.8, shrinkB=0.8,
     ))
     if text:
-        x = (start[0] + end[0]) / 2
-        y = (start[1] + end[1]) / 2
-        ax.text(x, y + 0.012, text, ha="center", va="center",
+        if label_pos is None:
+            x = (start[0] + end[0]) / 2
+            y = (start[1] + end[1]) / 2
+        else:
+            x, y = label_pos
+        ax.text(x, y, text, ha="center", va="center",
                 fontsize=8.0, color=color,
                 bbox={"facecolor": "white", "edgecolor": "none",
                       "pad": 0.5}, zorder=6)
@@ -154,55 +181,80 @@ def plot_decision_tree():
     ax.set_ylim(0.0, 1.0)
     ax.axis("off")
 
-    _box(ax, (0.50, 0.955), "进入测试", width=0.12, rounded=True,
-         face="#d8f3dc", edge="#2d6a4f")
-    _box(ax, (0.50, 0.875), "依次访问八个等角扫描点\n并检测 1-20 频道")
-    _diamond(ax, (0.50, 0.775), "检测结果")
-    _box(ax, (0.16, 0.675), "无信号\n继续当前扫描", face="#f3f4f6",
-         edge="#6b7280")
-    _box(ax, (0.50, 0.675), "获得示向度\n更新该频道定位区域")
-    _box(ax, (0.84, 0.675), "近距离\n立即在原地清除", face="#fee2e2",
-         edge="#b91c1c")
-    _diamond(ax, (0.50, 0.565), "八点扫描\n是否完成")
-    _box(ax, (0.50, 0.465), "汇总已发现源与无源频道\n选择距当前位置最近的未处理源")
-    _diamond(ax, (0.50, 0.365), r"$r_j\leq19.9\,\mathrm{m}$",
-             height=0.045)
-    _box(ax, (0.18, 0.255), "加入可靠清除队列\n记录最小包围圆中心",
-         face="#d8f3dc", edge="#2d6a4f")
-    _diamond(ax, (0.50, 0.245), r"$r_j\leq40\,\mathrm{m}$",
-             height=0.045)
-    _box(ax, (0.50, 0.145), "加入中心试清除队列\n并附加探针保底点",
-         face="#fff5d6", edge="#b07d16")
-    _diamond(ax, (0.82, 0.255), "细化次数\n是否小于 2")
-    _box(ax, (0.82, 0.145), "调用问题二选取保证接收测点\n执行检测并用问题一更新区域")
-    _box(ax, (0.82, 0.055), "达到上限：加入中心\n及有限探针清除队列",
-         face="#fff5d6", edge="#b07d16")
-    _box(ax, (0.18, 0.080), "全部源入队后：Held-Karp 排序\nTSPN 偏移清除；失败则取下一探针\n全部频道定性后退出",
-         width=0.25, height=0.08, face="#e0e7ff", edge="#4338ca",
-         fontsize=8.6, rounded=True)
+    enter = _box(ax, (0.50, 0.955), "进入测试", width=0.12,
+                 height=0.045, rounded=True,
+                 face="#d8f3dc", edge="#2d6a4f")
+    scan = _box(ax, (0.50, 0.875),
+                "依次访问八个等角扫描点\n并检测 1-20 频道",
+                width=0.20, height=0.075)
+    result = _diamond(ax, (0.50, 0.775), "检测结果")
+    no_signal = _box(ax, (0.16, 0.675), "无信号\n继续当前扫描",
+                     width=0.19, height=0.075,
+                     face="#f3f4f6", edge="#6b7280")
+    bearing = _box(ax, (0.50, 0.675),
+                   "获得示向度\n更新该频道定位区域",
+                   width=0.20, height=0.075)
+    close = _box(ax, (0.84, 0.675), "近距离\n立即在原地清除",
+                 width=0.19, height=0.075,
+                 face="#fee2e2", edge="#b91c1c")
+    scan_done = _diamond(ax, (0.50, 0.565), "八点扫描\n是否完成",
+                         height=0.060)
+    summarize = _box(ax, (0.50, 0.465),
+                     "汇总已发现源与无源频道\n选择距当前位置最近的未处理源",
+                     width=0.25, height=0.075)
+    located = _diamond(ax, (0.50, 0.365),
+                       r"$r_j\leq19.9\,\mathrm{m}$", height=0.045)
+    reliable = _box(ax, (0.18, 0.255),
+                    "加入可靠清除队列\n记录最小包围圆中心",
+                    width=0.21, height=0.075,
+                    face="#d8f3dc", edge="#2d6a4f")
+    trial_ready = _diamond(ax, (0.50, 0.245),
+                           r"$r_j\leq40\,\mathrm{m}$", height=0.045)
+    trial_queue = _box(ax, (0.50, 0.145),
+                       "加入中心试清除队列\n并附加探针保底点",
+                       width=0.22, height=0.075,
+                       face="#fff5d6", edge="#b07d16")
+    refine = _diamond(ax, (0.82, 0.255), "细化次数\n是否小于 2",
+                      width=0.13, height=0.055)
+    measure = _box(ax, (0.82, 0.145),
+                   "调用问题二选取保证接收测点\n执行检测并用问题一更新区域",
+                   width=0.25, height=0.075)
+    probe_queue = _box(ax, (0.82, 0.055),
+                       "达到上限：加入中心\n及有限探针清除队列",
+                       width=0.22, height=0.070,
+                       face="#fff5d6", edge="#b07d16")
+    finish = _box(ax, (0.18, 0.080),
+                  "全部源入队后：Held-Karp 排序\n"
+                  "TSPN 偏移清除；失败则取下一探针\n"
+                  "全部频道定性后退出",
+                  width=0.27, height=0.105,
+                  face="#e0e7ff", edge="#4338ca",
+                  fontsize=8.6, rounded=True)
 
-    _arrow(ax, (0.50, 0.925), (0.50, 0.905))
-    _arrow(ax, (0.50, 0.84), (0.50, 0.83))
-    _arrow(ax, (0.40, 0.775), (0.23, 0.70), "无信号")
-    _arrow(ax, (0.50, 0.72), (0.50, 0.705), "示向度")
-    _arrow(ax, (0.60, 0.775), (0.77, 0.70), "近距离")
-    _arrow(ax, (0.16, 0.64), (0.43, 0.585), rad=-0.05)
-    _arrow(ax, (0.50, 0.64), (0.50, 0.62))
-    _arrow(ax, (0.84, 0.64), (0.57, 0.585), rad=0.05)
-    _arrow(ax, (0.41, 0.565), (0.34, 0.82), "否", rad=-0.42)
-    _arrow(ax, (0.50, 0.51), (0.50, 0.495), "是")
-    _arrow(ax, (0.50, 0.43), (0.50, 0.412))
-    _arrow(ax, (0.40, 0.365), (0.23, 0.28), "是")
-    _arrow(ax, (0.50, 0.318), (0.50, 0.292), "否")
-    _arrow(ax, (0.40, 0.245), (0.33, 0.17), "是")
-    _arrow(ax, (0.60, 0.245), (0.70, 0.255), "否")
-    _arrow(ax, (0.82, 0.20), (0.82, 0.18), "是")
-    _arrow(ax, (0.82, 0.11), (0.82, 0.09), "否")
-    _arrow(ax, (0.73, 0.145), (0.62, 0.455),
-           "测量后重新判断", rad=-0.34)
-    _arrow(ax, (0.18, 0.22), (0.18, 0.13))
-    _arrow(ax, (0.50, 0.11), (0.30, 0.085))
-    _arrow(ax, (0.72, 0.055), (0.30, 0.075))
+    _arrow(ax, enter, scan)
+    _arrow(ax, scan, result)
+    _arrow(ax, result, no_signal, "无信号")
+    _arrow(ax, result, bearing, "示向度")
+    _arrow(ax, result, close, "近距离")
+    _arrow(ax, no_signal, scan_done, rad=-0.05)
+    _arrow(ax, bearing, scan_done)
+    _arrow(ax, close, scan_done, rad=0.05)
+    _arrow(ax, scan_done, scan, "否", rad=-0.60,
+           label_pos=(0.335, 0.645))
+    _arrow(ax, scan_done, summarize, "是")
+    _arrow(ax, summarize, located)
+    _arrow(ax, located, reliable, "是")
+    _arrow(ax, located, trial_ready, "否")
+    _arrow(ax, trial_ready, trial_queue, "是")
+    _arrow(ax, trial_ready, refine, "否")
+    _arrow(ax, refine, measure, "是")
+    _arrow(ax, refine, probe_queue, "否", rad=-0.48,
+           label_pos=(0.965, 0.155))
+    _arrow(ax, measure, located, "测量后重新判断", rad=-0.48,
+           label_pos=(0.705, 0.325))
+    _arrow(ax, reliable, finish)
+    _arrow(ax, trial_queue, finish)
+    _arrow(ax, probe_queue, finish)
 
     save_figure(fig, "q3-decision-tree")
 
