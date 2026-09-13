@@ -4,9 +4,9 @@
 
 ```
 # Q3
-python run_drill.py --problem 3 --mode policy --robot-id "202601101010" --confirm-ready --confirm-policy --max-actions 8000
+python run_drill.py --problem 3 --mode policy --robot-id "参赛队号" --confirm-ready --confirm-policy --max-actions 8000
 # Q4
-python run_drill.py --problem 4 --robot-id 202601101010 --confirm-ready --confirm-policy
+python run_drill.py --problem 4 --robot-id 参赛队号 --confirm-ready --confirm-policy
 ```
 
 ## 2 日志可视化

@@ -25,7 +25,7 @@ python src/sim/cli.py --problem 3 --robot-id "仅作本地检查"
 4. 执行：
 
 ```powershell
-python src/sim/cli.py --problem 3 --robot-id "202601101010" --confirm-ready
+python src/sim/cli.py --problem 3 --robot-id "参赛队号" --confirm-ready
 ```
 
 5. 期望终端显示主动退出、动作数 3、虚拟时间约 5 秒，并给出一个新 JSONL 路径。
@@ -51,7 +51,7 @@ python src/sim/cli.py --problem 3 --robot-id "202601101010" --confirm-ready
 Q3 当前与离线演练对齐的完整策略命令为：
 
 ```powershell
-python src/sim/cli.py --problem 3 --mode policy --robot-id "202601101010" --max-refinements 2 --fim-cpu-time-limit-s 6 --confirm-ready --confirm-policy
+python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --max-refinements 2 --fim-cpu-time-limit-s 6 --confirm-ready --confirm-policy
 ```
 
 其中 6 s 是每次规划的真实墙钟上限；默认仍有 15 s 退出安全余量。运行前检查日志目标不存在，并确认界面仍为 Q3 演练测试。

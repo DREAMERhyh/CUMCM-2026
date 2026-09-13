@@ -154,7 +154,7 @@ class MainIntegrationTestbench(unittest.TestCase):
                        return_value=StubDrillClient()) as factory:
                 code = run_drill.main([
                     "--problem", "3", "--mode", "policy",
-                    "--robot-id", "202601101010",
+                    "--robot-id", "参赛队号",
                     "--scan-layout", "pure_ring8",
                     "--log", str(log_path),
                     "--summary", str(summary_path),
