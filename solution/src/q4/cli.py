@@ -18,8 +18,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="B-Q4 离线规则演示（非官方模拟器）")
     parser.add_argument("--output", default="output/q4_offline/demo.json")
     parser.add_argument(
-        "--scan-mode", choices=("triangular37", "grid121"),
-        default="triangular37",
+        "--scan-mode", choices=("triangular25", "triangular37", "grid121"),
+        default="triangular25",
     )
     parser.add_argument(
         "--max-refinements", type=int, default=2,

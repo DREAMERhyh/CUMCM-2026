@@ -85,7 +85,8 @@ def _improve_open_path(points):
 
 
 def triangular_scan_mesh(*, spacing=900.0, arena_radius=1800.0,
-                         min_receive_radius=1000.0):
+                         min_receive_radius=1000.0,
+                         lattice_phase=(0.0, 0.0)):
     """Return a triangular-lattice discovery certificate and its cells.
 
     Every selected equilateral triangle has diameter ``spacing``.  Every
@@ -94,19 +95,34 @@ def triangular_scan_mesh(*, spacing=900.0, arena_radius=1800.0,
     the source is a convex combination of those vertices, every closed
     emission half-plane through the source contains at least one vertex.
     Thus ``spacing <= min_receive_radius`` certifies both omni and directional
-    discovery when every returned point is tested.
+    discovery when every returned point is tested.  ``lattice_phase`` is a
+    translation expressed in the two triangular-lattice basis vectors.  The
+    robot origin is used to optimize the open route but is returned only when
+    it is itself one of the selected certificate vertices.
     """
     if not (math.isfinite(spacing) and spacing > 0.0):
         raise ValueError("三角扫描网边长必须为正数。")
     if not (math.isfinite(arena_radius) and arena_radius > 0.0):
         raise ValueError("目标圆半径必须为正数。")
+    if not (math.isfinite(min_receive_radius)
+            and min_receive_radius > 0.0):
+        raise ValueError("最小有效接收半径必须为正数。")
     if spacing > min_receive_radius:
         raise ValueError("三角扫描网边长不能超过最小有效接收半径。")
+    if (len(lattice_phase) != 2
+            or not all(math.isfinite(value) for value in lattice_phase)):
+        raise ValueError("三角扫描网相位必须是两个有限数。")
 
     height = spacing*math.sqrt(3.0)/2.0
+    phase_u, phase_v = lattice_phase
+    offset_x = spacing*(phase_u+0.5*phase_v)
+    offset_y = height*phase_v
 
     def lattice(i, j):
-        return spacing*(i+0.5*j), height*j
+        return (
+            offset_x+spacing*(i+0.5*j),
+            offset_y+height*j,
+        )
 
     limit = math.ceil((arena_radius+spacing)/height)+2
     triangles = []
@@ -128,11 +144,23 @@ def triangular_scan_mesh(*, spacing=900.0, arena_radius=1800.0,
                 vertices.update(triangle)
 
     origin = (0.0, 0.0)
+    origin_is_probe = origin in vertices
     vertices.discard(origin)
-    points = _improve_open_path([
+    route = _improve_open_path([
         origin, *_nearest_neighbor_order(vertices, origin),
     ])
+    points = route if origin_is_probe else route[1:]
     return points, triangles
+
+
+def triangular25():
+    """Return the 25-point, 985 m phase-shifted discovery scan."""
+    points, _ = triangular_scan_mesh(
+        spacing=985.0, lattice_phase=(0.112, 0.112),
+    )
+    if len(points) != 25:
+        raise RuntimeError(f"默认平移三角扫描网应含25点，实际为{len(points)}点。")
+    return points
 
 
 def triangular37():

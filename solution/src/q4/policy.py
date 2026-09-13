@@ -9,7 +9,8 @@ from q3.route import SourceServiceSpec, plan_service_route
 
 from .belief import Q4Measurement, build_joint_belief
 from .directional import (adaptive_four_sided_points,
-                          certified_probe_points, grid121, triangular37)
+                          certified_probe_points, grid121, triangular25,
+                          triangular37)
 from .rolling import evaluate_directional_probe_decision
 
 
@@ -49,7 +50,7 @@ class Q4Policy(Q3Policy):
     """
 
     def __init__(self, *, max_refinements=2, error_deg=1.005,
-                 fim_cpu_time_limit_s=6.0, scan_mode="triangular37",
+                 fim_cpu_time_limit_s=6.0, scan_mode="triangular25",
                  q2_version="new",
                  coverage_points=None, belief_position_limit=12,
                  belief_direction_step_deg=10,
@@ -72,11 +73,16 @@ class Q4Policy(Q3Policy):
                  multi_source_route_mode="off",
                  route_cpu_time_limit_s=0.25,
                  route_max_2opt_iterations=20):
-        if scan_mode not in ("triangular37", "grid121", "custom"):
-            raise ValueError("Q4扫描模式必须为triangular37、grid121或custom。")
+        if scan_mode not in (
+                "triangular25", "triangular37", "grid121", "custom"):
+            raise ValueError(
+                "Q4扫描模式必须为triangular25、triangular37、grid121或custom。"
+            )
         if coverage_points is not None:
             selected_coverage = list(coverage_points)
             scan_mode = "custom"
+        elif scan_mode == "triangular25":
+            selected_coverage = triangular25()
         elif scan_mode == "triangular37":
             selected_coverage = triangular37()
         elif scan_mode == "grid121":

@@ -53,14 +53,14 @@ python src/sim/cli.py --problem 3 --robot-id "参赛队号" --confirm-ready
 
 ```powershell
 python src/sim/cli.py --problem 3 --mode policy --robot-id "参赛队号" --q2-version new --max-refinements 5 --fim-cpu-time-limit-s 10 --joint-batch-mode guaranteed --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 3 --confirm-ready --confirm-policy
-python src/sim/cli.py --problem 4 --mode policy --robot-id "参赛队号" --q2-version new --max-refinements 2 --q4-scan-mode triangular37 --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 3 --q4-long-clear-tail-mode adaptive --multi-source-route-mode off --confirm-ready --confirm-policy
+python src/sim/cli.py --problem 4 --mode policy --robot-id "参赛队号" --q2-version new --max-refinements 2 --q4-scan-mode triangular25 --failed-clear-remeasure-mode gated --rolling-time-mode scenario --rolling-risk-metric cvar --rolling-cpu-time-limit-s 3 --q4-long-clear-tail-mode adaptive --multi-source-route-mode off --confirm-ready --confirm-policy
 ```
 
 `--fim-cpu-time-limit-s 10` 是每次 Q2 连续 FIM 规划允许的真实 CPU 墙钟上限，不是机器狗虚拟动作时间。Q3 默认关闭近优域绘图计算，因此该时限只用于产生实际细化测点。Q4 当前不调用全向 Q2 单点回退，保留这一参数仅为构造接口兼容。
 
 `--q2-version` 可取 `new/legacy`，默认 `new`。它在策略启动前统一选择 Q2 源区域几何，Q3/Q4 的实际观测更新与 Q3 的滚动测后分支都会沿用同一版本；切换版本后应重新开始测试，不应复用进行中的策略状态。
 
-Q4 的 `--max-refinements 2` 表示每源最多两个完整定向探测组，不是两个单独测点；单组收到 `no_signal` 后会在剩余认证点与安全清除之间重新滚动选择。`--q4-scan-mode triangular37` 是当前 37 点默认扫描，`grid121` 只用于离线或人工回归比较。`--failed-clear-remeasure-mode gated` 启用失败清除点原地补测；`--rolling-time-mode scenario` 在 Q4 中映射为方向探测组有限场景滚动，而不是调用 Q3 的全向判断。
+Q4 的 `--max-refinements 2` 表示每源最多两个完整定向探测组，不是两个单独测点；单组收到 `no_signal` 后会在剩余认证点与安全清除之间重新滚动选择。`--q4-scan-mode triangular25` 是当前 25 点默认扫描，`triangular37` 与 `grid121` 只用于离线或人工回归比较。`--failed-clear-remeasure-mode gated` 启用失败清除点原地补测；`--rolling-time-mode scenario` 在 Q4 中映射为方向探测组有限场景滚动，而不是调用 Q3 的全向判断。
 
 `--q4-long-clear-tail-mode adaptive` 在同源连续 8 次清除失败后最多开放一次收益门控的移动方向探测，默认启用。Q4 的多源路线只支持 `off/insertion_2opt`；8 场景配对虽降低均值但有 2 场退化，因此当前在线建议显式保持 `--multi-source-route-mode off`。只有人工另行决定复测路线时才改为 `insertion_2opt`，Q4 不接受 `beam_cached`。
 

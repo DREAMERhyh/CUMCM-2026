@@ -48,7 +48,7 @@ def run_case(case, mode, max_actions, rolling_cpu_time_limit_s):
         )
         for item in case["sources"]
     ])
-    policy = Q4Policy(max_refinements=2, scan_mode="triangular37",
+    policy = Q4Policy(max_refinements=2, scan_mode="triangular25",
                       long_clear_tail_mode="off",
                       directional_rolling_cpu_time_limit_s=(
                           rolling_cpu_time_limit_s

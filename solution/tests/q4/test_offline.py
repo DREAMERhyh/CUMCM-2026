@@ -23,7 +23,7 @@ from q4.belief import Q4Measurement, build_joint_belief
 from q4.directional import (adaptive_four_sided_points,
                             certified_probe_points, four_sided_points,
                             grid121, is_visible, triangular_scan_mesh,
-                            triangular37)
+                            triangular25, triangular37)
 from q4.policy import Q4Policy
 from runtime.runner import run_policy
 from sim.fake import FakeSimulator, FakeSource
@@ -101,6 +101,35 @@ class Q4TheoryTestbench(unittest.TestCase):
         for radial_index in range(31):
             radius = 1800.0*radial_index/30.0
             for source_angle in range(0, 360, 3):
+                angle = math.radians(source_angle)
+                source = (radius*math.cos(angle), radius*math.sin(angle))
+                for direction in range(0, 360, 15):
+                    self.assertTrue(any(
+                        is_visible(source, direction, point)
+                        for point in points
+                    ))
+
+    def test_triangular25_has_structural_and_dense_coverage(self):
+        points, triangles = triangular_scan_mesh(
+            spacing=985.0, lattice_phase=(0.112, 0.112),
+        )
+        self.assertEqual(points, triangular25())
+        self.assertEqual(len(points), 25)
+        self.assertNotIn((0.0, 0.0), points)
+        path_length = math.dist((0.0, 0.0), points[0])+sum(
+            math.dist(first, second)
+            for first, second in zip(points, points[1:])
+        )
+        self.assertAlmostEqual(path_length, 24552.14989054634, places=6)
+        self.assertTrue(triangles)
+        point_set = set(points)
+        for triangle in triangles:
+            self.assertTrue(set(triangle) <= point_set)
+            for first, second in zip(triangle, triangle[1:]+triangle[:1]):
+                self.assertLessEqual(math.dist(first, second), 985.0+1e-7)
+        for radial_index in range(61):
+            radius = 1800.0*radial_index/60.0
+            for source_angle in range(0, 360, 2):
                 angle = math.radians(source_angle)
                 source = (radius*math.cos(angle), radius*math.sin(angle))
                 for direction in range(0, 360, 15):
@@ -499,8 +528,8 @@ class Q4TheoryTestbench(unittest.TestCase):
 
     def test_q4_defaults_keep_q3_route_off_and_use_safe_q4_features(self):
         policy = Q4Policy()
-        self.assertEqual(policy.scan_mode, "triangular37")
-        self.assertEqual(len(policy.coverage_points), 37)
+        self.assertEqual(policy.scan_mode, "triangular25")
+        self.assertEqual(len(policy.coverage_points), 25)
         self.assertTrue(policy.posterior_grid)
         self.assertEqual(policy.joint_batch_mode, "off")
         self.assertEqual(policy.failed_clear_remeasure_mode, "gated")

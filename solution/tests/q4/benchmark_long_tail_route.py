@@ -69,7 +69,7 @@ def run_case(case, mode, max_actions, rolling_limit_s, route_limit_s):
     ])
     policy = Q4Policy(
         max_refinements=2,
-        scan_mode="triangular37",
+        scan_mode="triangular25",
         failed_clear_remeasure_mode="gated",
         directional_rolling_mode="scenario",
         directional_rolling_risk_metric="cvar",

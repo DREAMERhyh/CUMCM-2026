@@ -58,8 +58,9 @@ def main(argv=None):
         help="每源细化上限；Q4按完整探测组计数；未指定时 Q3=5、Q4=2",
     )
     parser.add_argument(
-        "--q4-scan-mode", choices=("triangular37", "grid121"),
-        default="triangular37",
+        "--q4-scan-mode",
+        choices=("triangular25", "triangular37", "grid121"),
+        default="triangular25",
         help="Q4发现扫描网；Q3忽略该参数",
     )
     parser.add_argument(
