@@ -1,1 +1,235 @@
-% 问题四的模型建立与求解内容待填写。
+\subsection{问题四的模型建立与求解}
+
+问题四继续使用问题三的行动时间计算、示向区域递推、最小包围圆、可靠清除点、清除邻域偏移和终止判断，本节不再重复这些结论的证明，只讨论定向干扰源带来的新增状态与决策方法。
+
+\subsubsection{定向可见性与联合状态}
+
+设频道 $j$ 的干扰源位置为 $x_j\in\mathcal D$，有效接收半径为 $R_j\in[1000,1500]$，类型为 $\kappa_j$。当 $\kappa_j$ 为定向时，再以 $\psi_j$ 表示最大场强方向，并记
+\begin{equation}
+  u(\psi_j)=
+  \left(
+    \cos\frac{\pi\psi_j}{180},
+    \sin\frac{\pi\psi_j}{180}
+  \right)^{\mathsf T}.
+  \label{eq:q4-direction-vector}
+\end{equation}
+
+对包含源位置、接收半径、发射方向和源类型的一个可能状态
+\begin{equation}
+  \xi=(x,R,\psi,\kappa),
+\end{equation}
+
+定义检测点 $s$ 的可接收指示量
+\begin{equation}
+  V(\xi,s)=
+  \mathbf 1_{\{\|s-x\|_2\leq R\}}
+  \begin{cases}
+    1, & \kappa=\text{全向},\\
+    \mathbf 1_{\{u(\psi)^{\mathsf T}(s-x)\geq0\}},
+       & \kappa=\text{定向}.
+  \end{cases}
+  \label{eq:q4-visibility}
+\end{equation}
+
+式~\eqref{eq:q4-visibility} 表明，定向源的可接收区域是以源为圆心、半径为 $R$ 的圆盘与经过源位置的闭半平面的交。因而在定向情形下，无信号既可能由距离过远引起，也可能由检测点位于发射背面引起，不能仅凭一次无信号从位置区域中删除一个半径为 $1000\ \mathrm{m}$ 的圆盘。
+
+对每个已发现频道，除问题三已有的位置外近似 $\widehat K_j$ 外，再维护有限可能状态集合
+\begin{equation}
+  \Xi_j=
+  \left\{\xi_\ell=(x_\ell,R_\ell,\psi_\ell,
+  \kappa_\ell,w_\ell)\right\}_{\ell=1}^{L_j},
+  \qquad \sum_{\ell=1}^{L_j}w_\ell=1.
+  \label{eq:q4-state-set}
+\end{equation}
+
+其中，$x_\ell$ 从 $\widehat K_j$ 的顶点、中心和内部网格中选取不超过 $12$ 个代表点；$R_\ell$ 取 $1000$、$1250$ 和 $1500\ \mathrm{m}$；定向角先按 $10^\circ$ 等间隔选取，再加入各历史检测点相对 $x_\ell$ 的方向及其正负 $90^\circ$ 邻域，使可接收边界也能参与比较。全向类和定向类的初始总相对权重各取 $0.5$，保留状态的权重在每次更新后重新归一化。
+
+设第 $i$ 次检测位置和结果分别为 $s_i,y_i$。有限可能状态必须与全部历史结果相容：无信号要求 $V(\xi,s_i)=0$；近距离要求 $V(\xi,s_i)=1$ 且 $\|s_i-x\|_2\leq5$；有效示向度要求 $V(\xi,s_i)=1$、距离大于 $5\ \mathrm{m}$，并且由 $s_i$ 指向 $x$ 的真实方位落在返回示向度的误差范围内。因此，第 $m$ 次检测后的更新写为
+\begin{equation}
+  \Xi_j^{(m)}=
+  \left\{\xi\in\Xi_j^{(m-1)}:
+  \xi\text{ 与 }(s_m,y_m)\text{ 相容}\right\}.
+  \label{eq:q4-state-update}
+\end{equation}
+
+该更新利用了问题三未使用的无信号信息，但它只参与后续行动的比较；连续位置区域仍由有效示向度按问题三的方法更新，以保持其凸性和保守包含关系。
+
+\subsubsection{二十五个三角网驻留点的初始扫描}
+
+问题三的八点布局只保证任意源位置附近存在一个驻留点。若该点位于定向源背面，即使距离小于 $1000\ \mathrm{m}$ 也可能收不到信号。为同时控制距离和接近方向，本文在平面上建立等边三角网。
+
+取三角网边长 $d_4=985\ \mathrm{m}$，平移参数 $\gamma_1=\gamma_2=0.112$，令
+\begin{equation}
+  Q_{ij}=d_4
+  \left(
+    i+\gamma_1+\frac{j+\gamma_2}{2},
+    \frac{\sqrt3}{2}(j+\gamma_2)
+  \right),
+  \qquad i,j\in\mathbb Z.
+  \label{eq:q4-triangular-lattice}
+\end{equation}
+
+相邻网格顶点构成边长为 $d_4$ 的等边三角形。保留所有与目标圆形区域 $\mathcal D$ 相交的三角形，并取这些三角形全部顶点的并集作为扫描驻留点集合 $\mathcal P_4$。代入上述参数后得到 $25$ 个驻留点和 $33$ 个保留三角形。
+
+机器狗从原点出发，先按最近邻规则构造开放访问顺序，再反复采用确定性 $2$-opt：若反转一段路径能够缩短总长度，则执行使长度减少最多的一次反转，直至不存在改进。该路径只是在当前驻留点集合上的快速改进结果，不作为最短开放路径结论。驻留点、访问顺序及定向源的可接收半圆如图~\ref{fig:q4-triangular-scan} 所示。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.83\textwidth]{figures/q4-triangular-scan.pdf}
+  \caption{问题四的二十五个三角网驻留点及定向覆盖关系。红色折线表示机器狗访问顺序；示例源 $X^*$ 所在三角形以橙色突出，绿色半圆为其最小接收半径下的发射正面，其中至少包含一个三角形顶点}
+  \label{fig:q4-triangular-scan}
+\end{figure}
+
+\noindent\textbf{命题 10：}{\kaishu 当三角网边长 $d_4\leq R_{\min}$ 时，集合 $\mathcal P_4$ 能够保证目标圆形区域内任一全向或定向干扰源至少在一个驻留点被发现。}
+
+\noindent\textbf{证明：}
+无限三角网覆盖整个平面，因此任取 $x\in\mathcal D$，必存在一个网格三角形 $T=\operatorname{conv}\{A,B,C\}$ 包含 $x$。由于 $T$ 与 $\mathcal D$ 至少在 $x$ 处相交，$T$ 被保留，故 $A,B,C\in\mathcal P_4$。等边三角形的直径等于边长，所以
+\begin{equation}
+  \|A-x\|_2,\ \|B-x\|_2,\ \|C-x\|_2
+  \leq d_4\leq R_{\min}.
+  \label{eq:q4-triangle-distance}
+\end{equation}
+
+若该源为全向源，三个顶点均满足接收条件。若该源为定向源，因 $x\in T$，存在 $\lambda_A,\lambda_B,\lambda_C\geq0$ 且三者之和为 $1$，使
+\begin{equation}
+  x=\lambda_AA+\lambda_BB+\lambda_C C.
+\end{equation}
+
+若三个顶点都严格位于发射背面，则
+\begin{equation}
+  u(\psi)^{\mathsf T}(A-x)<0,\quad
+  u(\psi)^{\mathsf T}(B-x)<0,\quad
+  u(\psi)^{\mathsf T}(C-x)<0.
+\end{equation}
+
+对三式分别乘以 $\lambda_A,\lambda_B,\lambda_C$ 后求和，左端应等于
+\begin{equation}
+  u(\psi)^{\mathsf T}
+  \left(\lambda_AA+\lambda_BB+\lambda_C C-x\right)=0,
+\end{equation}
+
+与严格小于 $0$ 矛盾。因此至少一个顶点满足
+$u(\psi)^{\mathsf T}(Q-x)\geq0$，再结合式~\eqref{eq:q4-triangle-distance}，该顶点能够接收到定向源信号。\hfill$\square$
+
+机器狗在每个驻留点检测尚未清除的频道。返回近距离时立即原地清除；返回有效示向度时按问题三更新 $\widehat K_j$，同时按式~\eqref{eq:q4-state-update} 更新 $\Xi_j$；返回无信号时只更新 $\Xi_j$ 并继续扫描。全部 $25$ 个驻留点完成后，由命题10可将从未返回近距离或有效示向度的频道归入无源集合。
+
+\subsubsection{四侧探测组与局部三角网}
+
+扫描完成后，机器狗选择定位区域中心距当前位置最近的未处理频道。若该频道已经满足问题三的可靠清除条件，则直接清除；否则不再使用只考虑距离的单个补充测点，而是从多个方向构造有限探测组。
+
+设当前定位区域满足
+\begin{equation}
+  \widehat K_j\subseteq\overline B(c_j,r_j).
+\end{equation}
+
+在中心的四个坐标轴方向设置
+\begin{equation}
+  \mathcal G_j^{\square}=
+  \left\{
+  c_j+(\rho_j,0),\ c_j+(0,\rho_j),
+  c_j-(\rho_j,0),\ c_j-(0,\rho_j)
+  \right\}.
+  \label{eq:q4-four-sided-points}
+\end{equation}
+
+偏移量需要满足
+\begin{equation}
+  \sqrt2r_j<\rho_j\leq R_{\min}-r_j.
+  \label{eq:q4-four-sided-condition}
+\end{equation}
+
+程序优先取接近 $200\ \mathrm{m}$ 且满足式~\eqref{eq:q4-four-sided-condition} 的偏移量。该区间存在的必要条件为
+\begin{equation}
+  r_j<\frac{R_{\min}}{1+\sqrt2}
+  \approx414.214\ \mathrm{m}.
+\end{equation}
+
+\noindent\textbf{命题 11：}{\kaishu 若式~\eqref{eq:q4-four-sided-condition} 成立，则对 $\widehat K_j$ 中任一可能源位置和任一发射方向，四侧探测点中至少有一个能够接收到该源信号。}
+
+\noindent\textbf{证明：}
+任取 $x\in\widehat K_j$。对任一四侧探测点 $q$，由三角不等式，
+\begin{equation}
+  \|q-x\|_2
+  \leq\|q-c_j\|_2+\|c_j-x\|_2
+  \leq\rho_j+r_j\leq R_{\min}.
+  \label{eq:q4-four-distance}
+\end{equation}
+
+另一方面，令 $z=x-c_j$。由
+\begin{equation}
+  \|z\|_1\leq\sqrt2\|z\|_2
+  \leq\sqrt2r_j<\rho_j,
+\end{equation}
+
+可知 $x$ 严格位于式~\eqref{eq:q4-four-sided-points} 四点凸包内部。沿用命题10的凸组合论证，经过 $x$ 的任一发射正面闭半平面至少包含一个四侧探测点。该点再由式~\eqref{eq:q4-four-distance} 满足最小接收半径要求，故能够收到信号。\hfill$\square$
+
+当四侧偏移区间为空时，在 $\widehat K_j$ 的外接矩形上铺设边长 $900\ \mathrm{m}$ 的局部等边三角网，并保留覆盖该矩形所需三角形的全部顶点。第 $b$ 个探测组采用 $b\bmod3$ 确定的平移位置，避免定位区域变化较小时连续得到完全相同的测点。其方向覆盖理由与命题10相同。
+
+一个探测组在得到有效示向度或近距离结果后立即结束；若当前点无信号，则删除与该结果不相容的有限可能状态，并从组内剩余点继续选择。每个频道最多开始两个探测组。有限次数限制按“组”计数，而不是按单个测点计数，以免四侧探测只执行一部分便失去多方向覆盖作用。
+
+\subsubsection{基于尾部风险的滚动选点}
+
+几何探测组给出能够从某个方向接收到信号的有限点集，但不规定机器狗应先访问哪一点，也不说明额外检测是否比直接开始清除覆盖更省时。为此，本文利用式~\eqref{eq:q4-state-set} 的有限可能状态比较两类行动。
+
+首先，在当前定位区域外接矩形上建立边长 $27\ \mathrm{m}$ 的方格，保留清除圆能够覆盖定位区域的网格点，并从机器狗当前位置按最近邻顺序访问。方格半对角线约为 $19.092\ \mathrm{m}<20\ \mathrm{m}$，因而可用该点列估计完整清除所需的基础时间 $C_{\mathrm{base}}$。再加入清除结束后转向其他未处理源的移动时间，得到立即清除的预计剩余时间 $C_{\mathrm{clr}}$。实际进入清除阶段时仍沿用问题三的有限清除点构造。
+
+对探测组的一种访问顺序 $\pi$ 和可能状态 $\xi$，按式~\eqref{eq:q3-measure-time} 累加移动、换频与检测时间，直到第一个满足 $V(\xi,s)=1$ 的测点。若该点返回近距离，则加入原地清除时间；若返回有效示向度，则分别用误差下界、中心值和上界预测新的定位区域，并以
+\begin{equation}
+  \widehat C_{\mathrm{clr}}'
+  =\max\left\{5,
+  C_{\mathrm{base}}
+  \left(\frac{r_j'}{r_j}\right)^2\right\}
+  \label{eq:q4-clear-cost-scale}
+\end{equation}
+
+估计区域缩小后的清除时间；若访问完当前考虑的测点仍无信号，则转入剩余清除点。由此得到总预计时间 $C(\pi,\xi)$。
+
+将有限可能状态的相对权重归一化后，采用 Rockafellar 和 Uryasev 给出的等价优化形式~\cite{rockafellar2000}，以分位水平 $\alpha_R=0.9$ 的条件尾部均值评价较慢部分的完成时间：
+\begin{equation}
+  \mathcal R_{0.9}(\pi)
+  =\min_{\eta\in\mathbb R}
+  \left[
+    \eta+\frac{1}{1-0.9}
+    \sum_{\xi\in\Xi_j}w_\xi
+    \bigl(C(\pi,\xi)-\eta\bigr)_+
+  \right].
+  \label{eq:q4-cvar}
+\end{equation}
+
+相较只比较平均时间，式~\eqref{eq:q4-cvar} 对预计耗时最长的 $10\%$ 状态赋予更高关注，能够降低定向未知导致的长时间尾部风险。在线计算先按“可接收相对权重较大、行动时间较短”的顺序筛出不超过 $8$ 个候选首点，再从有限可能状态中保留不超过 $48$ 个代表状态进行评价。记
+\begin{equation}
+  \pi^*=\operatorname*{arg\,min}_{\pi}\mathcal R_{0.9}(\pi).
+\end{equation}
+
+仅当
+\begin{equation}
+  \mathcal R_{0.9}(\pi^*)+\Delta_s<C_{\mathrm{clr}},
+  \qquad \Delta_s=10\ \mathrm{s},
+  \label{eq:q4-measure-or-clear}
+\end{equation}
+
+才继续执行 $\pi^*$ 的第一个检测点；否则立即开始清除覆盖。机器狗并不一次提交整条探测顺序，而是在每个真实响应到达后，重新执行式~\eqref{eq:q4-state-update} 并求解式~\eqref{eq:q4-measure-or-clear}，从而形成“预测一段、执行一步、收到反馈再更新”的滚动决策。
+
+数值比较设有 $3\ \mathrm{s}$ 的现实计算上限。若有限可能状态为空、计算异常或在时限内没有完成一项比较，则直接采用几何清除覆盖。因而有限状态只影响行动先后，不改变清除覆盖本身的几何保证。
+
+\subsubsection{清除反馈、长尾处理与退出}
+
+当定位半径 $r_j\leq19.9\ \mathrm{m}$ 时，直接沿用问题三的可靠清除点；当 $19.9<r_j\leq40\ \mathrm{m}$ 且尚未在中心试清除时，先在 $c_j$ 尝试一次。其余情况按式~\eqref{eq:q4-measure-or-clear} 在多方向探测与清除覆盖之间选择。
+
+若在点 $y$ 清除失败，则由题设清除规则可知真实源位置满足 $\|x_j-y\|_2>20$。因此将有限可能状态更新为
+\begin{equation}
+  \Xi_j\leftarrow
+  \left\{\xi\in\Xi_j:\|x_\xi-y\|_2>20\right\}.
+  \label{eq:q4-failed-clear-update}
+\end{equation}
+
+连续定位多边形不作非凸切割，原清除点则从剩余队列中删除。若剩余清除点不少于 $3$、当前位置尚未重复检测、与最近一次有效示向点的距离不少于 $40\ \mathrm{m}$，并且预计节省时间超过 $2\ \mathrm{s}$，可在清除失败位置补测一次；每个源至多执行三次这类补测。若同一频道连续出现 $8$ 个清除失败点，还可至多启动一次新的多方向探测组，随后仍按真实返回结果重新决定。上述条件用于限制额外检测次数，不能替代完整清除覆盖。
+
+所有未处理源之间按当前位置到定位区域中心或下一清除点的距离选择最近者，以减少定向探测组和清除点交错执行时的跨源移动。某频道清除成功后立即移入已清除集合；三角网扫描从未发现的频道移入无源集合。当问题三式~\eqref{eq:q3-exit-condition} 的频道划分条件成立时，机器狗发出退出动作。问题四的完整决策过程如图~\ref{fig:q4-decision-tree} 所示。
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{figures/q4-decision-tree.pdf}
+  \caption{问题四机器狗的定向扫描、联合状态更新、滚动选点与反馈清除决策树}
+  \label{fig:q4-decision-tree}
+\end{figure}
