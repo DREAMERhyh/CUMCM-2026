@@ -20,7 +20,7 @@
 
 | 算法步骤 / 数学关系 | 对应函数 | 说明 |
 |---|---|---|
-| 首测后的物理源域 | `common/domain.py:build_region_from_observations` | 合并圆域与示向约束 |
+| 首测后的物理源域 | `common/domain.py:build_region_from_observations` | 合并圆形区域与示向约束 |
 | 保证/可能接收连续域 | `candidates.py:build_candidate_regions` | 分别是内近似、外近似 |
 | 生成离散搜索点 | `candidates.py:generate_candidates` | 确定性有限候选 |
 | 有限场景评分 | `planner.py:score_candidates` | 不代表连续全局最坏情形 |
@@ -62,4 +62,4 @@ python -B tests/q2/benchmark_200.py --count 200 --seed 20260911 --workers 16
 
 单次规划由 `planning_wall_clock_budget_s`（默认 120s）统一限时：候选评分、FIM 搜索和近优域采样共享同一 deadline，耗尽即返回当前最优，绝不超时抛错；`fim_cpu_time_limit_s` 继续作为 FIM 阶段的子上限保留，因此默认参数下规划行为与历史版本逐位一致。预算对结果的影响可用 `python tests/q2/benchmark_anytime.py` 复现（3 个代表性区域 × 6/60/300s，json 落在 `tests/q2/analysis/`）。
 
-人工验收必须按 `tests/q2/verify_manual.md` 执行。离散结果在 `baseline.selected_point`，连续结果在 `continuous_fim.selected_point`，顶层 `selected_point` 是供 Q3/Q4 使用的推荐点。`--region-mode online` 适合现场，`offline` 用较密采样生成论文图，`off` 用于只比较选点。5%/10% 近优域是局部采样凸包近似，不是统计置信区间或连续证书。连续 FIM、源域最坏情形和圆域都仍含有限近似，不能写成原问题连续空间全局最优证明。
+人工验收必须按 `tests/q2/verify_manual.md` 执行。离散结果在 `baseline.selected_point`，连续结果在 `continuous_fim.selected_point`，顶层 `selected_point` 是供 Q3/Q4 使用的推荐点。`--region-mode online` 适合现场，`offline` 用较密采样生成论文图，`off` 用于只比较选点。5%/10% 近优域是局部采样凸包近似，不是统计置信区间或连续证书。连续 FIM、源域最坏情形和圆形区域都仍含有限近似，不能写成原问题连续空间全局最优证明。

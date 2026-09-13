@@ -77,7 +77,7 @@ class ScanLayoutCoverageTestbench(unittest.TestCase):
 
     def _assert_grid_coverage(self, layout_name, points):
         result = verify_coverage_numerically(points)
-        print(f"[数值验证 {layout_name}] 最大最近停点距离 "
+        print(f"[数值验证 {layout_name}] 最大最近驻留点距离 "
               f"{result['maximum_distance_m']:.3f} m @ ρ="
               f"{result['worst_rho_m']:.1f} m, θ="
               f"{result['worst_bearing_deg']:.2f}°")
@@ -112,7 +112,7 @@ class ScanLayoutCoverageTestbench(unittest.TestCase):
         self.assertAlmostEqual(scan_path_length(hub_and_ring_6()), 7200.0)
         expected_pure = 960.0 + 7 * (2.0 * 960.0 * math.sin(math.pi / 8.0))
         self.assertAlmostEqual(scan_path_length(pure_ring_8()), expected_pure)
-        # 与环上弦长公式一致性：原点→首停点 + 环上相邻弦长之和。
+        # 与环上弦长公式一致性：原点→首驻留点 + 环上相邻弦长之和。
         r = 1200.0
         self.assertAlmostEqual(
             scan_path_length(hub_and_ring_6()),
@@ -195,7 +195,7 @@ class ScanLayoutPolicyTestbench(unittest.TestCase):
         self.assertEqual(summary.cleared_channels, [3])
         self.assertEqual(summary.exit_reason, "user_exit")
         self.assertLess(len(summary.actions), 10_000)
-        # 扫描动作数 = 首停点 20 + 其余停点各 19（已发现频道跳过）±1。
+        # 扫描动作数 = 首驻留点 20 + 其余驻留点各 19（已发现频道跳过）±1。
         self.assertGreater(len(summary.actions), 20 * 6)
         return summary
 
@@ -227,8 +227,8 @@ class ScanLayoutPolicyTestbench(unittest.TestCase):
                 state.pending = None
                 state.pending_mode = None
                 state.scan_channel_index += 1
-            # 已发出全部 20×停点数 个扫描测量且顺序与布局一致；
-            # 停点内循环结束后 scan_point_index 将在下一次 next_action 推进。
+            # 已发出全部 20×驻留点数 个扫描测量且顺序与布局一致；
+            # 驻留点内循环结束后 scan_point_index 将在下一次 next_action 推进。
             self.assertEqual(len(positions), 20 * len(points))
             self.assertEqual(state.phase, "scan")
 

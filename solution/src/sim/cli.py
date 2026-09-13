@@ -45,7 +45,7 @@ def main(argv=None):
     )
     parser.add_argument(
         "--scan-layout", choices=sorted(SCAN_LAYOUTS), default=None,
-        help=("Q3 扫描停点布局（仅 --problem 3 生效；缺省跟随 Q3Policy "
+        help=("Q3 扫描驻留点布局（仅 --problem 3 生效；缺省跟随 Q3Policy "
               "当前默认值）"),
     )
     parser.add_argument(

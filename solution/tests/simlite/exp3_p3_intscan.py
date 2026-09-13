@@ -1,4 +1,4 @@
-"""[实验轮3-P3] 交织扫描（扫描停点即免费 refine 腿）vs 现状批量，门1 快筛。
+"""[实验轮3-P3] 交织扫描（扫描驻留点即免费 refine 腿）vs 现状批量，门1 快筛。
 
 用法：python tests/simlite/exp3_p3_intscan.py [局数] [seed起始]
 """

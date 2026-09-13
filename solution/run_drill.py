@@ -146,7 +146,7 @@ def main(argv=None):
     parser.add_argument("--mode", choices=("smoke", "policy"), default="policy")
     parser.add_argument("--scan-layout", choices=sorted(SCAN_LAYOUTS),
                         default=None,
-                        help="Q3 扫描停点布局（缺省跟随 Q3Policy 当前默认）")
+                        help="Q3 扫描驻留点布局（缺省跟随 Q3Policy 当前默认）")
     parser.add_argument("--base-url", default="http://127.0.0.1:2026")
     parser.add_argument("--timeout-s", type=float, default=5.0)
     parser.add_argument("--retry-count", type=int, default=2)

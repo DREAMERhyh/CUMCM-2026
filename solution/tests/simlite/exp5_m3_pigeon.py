@@ -1,7 +1,7 @@
 """[实验轮5-规则6] 鸽笼早停 快筛（30 局）。
 
 臂 A= Q3BatchPolicy() 磁盘默认；臂 B= Q3BatchPolicy(pigeonhole_early_stop=True)。
-预期：N=16 源局省扫描尾部（约 2 停点×119s），N<16 局无差。
+预期：N=16 源局省扫描尾部（约 2 驻留点×119s），N<16 局无差。
 """
 
 import os
