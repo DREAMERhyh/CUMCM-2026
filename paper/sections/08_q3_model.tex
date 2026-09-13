@@ -1,6 +1,6 @@
 \subsection{问题三的模型建立与求解}
 
-问题三把前两问的静态定位模型扩展为机器狗的连续决策过程。本文按照机器狗的实际执行顺序，将策略划分为进入测试、八点扫描、观测更新、批量补充定位、清除路线排序、逐源清除和完成退出七个环节。每次行动后读取模拟器返回结果并更新状态，再据此产生下一动作，因而该策略属于基于集合状态估计的闭环决策方法，而不是预先固定全部测点和清除点的开环路线。
+问题三把前两问的静态定位模型扩展为机器狗的连续决策过程。本文按照机器狗的实际执行顺序，将策略划分为进入测试、八点扫描、观测更新、批量补充定位、清除路线排序、逐源清除和完成退出七个环节。每次行动后读取模拟器返回结果并更新状态，再据此产生下一动作。
 
 \subsubsection{执行状态与行动时间}
 
@@ -77,24 +77,6 @@
 
 故任一干扰源均落入至少一个扫描停点的最小有效接收圆内，八点布局覆盖整个目标圆域。\hfill$\square$
 
-从 $O_0$ 到 $P_0$ 的距离为 $a$，相邻扫描点之间的弦长为 $2a\sin(\pi/8)$。最后不返回原点，故扫描路径长度为
-\begin{equation}
-  L_{\mathrm{scan}}=a+7\times2a\sin\frac{\pi}{8}
-  \approx6103.27\ \mathrm{m}.
-\end{equation}
-
-若暂不计扫描过程中触发的清除，并按每个停点完整检测 $20$ 个频道，则八个停点共检测 $160$ 次、换频 $8\times19=152$ 次，名义扫描时间为
-\begin{equation}
-  T_{\mathrm{scan}}
-  =\frac{L_{\mathrm{scan}}}{5}+160\times5+152\times1
-  \approx2172.7\ \mathrm{s}.
-  \label{eq:q3-scan-time}
-\end{equation}
-
-实际执行时，已经清除的频道不再检测；对已发现频道，若当前位置不能形成足够大的新交会角，也会跳过低价值重复检测，因此实际检测次数可小于上述完整扫描基准。
-
-\subsubsection{扫描响应与源位置区域递推}
-
 在扫描点 $P_k$ 检测频道 $j$ 后，根据返回结果分别处理。
 
 当返回近距离结果时，题设表明机器狗距干扰源不超过 $5\ \mathrm{m}$。由于清除作用距离为 $20\ \mathrm{m}$，策略立即在 $P_k$ 对频道 $j$ 执行清除；若返回有效示向度，则把观测加入频道 $j$ 的历史并更新源位置区域；若返回无信号，则继续当前扫描，默认不据此切除源位置区域。
@@ -125,8 +107,6 @@
   \label{eq:q3-mec}
 \end{equation}
 
-这里继续使用最小包围圆，而不直接使用问题一的直径圆，因为问题一已经说明直径圆未必覆盖整个定位区域。$r_j$ 同时作为定位不确定性尺度和后续清除判据。
-
 对扫描中已经发现的频道，记候选扫描点 $P_k$ 相对当前区域中心与已有第 $i$ 个检测点形成的夹角为
 \begin{equation}
   \alpha_{j,i}(P_k)
@@ -142,7 +122,7 @@
   \mathcal C_f\cup\mathcal C_a\cup\mathcal C_c
   =\{1,2,\ldots,20\},
   \qquad
-  \mathcal C_f,\mathcal C_a,\mathcal C_c\ \text{两两不交}.
+  \mathcal C_f,\mathcal C_a,\mathcal C_c\ \text{两两交集为空}.
   \label{eq:q3-channel-partition}
 \end{equation}
 
@@ -154,27 +134,19 @@
   \label{eq:q3-nearest-source}
 \end{equation}
 
-选取距当前位置最近的源作为下一处理对象。该最近邻规则用于减少补充定位阶段的明显折返，但不声称给出定位与清除联合问题的全局最短路线。
+选取距当前位置最近的源作为暂定的下一处理对象。
 
 对选中的频道 $j^*$，根据 $r_{j^*}$ 分三种情况处理。
 
-当 $r_{j^*}\leq r_{\mathrm{cert}}=19.9\ \mathrm{m}$ 时，直接把 $c_{j^*}$ 加入可靠清除队列；当 $19.9<r_{j^*}\leq r_{\mathrm{try}}=40\ \mathrm{m}$ 时，把区域中心和探针尾缀加入试清除队列，等待清除巡游到达后先在中心试探；当 $r_{j^*}>40\ \mathrm{m}$ 且补充定位次数小于 $M=2$ 时，需要选择新的检测点。
+本文所称的“探针”不是新增的传感器，而是定位尚不够精确时预先生成的候选清除位置。机器狗到达一个探针后，对相应频道执行一次清除动作；若未成功，则继续访问队列中的下一个探针。它与问题二中的补充检测点作用不同：补充检测点用于获得新的示向度并缩小 $\widehat K_j$，探针则不再承担定位任务，而是利用清除距离为 $20\ \mathrm{m}$ 的条件，以若干半径为 $20\ \mathrm{m}$ 的清除圆覆盖可能的源位置区域，从而为定位精度不足的频道提供有限步保底。具体构造与覆盖条件将在后文给出。
+
+当 $r_{j^*}\leq r_{\mathrm{loc}}=19.9\ \mathrm{m}$ 时，认为该频道已完成可靠定位，直接把 $c_{j^*}$ 加入可靠清除队列；当 $19.9<r_{j^*}\leq r_{\mathrm{try}}=40\ \mathrm{m}$ 时，把区域中心和探针尾缀加入试清除队列，等待清除巡游到达后先在中心试探；当 $r_{j^*}>40\ \mathrm{m}$ 且补充定位次数小于 $M=2$ 时，需要选择新的检测点。
 
 新的检测点直接沿用问题二的递推选点方法：以当前 $\widehat K_{j^*}$ 和该频道的全部历史示向度为输入，重新构造式~\eqref{eq:q2-guaranteed-region} 的保证接收域，在其中分别生成有限离散候选和连续 Fisher 信息候选；所有候选使用式~\eqref{eq:q2-worst-radius} 的有限场景最坏后验半径重新评价，并按式~\eqref{eq:q2-final-choice} 得到执行点 $s^*$。机器狗在 $s^*$ 完成检测后，再按式~\eqref{eq:q3-region-update} 用真实响应更新区域，而不把问题二的前瞻预测当作真实定位结果。若连续优化不可用，则执行问题二的离散候选回退点。
 
-问题三的在线调用关闭近优区域绘图，只保留测点坐标选择；连续 Fisher 搜索的单次现实墙钟上限设为 $6\ \mathrm{s}$，每个源最多执行两次上述补充定位。达到次数上限仍未满足可靠清除条件时，将中心和有限探针加入该频道的清除队列。
+每个源最多执行两次上述补充定位。达到次数上限仍未满足可靠清除条件时，将中心和有限探针加入该频道的清除队列。
 
-\noindent\textbf{命题 7：}{\kaishu 若 $r_j\leq19.9\ \mathrm{m}$，则在最小包围圆中心 $c_j$ 执行清除具有不超过 $20\ \mathrm{m}$ 的确定性距离保证。}
-
-\noindent\textbf{证明：}
-由最小包围圆定义，真实源位置 $X_j\in\widehat K_j\subseteq\overline B(c_j,r_j)$，故
-\begin{equation}
-  \|X_j-c_j\|_2\leq r_j\leq19.9\ \mathrm{m}<20\ \mathrm{m}.
-\end{equation}
-
-因此在 $c_j$ 执行清除时真实源必定位于清除范围内。\hfill$\square$
-
-$40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清除失败后仍可继续使用探针队列，目的是避免为半径已经较小的区域专程执行一次补充定位。
+$40\ \mathrm{m}$ 阈值不具有上述中心可靠清除条件；它只表示在中心试清除失败后仍可继续使用探针队列，目的是避免为半径已经较小的区域专程执行一次补充定位。
 
 \subsubsection{开放式旅行商清除顺序}
 
@@ -206,7 +178,7 @@ $40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清�
 
 并通过保存的前驱状态回溯得到访问次序。
 
-\noindent\textbf{命题 8：}{\kaishu 式~\eqref{eq:q3-held-karp} 得到中心集合之间的最短开放访问路径。}
+\noindent\textbf{命题 7：}{\kaishu 式~\eqref{eq:q3-held-karp} 得到中心集合之间的最短开放访问路径。}
 
 \noindent\textbf{证明：}
 对集合大小 $|A|$ 作归纳。当 $|A|=1$ 时，路径不含边，$F(\{j\},j)=0$ 显然最优。设所有大小小于 $|A|$ 的状态均已给出最短路径。任一恰好访问 $A$ 且以 $c_j$ 结束的路径，在到达 $c_j$ 前必以某个 $c_i$ 结束，并已恰好访问 $A\setminus\{j\}$；由归纳假设，该前缀的最短长度为 $F(A\setminus\{j\},i)$。遍历所有可能前驱 $i$ 并取最小值即得到式~\eqref{eq:q3-held-karp}。最后遍历终点 $j$，即得到式~\eqref{eq:q3-open-tsp} 的全体中心最短开放路径。\hfill$\square$
@@ -215,7 +187,7 @@ $40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清�
 
 \subsubsection{清除邻域偏移与探针保底}
 
-按照开放式旅行商顺序清除具有证书的频道时，可以利用 $20\ \mathrm{m}$ 清除半径提前向下一目标移动。设当前源的最小包围圆为 $\overline B(c_j,r_j)$，下一队列中心为 $c_q$。当 $c_q\ne c_j$ 时，定义实际清除点
+按照开放式旅行商顺序清除已完成可靠定位的频道时，可以利用 $20\ \mathrm{m}$ 清除半径提前向下一目标移动。设当前源的最小包围圆为 $\overline B(c_j,r_j)$，下一队列中心为 $c_q$。当 $c_q\ne c_j$ 时，定义实际清除点
 \begin{equation}
   y_j=c_j+(20-r_j)\frac{c_q-c_j}{\|c_q-c_j\|_2},
   \qquad r_j\leq19.9.
@@ -224,7 +196,7 @@ $40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清�
 
 若当前源为最后一个源，或两中心重合，则取 $y_j=c_j$。
 
-\noindent\textbf{命题 9：}{\kaishu 式~\eqref{eq:q3-tspn-point} 在保持可靠清除的同时，使清除点沿下一目标方向前移 $20-r_j$ 米。}
+\noindent\textbf{命题 8：}{\kaishu 式~\eqref{eq:q3-tspn-point} 在保持可靠清除的同时，使清除点沿下一目标方向前移 $20-r_j$ 米。}
 
 \noindent\textbf{证明：}
 对任意真实源位置 $X_j\in\widehat K_j$，由三角不等式和式~\eqref{eq:q3-mec}，
@@ -236,13 +208,13 @@ $40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清�
 
 因此 $y_j$ 始终位于真实源的清除范围内；又因为偏移方向与 $c_q-c_j$ 同向，机器狗相对下一目标中心前移 $20-r_j$ 米。\hfill$\square$
 
-对尚未获得证书的频道，策略先在 $c_j$ 试清除；失败后依次取有限探针。为说明完整探针构造，设 $k=\lceil r_j/20\rceil$，在中心放置一个探针，并在第 $\ell$ 个同心圆上均匀放置 $6\ell$ 个探针：
+对尚未完成可靠定位的频道，策略先在 $c_j$ 试清除；失败后依次访问有限探针。为说明完整探针构造，设 $k=\lceil r_j/20\rceil$，在中心放置一个探针，并在第 $\ell$ 个同心圆上均匀放置 $6\ell$ 个探针：
 \begin{equation}
   q_{\ell,m}=c_j+20\ell
   \left(\cos\frac{2\pi m}{6\ell},
   \sin\frac{2\pi m}{6\ell}\right),
   \quad
-  \ell=1,ldots,k,\quad m=0,ldots,6\ell-1.
+  \ell=1,\ldots,k,\quad m=0,\ldots,6\ell-1.
   \label{eq:q3-probes}
 \end{equation}
 
@@ -253,10 +225,10 @@ $40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清�
   \label{eq:q3-probe-count}
 \end{equation}
 
-\noindent\textbf{命题 10：}{\kaishu 未截断的式~\eqref{eq:q3-probes} 探针集合以 $20\ \mathrm{m}$ 为作用半径覆盖最小包围圆 $\overline B(c_j,r_j)$；将圆外探针投影到凸区域 $\widehat K_j$ 后，对 $\widehat K_j$ 内真实源的覆盖仍保持。}
+\noindent\textbf{命题 9：}{\kaishu 未截断的式~\eqref{eq:q3-probes} 探针集合以 $20\ \mathrm{m}$ 为作用半径覆盖最小包围圆 $\overline B(c_j,r_j)$；将圆外探针投影到凸区域 $\widehat K_j$ 后，对 $\widehat K_j$ 内真实源的覆盖仍保持。}
 
 \noindent\textbf{证明：}
-先不考虑投影。任取 $X\in\overline B(c_j,r_j)$，记 $\rho=\|X-c_j\|_2$。若 $\rho\leq10$，中心探针到 $X$ 的距离不超过 $10$。若 $\rho>10$，取与 $\rho/20$ 最近的整数环号 $\ell\in\{1,ldots,k\}$，则 $|\rho-20\ell|\leq10$；再取该环上与 $X$ 极角最近的探针，其角差满足 $|\Delta|\leq\pi/(6\ell)$。由余弦定理及不等式 $2(1-\cos\Delta)\leq\Delta^2$，
+先不考虑投影。任取 $X\in\overline B(c_j,r_j)$，记 $\rho=\|X-c_j\|_2$。若 $\rho\leq10$，中心探针到 $X$ 的距离不超过 $10$。若 $\rho>10$，取与 $\rho/20$ 最近的整数环号 $\ell\in\{1,\ldots,k\}$，则 $|\rho-20\ell|\leq10$；再取该环上与 $X$ 极角最近的探针，其角差满足 $|\Delta|\leq\pi/(6\ell)$。由余弦定理及不等式 $2(1-\cos\Delta)\leq\Delta^2$，
 \begin{align}
   \|X-q_{\ell,m}\|_2^2
   &=(\rho-20\ell)^2+2\rho(20\ell)(1-\cos\Delta)\\
@@ -274,16 +246,16 @@ $40\ \mathrm{m}$ 阈值不具有命题7的保证；它只表示在中心试清�
 
 所以把探针投影回定位区域不会增大它到任一可行源位置的距离，覆盖性质保持。\hfill$\square$
 
-当前程序为控制最坏动作数，每个频道最多保留 $76$ 个探针。由式~\eqref{eq:q3-probe-count}，当 $k\leq4$，即 $r_j\leq80\ \mathrm{m}$ 时，完整探针数至多为 $61$，命题10的覆盖保证完整保留；特别地，$r_j\leq40\ \mathrm{m}$ 的中心试清除分支只需 $19$ 个完整探针。当两次补充定位后仍有 $r_j>80\ \mathrm{m}$ 时，截断后的队列属于有限试探，不能由命题10推出连续覆盖保证，这一情形需在模拟演练中单独记录并作为后续改进对象。
+当前程序为控制最坏动作数，每个频道最多保留 $76$ 个探针。由式~\eqref{eq:q3-probe-count}，当 $k\leq4$，即 $r_j\leq80\ \mathrm{m}$ 时，完整探针数至多为 $61$，命题9的覆盖保证完整保留；特别地，$r_j\leq40\ \mathrm{m}$ 的中心试清除分支只需 $19$ 个完整探针。当两次补充定位后仍有 $r_j>80\ \mathrm{m}$ 时，截断后的队列属于有限试探，不能由命题9推出连续覆盖保证，这一情形需在模拟演练中单独记录并作为后续改进对象。
 
 执行清除队列时，若当前点清除成功，则将频道加入 $\mathcal C_c$ 并转向下一队列；若失败，则删除当前队首并尝试下一个探针。若所有频道最终满足
 \begin{equation}
   \mathcal C_a\cup\mathcal C_c=\{1,2,\ldots,20\},
   \qquad \mathcal C_a\cap\mathcal C_c=\varnothing,
-  \label{eq:q3-exit-certificate}
+  \label{eq:q3-exit-condition}
 \end{equation}
 
-机器狗发出退出动作。由命题6可知八点扫描在有限步内完成；每个源最多执行两次补充定位；在 $r_j\leq80\ \mathrm{m}$ 的完整探针条件下，每个清除队列也在有限步内命中。因此，在模拟器响应与题设距离规则一致且所有保底分支满足该半径条件时，策略能够在有限动作数内取得式~\eqref{eq:q3-exit-certificate} 的终止证书。当前问题三的完整决策过程如图~\ref{fig:q3-decision-tree} 所示。
+机器狗发出退出动作。由命题6可知八点扫描在有限步内完成；每个源最多执行两次补充定位；在 $r_j\leq80\ \mathrm{m}$ 的完整探针条件下，每个清除队列也在有限步内命中。因此，在模拟器响应与题设距离规则一致且所有保底分支满足该半径条件时，策略能够在有限动作数内满足式~\eqref{eq:q3-exit-condition} 所示的任务完成条件。当前问题三的完整决策过程如图~\ref{fig:q3-decision-tree} 所示。
 
 \begin{figure}[H]
   \centering
