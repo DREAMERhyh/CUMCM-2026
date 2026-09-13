@@ -49,7 +49,7 @@ class Q3Policy:
                  scan_layout="pure_ring8", use_no_signal_pruning=False,
                  continuous_objective="fim", use_optimal_stop=True,
                  stop_cost_per_metre=0.5, guess_clear_threshold_m=40.0,
-                 interleaved_scan_refine=True):
+                 interleaved_scan_refine=True, pigeonhole_early_stop=False):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
         if scan_layout not in SCAN_LAYOUTS:
@@ -67,6 +67,7 @@ class Q3Policy:
         self.stop_cost_per_metre = stop_cost_per_metre
         self.guess_clear_threshold_m = guess_clear_threshold_m
         self.interleaved_scan_refine = interleaved_scan_refine
+        self.pigeonhole_early_stop = pigeonhole_early_stop
         self.coverage_points = list(coverage_points or SCAN_LAYOUTS[scan_layout]())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
@@ -88,6 +89,12 @@ class Q3Policy:
 
     def _scan_action(self, state):
         while state.scan_point_index < len(self.coverage_points):
+            # 鸽笼早停（默认关闭）：题目保证总源数 <=16，发现满 16 源后
+            # 剩余频道 absent 是逻辑必然，跳过剩余扫描停点（确定性语义，
+            # 不依赖任何概率假设）。absent 判定在扫描收尾统一完成。
+            if (self.pigeonhole_early_stop
+                    and len(state.sources) >= 16):
+                break
             if not state.scan_order:
                 state.scan_order = [state.current_channel] + [
                     channel for channel in range(1, 21)
