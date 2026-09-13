@@ -1,18 +1,160 @@
 \section{支撑材料文件列表}
 
-本文排版框架在 CUMCMThesis 模板基础上整理，模板来源见文献~\cite{cumcmthesis}。
+支撑材料以文件夹“支撑材料/”为根目录。表~\ref{tab:supporting-files}
+按相对于该根目录的路径列出所附材料及用途；其中正式测试日志、运行结果和
+测试代码仅作目录级说明，源程序则按实际文件树逐项说明。
 
-提交前请在此逐项列出支撑材料中的文件名及用途，包括可运行源程序、自主查阅的数据资料和较大篇幅的中间结果。若确实没有支撑材料，应改为规范要求的表述：“本论文没有支撑材料”。
+\begingroup
+\small
+\renewcommand{\arraystretch}{1.08}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.43\textwidth}
+                        >{\raggedright\arraybackslash}p{0.52\textwidth}@{}}
+  \caption{支撑材料文件列表}
+  \label{tab:supporting-files}\\
+  \toprule
+  相对路径 & 内容与用途 \\
+  \midrule
+  \endfirsthead
 
-\begin{table}[H]
-  \centering
-  \caption{支撑材料文件列表（待填写）}
-  \label{tab:supporting-files}
-  \begin{tabularx}{0.95\textwidth}{@{}cXX@{}}
-    \toprule
-    序号 & 文件名 & 内容与用途 \\
-    \midrule
-    1 & 待填写 & 待填写 \\
-    \bottomrule
-  \end{tabularx}
-\end{table}
+  \multicolumn{2}{c}{表~\thetable\ （续）}\\
+  \toprule
+  相对路径 & 内容与用途 \\
+  \midrule
+  \endhead
+
+  \midrule
+  \multicolumn{2}{r}{续下页}\\
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  \path{AI工具使用详情.pdf}
+    & AI工具使用详情。 \\ 
+  \path{formal_test/}
+    & 正式测试日志。 \\
+  \path{solution/}
+    & 完整的求解程序、运行入口、测试代码与结果文件。 \\
+  \path{solution/.gitignore}
+    & 规定 Python 缓存、临时文件及本地生成物的忽略规则。 \\
+  \path{solution/README.md}
+    & 给出问题三、问题四在线测试及日志可视化的基本运行方法。 \\
+  \path{solution/requirements.txt}
+    & 列出运行求解程序和绘图程序所需的 Python 依赖。 \\
+  \path{solution/run_drill.py}
+    & 问题三、问题四连接模拟器的统一入口，负责安全确认、策略启动、逐动作日志记录及虚拟时间复算。 \\
+  \path{solution/output/}
+    & 离线测试和在线测试结果。 \\
+  \path{solution/src/}
+    & 问题一至问题四的算法实现、公共模型、运行层和模拟器通信层。 \\
+
+  \path{solution/src/common/__init__.py}
+    & 公共模块的软件包入口。 \\
+  \path{solution/src/common/budget.py}
+    & 实现规划过程共享的墙钟时间预算，在预算耗尽时返回当前最优结果。 \\
+  \path{solution/src/common/domain.py}
+    & 构造物理先验、圆形区域的保守多边形近似以及观测对应的可行域。 \\
+  \path{solution/src/common/models.py}
+    & 定义测向观测、机器人动作、时间分解和运行摘要等公共数据结构。 \\
+  \path{solution/src/common/time_model.py}
+    & 按题目规则计算移动、切换频道、测量和清除动作的虚拟时间。 \\
+
+  \path{solution/src/legacy/environment.py}
+    & 早期全向干扰源合成环境，现用于旧算法与几何行为的离线回归检查。 \\
+
+  \path{solution/src/q1/__init__.py}
+    & 汇总并导出问题一的分析与定位接口。 \\
+  \path{solution/src/q1/API.md}
+    & 说明问题一输入数据、返回字段及模块接口约定。 \\
+  \path{solution/src/q1/bearing_plot.py}
+    & 绘制检测点、示向线、误差扇区和定位区域。 \\
+  \path{solution/src/q1/cli.py}
+    & 问题一命令行入口，读取测向数据并输出定位分析及图形。 \\
+  \path{solution/src/q1/geometry.py}
+    & 实现测向扇区半平面、凸多边形求交、直径和最小包围圆等核心几何算法。 \\
+  \path{solution/src/q1/README.md}
+    & 说明问题一的算法流程以及各算法步骤与代码文件的对应关系。 \\
+
+  \path{solution/src/q2/__init__.py}
+    & 汇总并导出问题二的候选域构造、连续优化和测点规划接口。 \\
+  \path{solution/src/q2/candidates.py}
+    & 构造保证接收域、可能接收域及确定性的候选检测点集合。 \\
+  \path{solution/src/q2/cli.py}
+    & 问题二命令行入口，执行第二检测点规划并输出结果文件。 \\
+  \path{solution/src/q2/continuous_diameter.py}
+    & 以最坏情形后验包围直径为目标进行连续测点搜索，供替代目标实验使用。 \\
+  \path{solution/src/q2/continuous_fim.py}
+    & 在保证接收域内执行基于 Fisher 信息矩阵替代指标的连续测点优化。 \\
+  \path{solution/src/q2/near_optimal.py}
+    & 根据局部采样结果构造问题二的近优测点区域。 \\
+  \path{solution/src/q2/planner.py}
+    & 组织离散候选评分、连续优化、Pareto 筛选和最终第二测点推荐。 \\
+  \path{solution/src/q2/plot.py}
+    & 绘制候选区域、离散与连续方案、近优域及 Pareto 对比结果。 \\
+
+  \path{solution/src/q3/__init__.py}
+    & 问题三策略模块的软件包入口。 \\
+  \path{solution/src/q3/batch_policy.py}
+    & 实现当前问题三批量定位、Held--Karp 开放路径排序及分批清除策略。 \\
+  \path{solution/src/q3/cli.py}
+    & 问题三离线演示入口，不连接正式模拟器。 \\
+  \path{solution/src/q3/coverage.py}
+    & 构造全场扫描布局、覆盖检验和有限清除探针序列。 \\
+  \path{solution/src/q3/minimax_leg.py}
+    & 实现按最坏后验半径选择补充测量位置的极小极大实验方案。 \\
+  \path{solution/src/q3/policy.py}
+    & 定义全向干扰源扫描、定位、清除和退出的基础状态机。 \\
+  \path{solution/src/q3/refine_selector.py}
+    & 实现兼顾绕行成本和预测定位收缩效果的补充测量位置实验方案。 \\
+
+  \path{solution/src/q4/__init__.py}
+    & 问题四定向干扰源扩展模块的软件包入口。 \\
+  \path{solution/src/q4/belief.py}
+    & 根据位置、接收半径和发射方向的有限场景构造联合信念，用于动作排序。 \\
+  \path{solution/src/q4/cli.py}
+    & 问题四离线演示入口，不连接正式模拟器。 \\
+  \path{solution/src/q4/directional.py}
+    & 构造定向源发现扫描网、复核探测点并判定发射方向可见性。 \\
+  \path{solution/src/q4/policy.py}
+    & 实现问题四混合全向、定向干扰源的扫描、复核、定位和清除策略。 \\
+  \path{solution/src/q4/rolling.py}
+    & 以有限场景风险和后续代价评估定向探测、直接清除及保底清除动作。 \\
+
+  \path{solution/src/runtime/__init__.py}
+    & 与具体模拟器无关的运行模块入口。 \\
+  \path{solution/src/runtime/runner.py}
+    & 按动作上限顺序驱动策略与离线客户端，并汇总一轮运行结果。 \\
+
+  \path{solution/src/sim/__init__.py}
+    & 汇总并导出模拟器通信、协议校验、离线替身和现场运行接口。 \\
+  \path{solution/src/sim/cli.py}
+    & 人工准备好模拟器后的现场命令行入口，包含联通检查和完整策略模式。 \\
+  \path{solution/src/sim/client.py}
+    & 实现仅访问本机回环地址的同步 HTTP 客户端及安全重试和幂等控制。 \\
+  \path{solution/src/sim/errors.py}
+    & 定义传输、HTTP、协议、业务拒绝、并发和幂等冲突等异常类型。 \\
+  \path{solution/src/sim/fake.py}
+    & 提供与正式客户端具有相同执行接口的确定性离线模拟器。 \\
+  \path{solution/src/sim/live_runner.py}
+    & 在动作上限和退出安全余量约束下运行在线策略，并持续写入逐动作日志。 \\
+  \path{solution/src/sim/protocol.py}
+    & 校验并编解码题目附件规定的模拟器 HTTP 与 JSON 请求、响应。 \\
+  \path{solution/src/sim/smoke.py}
+    & 实现进入、单次测量和退出组成的最小联通检查策略。 \\
+
+  \path{solution/src/simlite/__init__.py}
+    & 实现无 HTTP 层的轻量离线模拟器及微秒级虚拟时间累计。 \\
+  \path{solution/src/simlite/paired.py}
+    & 对同一随机案例池中的两种策略进行成对比较并生成晋级判定指标。 \\
+  \path{solution/src/simlite/replay.py}
+    & 批量回放策略，统计扫描、定位和清除时间并复核虚拟时间账目。 \\
+
+  \path{solution/src/tools/__init__.py}
+    & 辅助分析与可视化工具的软件包入口。 \\
+  \path{solution/src/tools/log_visualize/}
+    & 日志可视化工具。 \\
+
+  \path{solution/tests/}
+    & 测试用代码。 \\
+\end{longtable}
+\endgroup
