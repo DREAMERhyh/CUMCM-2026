@@ -1,23 +1,25 @@
 # 2026 全国大学生数学建模竞赛论文模板
 
-本目录由下载的 CUMCMThesis 模板整理而成，只保留正式参赛论文需要的文件和空目录。主文件为 `paper.tex`，请使用 XeLaTeX 编译：
+本目录由下载的 CUMCMThesis 模板整理而成，只保留正式参赛论文需要的文件和空目录。主文件为 `main.tex`，请使用 XeLaTeX 编译：
 
-在 Windows 宿主机上，可直接用 TeXstudio 打开 `paper.tex`，将默认编译器设为 XeLaTeX；也可以在该目录打开 PowerShell 或命令提示符运行：
+在 Windows 宿主机上，可直接用 TeXstudio 打开 `main.tex`，将默认编译器设为 XeLaTeX；也可以在该目录打开 PowerShell 或命令提示符运行：
 
 ```bash
-xelatex paper.tex
-xelatex paper.tex
+xelatex main.tex
+xelatex main.tex
 ```
 
 也可以使用：
 
 ```bash
-latexmk -xelatex paper.tex
+latexmk -xelatex main.tex
 ```
 
 ## 文件说明
 
-- `paper.tex`：电子版论文主文件；默认不生成承诺书和编号专用页。
+- `main.tex`：电子版论文主文件，保留文档类、全局格式、标题、参考文献和附录环境；默认不生成承诺书和编号专用页。
+- `sections/`：按论文结构拆分的子文件，由 `main.tex` 通过 `\input` 按顺序载入；标签、公式、图表和文献引用仍在同一次编译中全局编号。
+- `paper.tex`：兼容入口，内容仅为 `\input{main}`；原有编辑器配置仍可继续编译，但建议改为直接编译 `main.tex`。
 - `cumcmthesis.cls`：原模板文档类，版本 2.9（2026-08-26）。
 - `cumcm2026.sty`：论文常用排版设置及 2026 年 AI 工具使用声明命令。
 - `figures/`：论文图片；建议使用含义明确的英文文件名。
