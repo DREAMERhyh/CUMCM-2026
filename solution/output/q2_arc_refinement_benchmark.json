@@ -1,0 +1,101 @@
+{
+  "benchmark": "Q2 uniform vs adaptive circumscribed source region",
+  "official_simulator_used": false,
+  "seed": 20260912,
+  "region_timing_repeats": 7,
+  "comparisons": [
+    {
+      "initial_circle_sides": 24,
+      "case_count": 200,
+      "region_builder": {
+        "uniform_total_s": 0.37548694699671614,
+        "adaptive_total_s": 0.4106099730006463,
+        "adaptive_over_uniform_ratio": 1.0935399386978886
+      },
+      "geometry": {
+        "nested_failures": 0,
+        "generated_truth_containment_failures": 0,
+        "radial_target_failures": 0,
+        "mean_adaptive_area_over_uniform": 0.9888426826957302,
+        "mec_radius_change_m": {
+          "adaptive_lower_count": 200,
+          "tie_count": 0,
+          "adaptive_higher_count": 0,
+          "mean_adaptive_minus_uniform": -3.045547197293235
+        },
+        "mean_max_circle_excess_uniform_m": 5.953344681285687,
+        "mean_max_circle_excess_adaptive_m": 0.19927002943433877,
+        "mean_added_planes": 2.0,
+        "mean_added_vertices": 1.0
+      },
+      "discrete_planner": {
+        "case_count": 20,
+        "uniform_total_s": 40.61013636500002,
+        "adaptive_total_s": 46.71472188300004,
+        "adaptive_over_uniform_ratio": 1.1503217192656678,
+        "selected_worst_radius_change_m": {
+          "adaptive_lower_count": 17,
+          "tie_count": 0,
+          "adaptive_higher_count": 3,
+          "mean_adaptive_minus_uniform": -9.67612497040715
+        },
+        "selected_action_time_change_s": {
+          "adaptive_lower_count": 11,
+          "tie_count": 7,
+          "adaptive_higher_count": 2,
+          "mean_adaptive_minus_uniform": -0.5497612686460783
+        }
+      }
+    },
+    {
+      "initial_circle_sides": 16,
+      "case_count": 200,
+      "region_builder": {
+        "uniform_total_s": 0.1257987380004124,
+        "adaptive_total_s": 0.1529821549997905,
+        "adaptive_over_uniform_ratio": 1.2160865635972355
+      },
+      "geometry": {
+        "nested_failures": 0,
+        "generated_truth_containment_failures": 0,
+        "radial_target_failures": 0,
+        "mean_adaptive_area_over_uniform": 0.9764012018986412,
+        "mec_radius_change_m": {
+          "adaptive_lower_count": 200,
+          "tie_count": 0,
+          "adaptive_higher_count": 0,
+          "mean_adaptive_minus_uniform": -6.892180207940211
+        },
+        "mean_max_circle_excess_uniform_m": 13.161793490876443,
+        "mean_max_circle_excess_adaptive_m": 0.20389068825625373,
+        "mean_added_planes": 2.0,
+        "mean_added_vertices": 1.0
+      },
+      "discrete_planner": {
+        "case_count": 20,
+        "uniform_total_s": 14.896762396001122,
+        "adaptive_total_s": 18.230679451999094,
+        "adaptive_over_uniform_ratio": 1.2238014521123681,
+        "selected_worst_radius_change_m": {
+          "adaptive_lower_count": 16,
+          "tie_count": 0,
+          "adaptive_higher_count": 4,
+          "mean_adaptive_minus_uniform": -8.055461100746792
+        },
+        "selected_action_time_change_s": {
+          "adaptive_lower_count": 12,
+          "tie_count": 8,
+          "adaptive_higher_count": 0,
+          "mean_adaptive_minus_uniform": -3.107053336186773
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "All cases are synthetic first-bearing observations.",
+    "Both builders preserve the legacy half-plane order so timing isolates refinement overhead.",
+    "Planner timing disables continuous FIM and near-optimal regions to isolate set scoring.",
+    "Wall-clock timings depend on this machine and are not robot virtual time.",
+    "No official simulator was available or used."
+  ]
+}
