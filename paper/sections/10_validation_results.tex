@@ -4,20 +4,21 @@
 
 \subsection{问题一：几何计算的正确性与数值稳定性}
 
-分别采用普通随机、边界和近共线退化数据，检验交会区域、凸多边形直径及直径圆覆盖关系，结果见表~\ref{tab:q1-validation-short}。
+分别采用普通随机、边界和近似共线的退化数据，检验交会区域、凸多边形直径及直径圆覆盖关系，结果见表~\ref{tab:q1-validation-short}。
 
 \begin{table}[H]
   \centering
   \caption{问题一：三类几何数据的检验结果}
   \label{tab:q1-validation-short}
   \small
-  \begin{tabular}{@{}lrrrr@{}}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{@{}ccccc@{}}
     \toprule
     数据类型 & 算例数 & 检查数 & 失败数 & 有界算例数 \\
     \midrule
     普通随机 & 24 & 640 & 0 & 20 \\
     边界场景 & 24 & 630 & 0 & 24 \\
-    近共线退化 & 24 & 576 & 3 & 18 \\
+    近似共线退化 & 24 & 576 & 3 & 18 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -28,14 +29,15 @@
 
 \subsection{问题二：连续选点的定位收益与时间代价}
 
-为检验连续 Fisher 选点能否改善定位精度，以及这种改善是否同时带来更优的时间综合表现，在200个相同随机场景下与有限离散选点进行配对比较，结果见表~\ref{tab:q2-validation-short}。
+为检验连续 Fisher 选点能否改善定位精度，以及这种改善是否同时带来更优的时间综合表现，在200个相同随机场景下与有限个离散选点进行配对比较，结果见表~\ref{tab:q2-validation-short}。
 
 \begin{table}[H]
   \centering
   \caption{问题二：200个相同场景下的配对检验}
   \label{tab:q2-validation-short}
   \small
-  \begin{tabular}{@{}lrrr@{}}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{@{}cccc@{}}
     \toprule
     指标 & 有限离散选点 & 连续 Fisher 选点 & 连续方案更优 \\
     \midrule
@@ -46,7 +48,7 @@
   \end{tabular}
 \end{table}
 
-由表~\ref{tab:q2-validation-short}，连续方案将最大定位不确定性半径均值由 $119.037\ \mathrm m$ 降至 $70.082\ \mathrm m$，绝对降低 $48.955\ \mathrm m$，且在200个场景中均占优；但其综合评分均值由 $169.573\ \mathrm s$ 增至 $174.802\ \mathrm s$，仅在76个场景中更优。由此可见，连续搜索稳定改善了定位几何，却不必然抵消额外行动时间，因而最终选点仍需按统一指标复评分，而不能直接采用 Fisher 目标的最优点。不同计算时长和搜索深度下所得评分基本一致，说明当前数值设置较稳定；但表中有限场景结果不能证明连续原问题的全局最优。
+由表~\ref{tab:q2-validation-short}，连续方案将最大定位不确定性半径均值由 $119.037\ \mathrm m$ 降至 $70.082\ \mathrm m$，绝对降低 $48.955\ \mathrm m$，且在200个场景中均占优；但其综合评分均值由 $169.573\ \mathrm s$ 增至 $174.802\ \mathrm s$，仅在76个场景中更优。由此可见，连续搜索稳定改善了定位几何，却不必然抵消额外行动时间，因而最终选点仍需按统一指标重新评分，而不能直接采用 Fisher 目标的最优点。不同计算时长和搜索深度下所得评分基本一致，说明当前数值设置较稳定。
 
 \subsection{问题三：全向源任务的完成率与耗时}
 
@@ -85,6 +87,7 @@
   \caption{问题三日志汇总统计结果}
   \label{tab:q3-log-statistics}
   \small
+  \renewcommand{\arraystretch}{1.15}
   \begin{tabular}{cc}
     \toprule
     被清除干扰源个数的比例 & 平均定位清除时间 \\
@@ -101,19 +104,18 @@
   \label{tab:q3-formal-results-blank}
   \small
   \renewcommand{\arraystretch}{1.25}
-  \begin{tabularx}{0.98\textwidth}{|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|}
-    \hline
-    {\scriptsize\mbox{测试案例编码}} &
-    {\scriptsize\mbox{清除干扰源个数}} &
-    {\scriptsize\mbox{平均定位清除时间/(s/个)}} &
-    {\scriptsize\mbox{程序运行时间/s}} \\
-    \hline
-    DHQT-NQNJ-TTPY-A3D7&14 & 293.036& 4.379\\
-    \hline
-    6Z66-U8X3-CMCA-T2VS &10 & 427.066& 4.886\\
-    \hline
-    CDBE-YREC-5HV6-BER2 & 16& 289.209& 2.941\\
-    \hline
+  \renewcommand{\tabularxcolumn}[1]{m{#1}}
+  \begin{tabularx}{0.98\textwidth}{YYYY}
+    \toprule
+    \shortstack{测试案例\\编码} &
+    \shortstack{清除干扰源\\个数} &
+    \shortstack{平均定位清除时间\\$/\left(\mathrm{s}/\text{个}\right)$} &
+    \shortstack{程序运行\\时间/$\mathrm s$} \\
+    \midrule
+    DHQT-NQNJ-TTPY-A3D7 & 14 & 293.036 & 4.379 \\
+    6Z66-U8X3-CMCA-T2VS & 10 & 427.066 & 4.886 \\
+    CDBE-YREC-5HV6-BER2 & 16 & 289.209 & 2.941 \\
+    \bottomrule
   \end{tabularx}
 \end{table}
 
@@ -149,6 +151,7 @@
   \caption{问题四日志汇总统计结果}
   \label{tab:q4-log-statistics}
   \small
+  \renewcommand{\arraystretch}{1.15}
   \begin{tabular}{cc}
     \toprule
     被清除干扰源个数的比例 & 平均定位清除时间 \\
@@ -165,20 +168,19 @@
   \label{tab:q4-formal-results-blank}
   \small
   \renewcommand{\arraystretch}{1.25}
-  \begin{tabularx}{0.98\textwidth}{|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|>{\centering\arraybackslash}X|}
-    \hline
-    {\scriptsize\mbox{测试案例编码}} &
-    {\scriptsize\mbox{清除干扰源个数}} &
-    {\scriptsize\mbox{平均定位清除时间/(s/个)}} &
-    {\scriptsize\mbox{程序运行时间/s}} \\
-    \hline
-    ZAPY-NVYT-QMNZ-YXAY &12 &812.934 &8.211 \\
-    \hline
-    CVHK-CDTF-9TXP-QA42 & 14& 630.479& 6.690\\
-    \hline
-    X5PJ-SBZ5-UWMY-XFTX &15 &619.302 &9.134 \\
-    \hline
+  \renewcommand{\tabularxcolumn}[1]{m{#1}}
+  \begin{tabularx}{0.98\textwidth}{YYYY}
+    \toprule
+    \shortstack{测试案例\\编码} &
+    \shortstack{清除干扰源\\个数} &
+    \shortstack{平均定位清除时间\\$/\left(\mathrm{s}/\text{个}\right)$} &
+    \shortstack{程序运行\\时间/$\mathrm s$} \\
+    \midrule
+    ZAPY-NVYT-QMNZ-YXAY & 12 & 812.934 & 8.211 \\
+    CVHK-CDTF-9TXP-QA42 & 14 & 630.479 & 6.690 \\
+    X5PJ-SBZ5-UWMY-XFTX & 15 & 619.302 & 9.134 \\
+    \bottomrule
   \end{tabularx}
 \end{table}
 
-表~\ref{tab:q4-formal-results-blank}中，三个正式案例分别清除12、14和15个干扰源，平均定位清除时间为 $619.302$--$812.934\ \mathrm s/\text{个}$，程序运行时间为 $6.690$--$9.134\ \mathrm s$；两项时间均整体高于问题三正式测试。该结果与日志汇总所反映的耗时差异一致，支持混合源策略在当前测试条件下的可执行性，同时保留了进一步压缩多方向探测与在线计算开销的必要性。
+表~\ref{tab:q4-formal-results-blank}中，三个正式案例分别清除12、14和15个干扰源，平均定位清除时间为 $619.302$--$812.934\ \mathrm s/\text{个}$，程序运行时间为 $6.690$--$9.134\ \mathrm s$。
