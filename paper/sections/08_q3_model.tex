@@ -119,10 +119,13 @@
 
 八个驻留点扫描完成后，根据命题6，每个真实干扰源至少在一个驻留点进入有效接收范围。因此，将至少返回过一次示向度但尚未清除的频道归入 $\mathcal C_f$，将其余从未发现的频道归入 $\mathcal C_a$，并满足
 \begin{equation}
-  \mathcal C_f\cup\mathcal C_a\cup\mathcal C_c
-  =\{1,2,\ldots,20\},
+  \mathcal C_f \cup \mathcal C_a \cup \mathcal C_c
+  = \{1,2,\ldots,20\},
   \qquad
-  \mathcal C_f,\mathcal C_a,\mathcal C_c\ \text{两两交集为空}.
+  \mathcal C_f \cap \mathcal C_a
+  = \mathcal C_f \cap \mathcal C_c
+  = \mathcal C_a \cap \mathcal C_c
+  = \varnothing.
   \label{eq:q3-channel-partition}
 \end{equation}
 
