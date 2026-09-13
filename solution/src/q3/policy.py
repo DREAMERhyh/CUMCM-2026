@@ -1,5 +1,7 @@
 """Finite offline baseline state machine for omnidirectional sources."""
 
+import math
+
 from dataclasses import dataclass, field
 
 from common.domain import build_region_from_observations
@@ -49,7 +51,9 @@ class Q3Policy:
                  scan_layout="pure_ring8", use_no_signal_pruning=False,
                  continuous_objective="fim", use_optimal_stop=True,
                  stop_cost_per_metre=0.5, guess_clear_threshold_m=40.0,
-                 interleaved_scan_refine=True, pigeonhole_early_stop=False):
+                 interleaved_scan_refine=True, pigeonhole_early_stop=False,
+                 skip_low_value_refine=True, low_value_angle_deg=30.0,
+                 low_value_radius_m=15.0):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
         if scan_layout not in SCAN_LAYOUTS:
@@ -68,6 +72,9 @@ class Q3Policy:
         self.guess_clear_threshold_m = guess_clear_threshold_m
         self.interleaved_scan_refine = interleaved_scan_refine
         self.pigeonhole_early_stop = pigeonhole_early_stop
+        self.skip_low_value_refine = skip_low_value_refine
+        self.low_value_angle_deg = low_value_angle_deg
+        self.low_value_radius_m = low_value_radius_m
         self.coverage_points = list(coverage_points or SCAN_LAYOUTS[scan_layout]())
         self.max_refinements = max_refinements
         self.error_deg = error_deg
@@ -106,10 +113,29 @@ class Q3Policy:
                 if channel in state.cleared:
                     state.scan_channel_index += 1
                     continue
-                if (channel in state.sources
-                        and not self.interleaved_scan_refine):
-                    state.scan_channel_index += 1
-                    continue
+                if channel in state.sources:
+                    # 猜1'（默认关闭）：已发现频道的重复测量按交会价值跳测——
+                    # 源区中心对既有的最大观测张角 < 阈值 或 区域已收缩到
+                    # 阈值内（快到证书）时，该停点的测量无新增保证，省
+                    # 5s+切换（移动照走）。规则前提：每频道至多一源（附件2
+                    # 保证）→ 该频道不可能再发现新源。
+                    track = state.sources[channel]
+                    if (self.skip_low_value_refine
+                            and track.region is not None
+                            and track.region.get("status") == "bounded"):
+                        radius = track.region["minimum_enclosing_circle"][
+                            "radius"]
+                        point = self.coverage_points[state.scan_point_index]
+                        angle = self._refine_angle_value(track, point)
+                        if (radius <= self.low_value_radius_m
+                                or angle < math.radians(
+                                    self.low_value_angle_deg)
+                                - 1e-9):
+                            state.scan_channel_index += 1
+                            continue
+                    if not self.interleaved_scan_refine:
+                        state.scan_channel_index += 1
+                        continue
                 return self._action(state, "measure",
                                     self.coverage_points[state.scan_point_index],
                                     channel, "scan")
@@ -118,6 +144,21 @@ class Q3Policy:
         state.absent = set(range(1, 21))-set(state.sources)-state.cleared
         state.phase = "resolve"
         return None
+
+    def _refine_angle_value(self, track, point):
+        """源区中心对既有 direction 观测的最大张角（交会价值判据）。"""
+        center = tuple(track.region["minimum_enclosing_circle"]["center"])
+        best = 0.0
+        for obs in track.observations:
+            if obs.result != "direction":
+                continue
+            a = math.atan2(center[1] - obs.position[1],
+                           center[0] - obs.position[0])
+            b = math.atan2(center[1] - point[1],
+                           center[0] - point[0])
+            diff = abs(a - b)
+            best = max(best, min(diff, 2.0 * math.pi - diff))
+        return best
 
     def _refinement_point(self, state, track):
         plan = plan_measurement(

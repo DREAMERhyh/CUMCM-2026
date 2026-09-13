@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 import math
 
 from q2.continuous_fim import project_to_polygon
-from q3.coverage import strip_clear_points
+from q3.coverage import probe_plan, strip_clear_points
 from q3.policy import Q3Policy, Q3State
 
 from .minimax_leg import select_minimax_leg
@@ -83,7 +83,9 @@ class Q3BatchPolicy(Q3Policy):
     def __init__(self, *, tour_refine=False, tspn_clear=True,
                  minimax_leg=False, enroute_refine=False,
                  two_leg_refine=False, enroute_detour_m=250.0,
-                 batch_guess=False, **kwargs):
+                 batch_guess=False, probe_strip=True,
+                 tour_aware_marginal=False, tour_marginal_weight=0.5,
+                 tour_guess=True, **kwargs):
         super().__init__(**kwargs)
         self.tour_refine = tour_refine
         self.tspn_clear = tspn_clear
@@ -92,6 +94,10 @@ class Q3BatchPolicy(Q3Policy):
         self.two_leg_refine = two_leg_refine
         self.enroute_detour_m = enroute_detour_m
         self.batch_guess = batch_guess
+        self.probe_strip = probe_strip
+        self.tour_aware_marginal = tour_aware_marginal
+        self.tour_marginal_weight = tour_marginal_weight
+        self.tour_guess = tour_guess
 
     def initial_state(self):
         return Q3BatchState()
@@ -148,6 +154,32 @@ class Q3BatchPolicy(Q3Policy):
                   and state.sources[channel].region.get("status") == "bounded")
             else float("inf"),
         )
+        if self.tour_aware_marginal and len(remaining) > 1:
+            # 猜6：M9 近邻序之上叠加"诱导巡游边际"——远侧源认证会拉长
+            # 最终清除巡游，排序 key 加最小插入增量（确定性几何近似）。
+            others = {}
+            for channel in remaining:
+                center = tuple(state.sources[channel].region[
+                    "minimum_enclosing_circle"]["center"])
+                others[channel] = center
+            def rank(channel):
+                center = others[channel]
+                best = float("inf")
+                seq = [state.position] + [others[ch] for ch in remaining
+                                          if ch != channel]
+                for index in range(len(seq) + 1):
+                    before = (seq[index - 1] if index > 0
+                              else state.position)
+                    after = seq[index] if index < len(seq) else None
+                    local = math.dist(before, center)
+                    if after is not None:
+                        local += math.dist(center, after)
+                        local -= math.dist(before, after)
+                    best = min(best, local)
+                marginal = max(0.0, best)
+                return (math.dist(state.position, center)
+                        + self.tour_marginal_weight * marginal)
+            remaining = sorted(remaining, key=rank)
         return self._locate_step(state, remaining)
 
     def _locate_step(self, state, remaining):
@@ -174,6 +206,23 @@ class Q3BatchPolicy(Q3Policy):
                 track.clear_guessed = True
                 return self._action(state, "clear", center, channel,
                                     "guess_clear")
+            # 猜5（默认关闭）：巡游节点 guess——r∈(19.9,40] 难源提前放入
+            # 清除队列（中心+保底尾缀），由 TSP 巡游经过时 center clear
+            # 试探；hit 终结（refine 专腿蒸发），miss 转队列保底。与 M7
+            # 区别：不是立即专程 clear（双程成本），而是巡游顺路节点。
+            if (self.tour_guess
+                    and radius <= self.guess_clear_threshold_m):
+                center = tuple(track.region["minimum_enclosing_circle"]
+                               ["center"])
+                tail = (probe_plan(track.region)
+                        if self.probe_strip else
+                        list(strip_clear_points(
+                            track.observations[0].position,
+                            track.observations[0].bearing_deg)))
+                state.clear_queues.append(
+                    [(center, channel)] + [(p, channel) for p in tail])
+                state.certificate_ok[channel] = False
+                return None
             if track.refinements < self.max_refinements:
                 if self.two_leg_refine:
                     point = self._transverse_leg(
@@ -199,11 +248,13 @@ class Q3BatchPolicy(Q3Policy):
                                     "batch_refine")
             center = tuple(track.region["minimum_enclosing_circle"]["center"])
             first = track.observations[0]
+            tail = (probe_plan(track.region)
+                    if self.probe_strip else
+                    list(strip_clear_points(first.position,
+                                            first.bearing_deg)))
             state.clear_queues.append(
                 [(center, channel)]
-                + [(point, channel)
-                   for point in strip_clear_points(first.position,
-                                                   first.bearing_deg)])
+                + [(point, channel) for point in tail])
             state.certificate_ok[channel] = False
             return None
         self._tsp_sort(state)
@@ -372,12 +423,13 @@ class Q3BatchPolicy(Q3Policy):
                 center = tuple(track.region["minimum_enclosing_circle"]
                                ["center"])
                 first = track.observations[0]
+                tail = (probe_plan(track.region)
+                        if self.probe_strip else
+                        list(strip_clear_points(first.position,
+                                                first.bearing_deg)))
                 state.clear_queues.insert(
                     state.clear_index,
-                    [(center, channel)]
-                    + [(p, channel)
-                       for p in strip_clear_points(first.position,
-                                                   first.bearing_deg)])
+                    [(center, channel)] + [(p, channel) for p in tail])
                 state.certificate_ok[channel] = False
             return
         if action.kind == "clear" and mode == "batch_clear":

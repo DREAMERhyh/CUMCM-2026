@@ -50,6 +50,45 @@ def nearest_coverage_distance(point, centers):
     return min(math.dist(point, center) for center in centers)
 
 
+def probe_plan(region, cover_radius=20.0, max_probes=76):
+    """确定性探针计划：逐环六边形密排，覆盖区域 MEC 圆盘（几何保证）。
+
+    对 MEC(c, r)：探针 = 中心 + 环 j (j=1..k) 半径 20j 上 6j 个均匀点，
+    k = ceil(r/20)。相邻环点间距 2·20j·sin(π/6j) < 40 = 盘径 2×20（重叠），
+    半径方向相邻环差 20（相切）→ 蜂窝密排覆盖 B(c, 20k) ⊇ B(c, r)。
+    源 ∈ region ⊆ B(c, r) → 探针并集内必有命中点（每源 ≤1+3k(k+1) 次
+    clear，而非条带链 76-228 次）。确定性最坏语义，无需概率假设。
+    """
+    if region.get("status") != "bounded":
+        return []
+    center = tuple(region["minimum_enclosing_circle"]["center"])
+    radius = region["minimum_enclosing_circle"]["radius"]
+    vertices = region["vertices"]
+    probes = [center]
+    rings = max(1, int(math.ceil(radius / cover_radius)))
+    for ring in range(1, rings + 1):
+        count = 6 * ring
+        for index in range(count):
+            angle = 2.0 * math.pi * index / count
+            point = (center[0] + cover_radius * ring * math.cos(angle),
+                     center[1] + cover_radius * ring * math.sin(angle))
+            probes.append(_clamp_to_polygon(point, vertices))
+    unique = []
+    seen = set()
+    for point in probes:
+        key = (round(point[0], 6), round(point[1], 6))
+        if key not in seen:
+            seen.add(key)
+            unique.append(point)
+    return unique[:max_probes]
+
+
+def _clamp_to_polygon(point, vertices):
+    """区域内最近点（含边界）；区外时投影到最近边上。"""
+    from q2.continuous_fim import project_to_polygon
+    return project_to_polygon(point, vertices)
+
+
 def scan_path_length(points, start=(0.0, 0.0)):
     """从 ``start`` 出发依次访问全部停点的总路程（最后不回原点）。"""
     total = 0.0
