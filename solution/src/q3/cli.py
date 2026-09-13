@@ -9,6 +9,7 @@ if __package__ in (None, ""):
     code_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(code_root))
 
+from q3.coverage import SCAN_LAYOUTS
 from q3.policy import Q3Policy
 from runtime.runner import run_policy
 from sim.fake import FakeSimulator, FakeSource
@@ -20,6 +21,10 @@ def main(argv=None):
     parser.add_argument("--max-actions", type=int, default=1000)
     parser.add_argument("--max-refinements", type=int, default=5)
     parser.add_argument("--fim-cpu-time-limit-s", type=float, default=10.0)
+    parser.add_argument(
+        "--scan-layout", choices=sorted(SCAN_LAYOUTS), default="ring7",
+        help="扫描停点布局（默认 ring7，保持原有线上行为）",
+    )
     parser.add_argument(
         "--q2-version", choices=("new", "legacy"), default="new",
         help="Q2源区域算法版本",
@@ -72,6 +77,7 @@ def main(argv=None):
     policy = Q3Policy(
         max_refinements=args.max_refinements,
         fim_cpu_time_limit_s=args.fim_cpu_time_limit_s,
+        scan_layout=args.scan_layout,
         q2_version=args.q2_version,
         joint_batch_mode=args.joint_batch_mode,
         failed_clear_remeasure_mode=args.failed_clear_remeasure_mode,

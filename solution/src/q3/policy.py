@@ -8,7 +8,7 @@ from common.models import Action, BearingObservation
 from q2.planner import Q2Config, plan_measurement
 from .adaptive import (measurement_is_worthwhile, nearest_neighbor_order,
                        posterior_clear_points, worst_case_clear_cost)
-from .coverage import ring7, strip_clear_points
+from .coverage import SCAN_LAYOUTS, ring7, strip_clear_points
 from .cache import (Q3ComputationCache, config_fingerprint,
                     point_fingerprint, posterior_fingerprint,
                     region_fingerprint)
@@ -29,6 +29,7 @@ class SourceTrack:
     fallback_points: list[tuple[float, float]] = field(default_factory=list)
     fallback_index: int = 0
     certificate_failed: bool = False
+    clear_guessed: bool = False
     probe_points: list[tuple[float, float]] = field(default_factory=list)
     stagnant_refinements: int = 0
     last_improvement_ratio: float | None = None
@@ -80,6 +81,7 @@ class Q3State:
 class Q3Policy:
     def __init__(self, *, max_refinements=5, error_deg=1.005,
                  coverage_points=None, fim_cpu_time_limit_s=10.0,
+                 scan_layout="ring7",
                  q2_version="new",
                  adaptive_refinement=True, posterior_grid=True,
                  min_improvement_ratio=0.05, stagnation_limit=2,
@@ -105,9 +107,17 @@ class Q3Policy:
                  computation_cache_mode="off",
                  cache_capacity=4096,
                  beam_width=1,
-                 beam_max_expansions=512):
+                 beam_max_expansions=512,
+                 use_optimal_stop=False,
+                 guess_clear_threshold_m=40.0):
         if fim_cpu_time_limit_s <= 0:
             raise ValueError("FIM真实计算时限必须为正数。")
+        if scan_layout not in SCAN_LAYOUTS:
+            raise ValueError(
+                f"未知扫描布局：{scan_layout}；可选 {sorted(SCAN_LAYOUTS)}。"
+            )
+        if not 0.0 < guess_clear_threshold_m:
+            raise ValueError("最优停止猜测清除阈值必须为正数。")
         if max_refinements < 0:
             raise ValueError("细化次数不能为负。")
         if not 0.0 <= min_improvement_ratio < 1.0:
@@ -153,7 +163,12 @@ class Q3Policy:
             raise ValueError("计算缓存容量至少为1。")
         if beam_width < 1 or beam_max_expansions < 1:
             raise ValueError("束宽和束搜索扩展上限至少为1。")
-        self.coverage_points = list(coverage_points or ring7())
+        self.coverage_points = list(
+            coverage_points or SCAN_LAYOUTS[scan_layout]()
+        )
+        self.scan_layout = scan_layout
+        self.use_optimal_stop = use_optimal_stop
+        self.guess_clear_threshold_m = guess_clear_threshold_m
         self.max_refinements = max_refinements
         self.error_deg = error_deg
         self.adaptive_refinement = adaptive_refinement
@@ -899,6 +914,22 @@ class Q3Policy:
             )
             return self._action(state, "clear", center, channel,
                                 "certified_clear")
+        # A3 最优停止（融合自实验分支，默认关闭）：区域最小包围圆半径已收
+        # 缩到猜清除阈值（默认 40m = 20m 清除半径 x2）时，直接猜中心点
+        # clear 的最坏虚拟成本只比直接 refine 多 3s/源，却省下本次规划的
+        # 全部墙钟。失败后 clear_guessed=True，不再重复猜测，转入既有流程。
+        if self.use_optimal_stop:
+            track = state.sources[remaining[0]]
+            radius = track.region["minimum_enclosing_circle"]["radius"]
+            if (not track.clear_guessed
+                    and not track.certificate_failed
+                    and radius <= self.guess_clear_threshold_m):
+                center = tuple(
+                    track.region["minimum_enclosing_circle"]["center"]
+                )
+                track.clear_guessed = True
+                return self._action(state, "clear", center, remaining[0],
+                                    "guess_clear")
         return self._legacy_resolve_choice(state, remaining)
 
     def next_action(self, state):

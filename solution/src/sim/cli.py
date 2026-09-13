@@ -10,6 +10,8 @@ if __package__ in (None, ""):
     code_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(code_root))
 
+from q3.batch_policy import Q3BatchPolicy
+from q3.coverage import SCAN_LAYOUTS
 from q3.policy import Q3Policy
 from q4.policy import Q4Policy
 from sim.client import HttpRobotClient
@@ -56,6 +58,15 @@ def main(argv=None):
     parser.add_argument(
         "--max-refinements", type=int,
         help="每源细化上限；Q4按完整探测组计数；未指定时 Q3=5、Q4=2",
+    )
+    parser.add_argument(
+        "--strategy", choices=("interleaved", "batch"), default="interleaved",
+        help="Q3策略流程：interleaved=扫描-定位-清除交错（原默认）；"
+             "batch=全部定位后Held-Karp精确TSP规划清除顺序（B2批量解耦）",
+    )
+    parser.add_argument(
+        "--scan-layout", choices=sorted(SCAN_LAYOUTS), default=None,
+        help="Q3扫描停点布局；Q4忽略该参数；缺省跟随Q3策略默认值",
     )
     parser.add_argument(
         "--q4-scan-mode", choices=("triangular37", "grid121"),
@@ -154,48 +165,52 @@ def main(argv=None):
                           else args.max_refinements)
         q4_refinements = (2 if args.max_refinements is None
                           else args.max_refinements)
-        policy = (Q3Policy(
-                      max_refinements=q3_refinements,
-                      fim_cpu_time_limit_s=fim_cpu_time_limit_s,
-                      q2_version=args.q2_version,
-                      joint_batch_mode=args.joint_batch_mode,
-                      failed_clear_remeasure_mode=(
-                          args.failed_clear_remeasure_mode
-                      ),
-                      rolling_time_mode=args.rolling_time_mode,
-                      rolling_cpu_time_limit_s=(
-                          args.rolling_cpu_time_limit_s
-                      ),
-                      rolling_risk_metric=args.rolling_risk_metric,
-                      multi_source_route_mode=(
-                          args.multi_source_route_mode
-                      ),
-                      route_cpu_time_limit_s=args.route_cpu_time_limit_s,
-                      cache_capacity=args.cache_capacity,
-                      beam_width=args.beam_width,
-                      beam_max_expansions=args.beam_max_expansions,
-                  )
-                  if args.problem == 3
-                  else Q4Policy(
-                      max_refinements=q4_refinements,
-                      fim_cpu_time_limit_s=fim_cpu_time_limit_s,
-                       scan_mode=args.q4_scan_mode,
-                       q2_version=args.q2_version,
-                       failed_clear_remeasure_mode=(
-                           args.failed_clear_remeasure_mode
-                       ),
-                       directional_rolling_mode=args.rolling_time_mode,
-                       directional_rolling_cpu_time_limit_s=(
-                           args.rolling_cpu_time_limit_s
-                       ),
-                       directional_rolling_risk_metric=(
-                           args.rolling_risk_metric
-                       ),
-                       long_clear_tail_mode=args.q4_long_clear_tail_mode,
-                       multi_source_route_mode=args.multi_source_route_mode,
-                       route_cpu_time_limit_s=args.route_cpu_time_limit_s,
-                   ))
-        max_actions = args.max_actions or (1000 if args.problem == 3 else 4000)
+        q3_kwargs = dict(
+            max_refinements=q3_refinements,
+            fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+            q2_version=args.q2_version,
+            joint_batch_mode=args.joint_batch_mode,
+            failed_clear_remeasure_mode=args.failed_clear_remeasure_mode,
+            rolling_time_mode=args.rolling_time_mode,
+            rolling_cpu_time_limit_s=args.rolling_cpu_time_limit_s,
+            rolling_risk_metric=args.rolling_risk_metric,
+            multi_source_route_mode=args.multi_source_route_mode,
+            route_cpu_time_limit_s=args.route_cpu_time_limit_s,
+            cache_capacity=args.cache_capacity,
+            beam_width=args.beam_width,
+            beam_max_expansions=args.beam_max_expansions,
+        )
+        if args.scan_layout is not None:
+            q3_kwargs["scan_layout"] = args.scan_layout
+        if args.problem == 3 and args.strategy == "batch":
+            policy = Q3BatchPolicy(**q3_kwargs)
+        else:
+            policy = (Q3Policy(**q3_kwargs)
+                      if args.problem == 3
+                      else Q4Policy(
+                          max_refinements=q4_refinements,
+                          fim_cpu_time_limit_s=fim_cpu_time_limit_s,
+                          scan_mode=args.q4_scan_mode,
+                          q2_version=args.q2_version,
+                          failed_clear_remeasure_mode=(
+                              args.failed_clear_remeasure_mode
+                          ),
+                          directional_rolling_mode=args.rolling_time_mode,
+                          directional_rolling_cpu_time_limit_s=(
+                              args.rolling_cpu_time_limit_s
+                          ),
+                          directional_rolling_risk_metric=(
+                              args.rolling_risk_metric
+                          ),
+                          long_clear_tail_mode=args.q4_long_clear_tail_mode,
+                          multi_source_route_mode=(
+                              args.multi_source_route_mode
+                          ),
+                          route_cpu_time_limit_s=args.route_cpu_time_limit_s,
+                      ))
+        # 2026-09-12 演练实证：14-16 源局 resolve（含 fallback）动作数可超
+        # 1000，Q3 默认取 8000 保险。
+        max_actions = args.max_actions or (8000 if args.problem == 3 else 4000)
     log_path = args.log or _default_log(args.problem)
     try:
         client = HttpRobotClient(

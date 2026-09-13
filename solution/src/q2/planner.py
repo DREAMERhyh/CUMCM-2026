@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 import math
 import time
 
+from common.budget import WallClockBudget
 from common.domain import (build_region_from_observations,
                            extend_region_with_observation,
                            max_vertex_distance, representative_points)
@@ -34,6 +35,7 @@ class Q2Config:
     fim_extra_time_budgets_s: tuple = (15.0, 30.0, 60.0)
     fim_execution_extra_time_s: float = 30.0
     fim_cpu_time_limit_s: float = 8.0
+    planning_wall_clock_budget_s: float = 120.0
     near_optimal_region_mode: str = "online"
     near_optimal_region_cpu_limit_s: float = 5.0
     near_optimal_time_slack_s: float = 10.0
@@ -76,13 +78,28 @@ def _fim_proxy(sensor, current_position, nominal_target, action_seconds):
 
 
 def score_candidates(region, observations, candidates, current_position,
-                     current_channel, target_channel, config=Q2Config()):
+                     current_channel, target_channel, config=Q2Config(),
+                     budget=None):
     vertices = region["vertices"]
-    scenarios = representative_points(vertices, config.scenario_limit)
+    # A6 口径（融合自实验分支）：排除圆（no_signal 排除约束）内的代表点
+    # 不是可行源位置，从评分场景中剔除；worst_case_radius_m 即"可行代表
+    # 点最坏距离"。全部被排除的极端情形回退到全场景（保守，不凭空缩小）。
+    exclusion = region.get("exclusion_circles") or []
+    scenarios = [
+        point for point in representative_points(vertices,
+                                                 config.scenario_limit)
+        if not any(math.dist(point, center) <= radius + 1e-9
+                   for center, radius in exclusion)
+    ]
+    if not scenarios:
+        scenarios = representative_points(vertices, config.scenario_limit)
     current_radius = region["minimum_enclosing_circle"]["radius"]
     nominal = tuple(region["minimum_enclosing_circle"]["center"])
     scores = []
+    # 预算耗尽时停止评分新的候选，保留已经评出的当前最优；第一个候选总是完成。
     for sensor in candidates:
+        if scores and budget is not None and budget.expired():
+            break
         timing = measure_cost(current_position, sensor, current_channel,
                               target_channel)
         guaranteed = max_vertex_distance(sensor, vertices) <= config.min_receive_radius + 1e-7
@@ -131,7 +148,7 @@ def _pareto_front(items):
 
 def _near_optimal_outputs(region, observations, candidate_region, branches,
                           current_position, current_channel, target_channel,
-                          first, config):
+                          first, config, budget=None):
     mode = config.near_optimal_region_mode
     if mode == "off" or candidate_region.get("status") != "bounded":
         status = "disabled" if mode == "off" else "unavailable"
@@ -147,7 +164,15 @@ def _near_optimal_outputs(region, observations, candidate_region, branches,
                 "cpu_wall_time_s": 0.0}
 
     started = time.perf_counter()
-    deadline = started + config.near_optimal_region_cpu_limit_s
+    if budget is not None:
+        # 近优域子预算与共享墙钟预算取小，保证总规划时间不越过统一上限。
+        sub_budget = config.near_optimal_region_cpu_limit_s
+        remaining = budget.remaining_s()
+        if remaining is not None:
+            sub_budget = max(min(sub_budget, remaining), 1e-6)
+        deadline = started + sub_budget
+    else:
+        deadline = started + config.near_optimal_region_cpu_limit_s
     feasible_vertices = candidate_region["vertices"]
     points_by_branch = {
         branch["method"]: local_sample_points(
@@ -170,7 +195,7 @@ def _near_optimal_outputs(region, observations, candidate_region, branches,
             if key not in cache:
                 cache[key] = score_candidates(
                     region, observations, [point], current_position,
-                    current_channel, target_channel, config,
+                    current_channel, target_channel, config, budget=budget,
                 )[0]
         if timed_out:
             break
@@ -204,6 +229,7 @@ def plan_measurement(region, observations, *, current_position=None,
                      current_channel=None, target_channel=None,
                      config=Q2Config()):
     planning_started = time.perf_counter()
+    budget = WallClockBudget(config.planning_wall_clock_budget_s)
     observations = list(observations)
     directions = [obs for obs in observations if obs.result == "direction"]
     if not directions:
@@ -224,7 +250,7 @@ def plan_measurement(region, observations, *, current_position=None,
     )
     scores = score_candidates(region, observations, candidates,
                               current_position, current_channel,
-                              target_channel, config)
+                              target_channel, config, budget=budget)
     scores = sorted(scores, key=lambda item: (item["score"],
                                                -item["fim_proxy_per_s"],
                                                item["point"]))
@@ -249,6 +275,12 @@ def plan_measurement(region, observations, *, current_position=None,
             selected["action_time_s"] + extra
             for extra in config.fim_extra_time_budgets_s
         ]
+        # FIM 的子预算与其享墙钟预算取小，保证总规划时间不越过统一上限；
+        # 预算耗尽时 FIM 内部仍返回当前种子/最优解并标记 timed_out，不抛异常。
+        fim_limit = config.fim_cpu_time_limit_s
+        remaining = budget.remaining_s()
+        if remaining is not None:
+            fim_limit = max(min(fim_limit, remaining), 1e-6)
         continuous_fim = optimize_continuous_fim(
             region,
             candidate_regions["guaranteed_reception"],
@@ -264,7 +296,7 @@ def plan_measurement(region, observations, *, current_position=None,
             max_iterations=config.fim_max_iterations,
             seed_limit=config.fim_seed_limit,
             action_time_limits_s=action_time_limits,
-            cpu_time_limit_s=config.fim_cpu_time_limit_s,
+            cpu_time_limit_s=fim_limit,
         )
         if continuous_fim["status"] == "ok":
             solutions = [item for item in continuous_fim["budget_solutions"]
@@ -358,6 +390,7 @@ def plan_measurement(region, observations, *, current_position=None,
         region, observations,
         candidate_regions["guaranteed_reception"], branches_for_regions,
         current_position, current_channel, target_channel, first, config,
+        budget=budget,
     )
     comparison = {
         "score_definition": (
@@ -396,6 +429,9 @@ def plan_measurement(region, observations, *, current_position=None,
         "config": asdict(config),
         "near_optimal_region_summary": near_optimal_summary,
         "planning_cpu_wall_time_s": time.perf_counter() - planning_started,
+        "planning_wall_time_used_s": time.perf_counter() - planning_started,
+        "planning_wall_clock_budget_s": config.planning_wall_clock_budget_s,
+        "planning_timed_out": budget.expired(),
         "limitations": [
             ("源位置圆域先作整圆粗外切，再以解析端点切线和顶点超差切线保守细化。"
              if config.q2_version == "new" else
