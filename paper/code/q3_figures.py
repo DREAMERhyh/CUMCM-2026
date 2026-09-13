@@ -88,7 +88,7 @@ def plot_scan_layout():
 
     handles = [
         Line2D([0], [0], color="#245b78", lw=1.8,
-               label=r"目标圆域 $\overline{B}(O_0,1800)$"),
+               label=r"目标圆形区域 $\overline{B}(O_0,1800)$"),
         Line2D([0], [0], marker="o", color="none",
                markerfacecolor="#c44536", markeredgecolor="white",
                markersize=7, label="八个扫描驻留点"),

@@ -276,7 +276,7 @@ class LogPlayer:
         axis.axvline(0, color="#b0bec5", linewidth=0.7, zorder=1)
         axis.grid(color="#dfe7e3", linewidth=0.6, alpha=0.65)
         legend = [
-            Patch(facecolor="#dff3df", edgecolor="#75a875", label="1800 m 圆域"),
+            Patch(facecolor="#dff3df", edgecolor="#75a875", label="1800 m 圆形区域"),
             Patch(
                 facecolor="#f4a261", edgecolor="#d97706", alpha=0.5,
                 label="已测相交区域",

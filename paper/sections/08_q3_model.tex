@@ -53,7 +53,7 @@
   \label{fig:q3-eight-point-scan}
 \end{figure}
 
-\noindent\textbf{命题 6：}{\kaishu 式~\eqref{eq:q3-eight-points} 给出的八个驻留点能够以小于 $1000\ \mathrm{m}$ 的覆盖半径覆盖整个目标圆域 $\mathcal D$。}
+\noindent\textbf{命题 6：}{\kaishu 式~\eqref{eq:q3-eight-points} 给出的八个驻留点能够以小于 $1000\ \mathrm{m}$ 的覆盖半径覆盖整个目标圆形区域 $\mathcal D$。}
 
 \noindent\textbf{证明：}
 任取 $X\in\mathcal D$，以 $O_0$ 为极点写成极坐标 $(\rho,\theta)$，其中 $0\leq\rho\leq1800$。八个驻留点将圆周方向等分，因此必存在某个 $P_k$，使 $X$ 与 $P_k$ 的极角差 $\Delta$ 满足 $|\Delta|\leq\pi/8$。由余弦定理，
@@ -75,13 +75,13 @@
   \end{aligned}
 \end{equation}
 
-故任一干扰源均落入至少一个扫描驻留点的最小有效接收圆内，八点布局覆盖整个目标圆域。\hfill$\square$
+故任一干扰源均落入至少一个扫描驻留点的最小有效接收圆内，八点布局覆盖整个目标圆形区域。\hfill$\square$
 
 在扫描点 $P_k$ 检测频道 $j$ 后，根据返回结果分别处理。
 
 当返回近距离结果时，题设表明机器狗距干扰源不超过 $5\ \mathrm{m}$。由于清除作用距离为 $20\ \mathrm{m}$，策略立即在 $P_k$ 对频道 $j$ 执行清除；若返回有效示向度，则把观测加入频道 $j$ 的历史并更新源位置区域；若返回无信号，则继续当前扫描。
 
-设频道 $j$ 已在位置 $S_{j,1},\ldots,S_{j,m}$ 获得示向度 $\theta_{j,1},\ldots,\theta_{j,m}$。沿用问题一的角度误差半平面交，并加入问题二的目标圆域与接收距离上界，实时计算使用的源位置外近似为
+设频道 $j$ 已在位置 $S_{j,1},\ldots,S_{j,m}$ 获得示向度 $\theta_{j,1},\ldots,\theta_{j,m}$。沿用问题一的角度误差半平面交，并加入问题二的目标圆形区域与接收距离上界，实时计算使用的源位置外近似为
 \begin{equation}
   \widehat K_j^{(m)}
   =\widehat B_{\mathrm{out}}^{(N_3)}(O_0,1800)
@@ -94,7 +94,7 @@
   \label{eq:q3-region-update}
 \end{equation}
 
-其中 $C(S,\theta,\varepsilon)$ 为示向度误差角区，程序取 $\varepsilon=1.005^\circ$；$N_3=16$ 是问题三实时更新采用的圆域外切多边形边数。由问题一的凸半平面交结论以及问题二的外切多边形包含关系，$\widehat K_j^{(m)}$ 是包含真实源位置的有界凸多边形。每增加一次有效示向度，只会继续加入约束，因此
+其中 $C(S,\theta,\varepsilon)$ 为示向度误差角区，程序取 $\varepsilon=1.005^\circ$；$N_3=16$ 是问题三实时更新采用的圆形区域外切多边形边数。由问题一的凸半平面交结论以及问题二的外切多边形包含关系，$\widehat K_j^{(m)}$ 是包含真实源位置的有界凸多边形。每增加一次有效示向度，只会继续加入约束，因此
 \begin{equation}
   \widehat K_j^{(m+1)}\subseteq\widehat K_j^{(m)}.
   \label{eq:q3-nested-regions}

@@ -47,7 +47,7 @@ def validate_inputs(detector_points, bearings_deg, source=None):
         raise ValueError("示向度须在 [0, 360) 度内；0 度为正东，90 度为正北。")
     reference = None if source is None else _point(source, "参考源 G")
     if reference is not None and hypot(*reference) > DOMAIN_RADIUS:
-        raise ValueError("参考源 G 须位于半径 1800 m 的分布圆域内。")
+        raise ValueError("参考源 G 须位于半径 1800 m 的分布圆形区域内。")
     return points, bearings, reference
 
 
