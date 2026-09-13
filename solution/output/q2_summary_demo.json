@@ -1,0 +1,2219 @@
+{
+  "method": "time_budgeted_fim_pareto_hybrid",
+  "selected_point": [
+    -358.02069383162376,
+    449.2902507415007
+  ],
+  "selected": {
+    "point": [
+      -358.02069383162376,
+      449.2902507415007
+    ],
+    "guaranteed_reception": true,
+    "worst_case_radius_m": 78.6568523439554,
+    "action_time_s": 162.47887026137693,
+    "time_breakdown": {
+      "movement_s": 157.47887026137693,
+      "switching_s": 0.0,
+      "measurement_s": 5.0,
+      "optical_s": 0.0,
+      "laser_s": 0.0,
+      "total_s": 162.47887026137693
+    },
+    "score": 201.80729643335462,
+    "fim_proxy_per_s": 1.6914527835195517e-08,
+    "candidate_id": "FIM-T02",
+    "max_action_time_s": 162.50746756422262,
+    "robust_fim_index_per_s": 0.0006044154760050061,
+    "source": "continuous_fim"
+  },
+  "recommendation_source": "continuous_fim",
+  "baseline": {
+    "method": "discrete_set_score",
+    "selected_point": [
+      4.172270355240311,
+      -96.4570687795167
+    ],
+    "selected": {
+      "point": [
+        4.172270355240311,
+        -96.4570687795167
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 149.35281387337136,
+      "action_time_s": 132.50746756422262,
+      "time_breakdown": {
+        "movement_s": 127.50746756422261,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 132.50746756422262
+      },
+      "score": 207.1838745009083,
+      "fim_proxy_per_s": 3.195606409915133e-08,
+      "candidate_id": "C01"
+    },
+    "candidate_count": 46,
+    "guaranteed_candidate_count": 12,
+    "near_optimal_regions": {},
+    "near_optimal_region_meta": {
+      "status": "disabled",
+      "mode": "off",
+      "reason": "disabled_by_config"
+    }
+  },
+  "continuous_fim": {
+    "status": "ok",
+    "method": "time_budgeted_continuous_robust_fim_pattern_search",
+    "selected_point": [
+      -358.02069383162376,
+      449.2902507415007
+    ],
+    "robust_fim_index_per_s": 0.0006044154760050061,
+    "worst_case_source": [
+      608.3445407104812,
+      607.0858624409668
+    ],
+    "action_time_s": 192.45367512516154,
+    "time_breakdown": {
+      "movement_s": 187.45367512516154,
+      "switching_s": 0.0,
+      "measurement_s": 5.0,
+      "optical_s": 0.0,
+      "laser_s": 0.0,
+      "total_s": 192.45367512516154
+    },
+    "max_source_distance_m": 937.2683756258082,
+    "best_seed_fim_index_per_s": 0.0005995343651293691,
+    "scenario_count": 12,
+    "seed_count": 84,
+    "optimized_start_count": 30,
+    "evaluation_count": 4034,
+    "iteration_count": 357,
+    "budget_solutions": [
+      {
+        "status": "ok",
+        "max_action_time_s": 147.50746756422262,
+        "selected_point": [
+          111.24359401013905,
+          -260.44869296906705
+        ],
+        "robust_fim_index_per_s": 0.0004645665711540517,
+        "worst_case_source": [
+          608.3445407104812,
+          607.0858624409668
+        ],
+        "action_time_s": 147.468488573202,
+        "time_breakdown": {
+          "movement_s": 142.468488573202,
+          "switching_s": 0.0,
+          "measurement_s": 5.0,
+          "optical_s": 0.0,
+          "laser_s": 0.0,
+          "total_s": 147.468488573202
+        },
+        "max_source_distance_m": 999.8627686042026,
+        "best_seed_fim_index_per_s": 0.00045916383413511136,
+        "optimized_start_count": 10,
+        "iteration_count": 116,
+        "set_evaluation": {
+          "point": [
+            111.24359401013905,
+            -260.44869296906705
+          ],
+          "guaranteed_reception": true,
+          "worst_case_radius_m": 93.36459836910053,
+          "action_time_s": 147.468488573202,
+          "time_breakdown": {
+            "movement_s": 142.468488573202,
+            "switching_s": 0.0,
+            "measurement_s": 5.0,
+            "optical_s": 0.0,
+            "laser_s": 0.0,
+            "total_s": 147.468488573202
+          },
+          "score": 194.15078775775225,
+          "fim_proxy_per_s": 1.940806650590524e-08,
+          "candidate_id": "FIM-T01",
+          "max_action_time_s": 147.50746756422262,
+          "robust_fim_index_per_s": 0.0004645665711540517
+        }
+      },
+      {
+        "status": "ok",
+        "max_action_time_s": 162.50746756422262,
+        "selected_point": [
+          -358.02069383162376,
+          449.2902507415007
+        ],
+        "robust_fim_index_per_s": 0.0006044154760050061,
+        "worst_case_source": [
+          608.3445407104812,
+          607.0858624409668
+        ],
+        "action_time_s": 162.47887026137693,
+        "time_breakdown": {
+          "movement_s": 157.47887026137693,
+          "switching_s": 0.0,
+          "measurement_s": 5.0,
+          "optical_s": 0.0,
+          "laser_s": 0.0,
+          "total_s": 162.47887026137693
+        },
+        "max_source_distance_m": 999.2256407832477,
+        "best_seed_fim_index_per_s": 0.0005995343651293691,
+        "optimized_start_count": 10,
+        "iteration_count": 116,
+        "set_evaluation": {
+          "point": [
+            -358.02069383162376,
+            449.2902507415007
+          ],
+          "guaranteed_reception": true,
+          "worst_case_radius_m": 78.6568523439554,
+          "action_time_s": 162.47887026137693,
+          "time_breakdown": {
+            "movement_s": 157.47887026137693,
+            "switching_s": 0.0,
+            "measurement_s": 5.0,
+            "optical_s": 0.0,
+            "laser_s": 0.0,
+            "total_s": 162.47887026137693
+          },
+          "score": 201.80729643335462,
+          "fim_proxy_per_s": 1.6914527835195517e-08,
+          "candidate_id": "FIM-T02",
+          "max_action_time_s": 162.50746756422262,
+          "robust_fim_index_per_s": 0.0006044154760050061
+        }
+      },
+      {
+        "status": "ok",
+        "max_action_time_s": 192.50746756422262,
+        "selected_point": [
+          322.89208199471,
+          -136.4695351327169
+        ],
+        "robust_fim_index_per_s": 0.0010133701788516503,
+        "worst_case_source": [
+          608.3445407104812,
+          607.0858624409668
+        ],
+        "action_time_s": 192.45367512516154,
+        "time_breakdown": {
+          "movement_s": 187.45367512516154,
+          "switching_s": 0.0,
+          "measurement_s": 5.0,
+          "optical_s": 0.0,
+          "laser_s": 0.0,
+          "total_s": 192.45367512516154
+        },
+        "max_source_distance_m": 937.2683756258082,
+        "best_seed_fim_index_per_s": 0.0008487075921340486,
+        "optimized_start_count": 10,
+        "iteration_count": 125,
+        "set_evaluation": {
+          "point": [
+            322.89208199471,
+            -136.4695351327169
+          ],
+          "guaranteed_reception": true,
+          "worst_case_radius_m": 65.58932712521617,
+          "action_time_s": 192.45367512516154,
+          "time_breakdown": {
+            "movement_s": 187.45367512516154,
+            "switching_s": 0.0,
+            "measurement_s": 5.0,
+            "optical_s": 0.0,
+            "laser_s": 0.0,
+            "total_s": 192.45367512516154
+          },
+          "score": 225.24833868776963,
+          "fim_proxy_per_s": 1.5678255220693917e-08,
+          "candidate_id": "FIM-T03",
+          "max_action_time_s": 192.50746756422262,
+          "robust_fim_index_per_s": 0.0010133701788516503
+        }
+      }
+    ],
+    "timed_out": false,
+    "cpu_wall_time_s": 0.20655269999997472,
+    "search_parameters": {
+      "samples_per_edge": 4,
+      "initial_step_m": 200.0,
+      "minimum_step_m": 2.0,
+      "max_iterations_per_start": 120,
+      "seed_limit": 10,
+      "action_time_limits_s": [
+        147.50746756422262,
+        162.50746756422262,
+        192.50746756422262
+      ],
+      "cpu_time_limit_s": 8.0
+    },
+    "optimality_claim": "numerical_near_global_for_fim_surrogate",
+    "fim_surrogate_best_point": [
+      322.89208199471,
+      -136.4695351327169
+    ],
+    "fim_surrogate_best_index_per_s": 0.0010133701788516503,
+    "selected": {
+      "point": [
+        -358.02069383162376,
+        449.2902507415007
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 78.6568523439554,
+      "action_time_s": 162.47887026137693,
+      "time_breakdown": {
+        "movement_s": 157.47887026137693,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 162.47887026137693
+      },
+      "score": 201.80729643335462,
+      "fim_proxy_per_s": 1.6914527835195517e-08,
+      "candidate_id": "FIM-T02",
+      "max_action_time_s": 162.50746756422262,
+      "robust_fim_index_per_s": 0.0006044154760050061
+    },
+    "selected_score": 201.80729643335462,
+    "score_delta_vs_baseline": -5.37657806755368,
+    "radius_delta_vs_baseline_m": -70.69596152941595,
+    "execution_action_time_limit_s": 162.50746756422262,
+    "candidates": [
+      {
+        "point": [
+          111.24359401013905,
+          -260.44869296906705
+        ],
+        "guaranteed_reception": true,
+        "worst_case_radius_m": 93.36459836910053,
+        "action_time_s": 147.468488573202,
+        "time_breakdown": {
+          "movement_s": 142.468488573202,
+          "switching_s": 0.0,
+          "measurement_s": 5.0,
+          "optical_s": 0.0,
+          "laser_s": 0.0,
+          "total_s": 147.468488573202
+        },
+        "score": 194.15078775775225,
+        "fim_proxy_per_s": 1.940806650590524e-08,
+        "candidate_id": "FIM-T01",
+        "max_action_time_s": 147.50746756422262,
+        "robust_fim_index_per_s": 0.0004645665711540517
+      },
+      {
+        "point": [
+          -358.02069383162376,
+          449.2902507415007
+        ],
+        "guaranteed_reception": true,
+        "worst_case_radius_m": 78.6568523439554,
+        "action_time_s": 162.47887026137693,
+        "time_breakdown": {
+          "movement_s": 157.47887026137693,
+          "switching_s": 0.0,
+          "measurement_s": 5.0,
+          "optical_s": 0.0,
+          "laser_s": 0.0,
+          "total_s": 162.47887026137693
+        },
+        "score": 201.80729643335462,
+        "fim_proxy_per_s": 1.6914527835195517e-08,
+        "candidate_id": "FIM-T02",
+        "max_action_time_s": 162.50746756422262,
+        "robust_fim_index_per_s": 0.0006044154760050061
+      },
+      {
+        "point": [
+          322.89208199471,
+          -136.4695351327169
+        ],
+        "guaranteed_reception": true,
+        "worst_case_radius_m": 65.58932712521617,
+        "action_time_s": 192.45367512516154,
+        "time_breakdown": {
+          "movement_s": 187.45367512516154,
+          "switching_s": 0.0,
+          "measurement_s": 5.0,
+          "optical_s": 0.0,
+          "laser_s": 0.0,
+          "total_s": 192.45367512516154
+        },
+        "score": 225.24833868776963,
+        "fim_proxy_per_s": 1.5678255220693917e-08,
+        "candidate_id": "FIM-T03",
+        "max_action_time_s": 192.50746756422262,
+        "robust_fim_index_per_s": 0.0010133701788516503
+      }
+    ],
+    "near_optimal_regions": {},
+    "near_optimal_region_meta": {
+      "status": "disabled",
+      "mode": "off",
+      "reason": "disabled_by_config"
+    }
+  },
+  "pareto_front": [
+    {
+      "point": [
+        4.172270355240311,
+        -96.4570687795167
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 149.35281387337136,
+      "action_time_s": 132.50746756422262,
+      "time_breakdown": {
+        "movement_s": 127.50746756422261,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 132.50746756422262
+      },
+      "score": 207.1838745009083,
+      "fim_proxy_per_s": 3.195606409915133e-08,
+      "candidate_id": "C01",
+      "source": "baseline"
+    },
+    {
+      "point": [
+        111.24359401013905,
+        -260.44869296906705
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 93.36459836910053,
+      "action_time_s": 147.468488573202,
+      "time_breakdown": {
+        "movement_s": 142.468488573202,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 147.468488573202
+      },
+      "score": 194.15078775775225,
+      "fim_proxy_per_s": 1.940806650590524e-08,
+      "candidate_id": "FIM-T01",
+      "max_action_time_s": 147.50746756422262,
+      "robust_fim_index_per_s": 0.0004645665711540517,
+      "source": "continuous_fim"
+    },
+    {
+      "point": [
+        -358.02069383162376,
+        449.2902507415007
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 78.6568523439554,
+      "action_time_s": 162.47887026137693,
+      "time_breakdown": {
+        "movement_s": 157.47887026137693,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 162.47887026137693
+      },
+      "score": 201.80729643335462,
+      "fim_proxy_per_s": 1.6914527835195517e-08,
+      "candidate_id": "FIM-T02",
+      "max_action_time_s": 162.50746756422262,
+      "robust_fim_index_per_s": 0.0006044154760050061,
+      "source": "continuous_fim"
+    },
+    {
+      "point": [
+        322.89208199471,
+        -136.4695351327169
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 65.58932712521617,
+      "action_time_s": 192.45367512516154,
+      "time_breakdown": {
+        "movement_s": 187.45367512516154,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 192.45367512516154
+      },
+      "score": 225.24833868776963,
+      "fim_proxy_per_s": 1.5678255220693917e-08,
+      "candidate_id": "FIM-T03",
+      "max_action_time_s": 192.50746756422262,
+      "robust_fim_index_per_s": 0.0010133701788516503,
+      "source": "continuous_fim"
+    }
+  ],
+  "comparison": {
+    "score_definition": "action_time_s + uncertainty_seconds_per_metre * worst_case_radius_m",
+    "lower_is_better": true,
+    "baseline_score": 207.1838745009083,
+    "continuous_fim_score": 201.80729643335462,
+    "continuous_minus_baseline": -5.37657806755368,
+    "baseline_worst_case_radius_m": 149.35281387337136,
+    "continuous_fim_worst_case_radius_m": 78.6568523439554,
+    "continuous_minus_baseline_radius_m": -70.69596152941595
+  },
+  "fim_baseline_point": [
+    -0.4378519672135277,
+    158.94635653615828
+  ],
+  "candidate_count": 46,
+  "guaranteed_candidate_count": 12,
+  "candidates": [
+    {
+      "point": [
+        4.172270355240311,
+        -96.4570687795167
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 149.35281387337136,
+      "action_time_s": 132.50746756422262,
+      "time_breakdown": {
+        "movement_s": 127.50746756422261,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 132.50746756422262
+      },
+      "score": 207.1838745009083,
+      "fim_proxy_per_s": 3.195606409915133e-08,
+      "candidate_id": "C01"
+    },
+    {
+      "point": [
+        -245.82772964475964,
+        153.54293122048333
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 177.22793485905427,
+      "action_time_s": 120.08938918052411,
+      "time_breakdown": {
+        "movement_s": 115.08938918052411,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 120.08938918052411
+      },
+      "score": 208.70335661005123,
+      "fim_proxy_per_s": 2.6469553511527506e-08,
+      "candidate_id": "C02"
+    },
+    {
+      "point": [
+        -172.6044249413965,
+        330.3196265171202
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 103.49462042292956,
+      "action_time_s": 157.31149781317973,
+      "time_breakdown": {
+        "movement_s": 152.31149781317973,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 157.31149781317973
+      },
+      "score": 209.05880802464452,
+      "fim_proxy_per_s": 3.332162182201553e-08,
+      "candidate_id": "C03"
+    },
+    {
+      "point": [
+        -349.38112023803336,
+        507.0963218137571
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 71.29290645951302,
+      "action_time_s": 174.0224003590576,
+      "time_breakdown": {
+        "movement_s": 169.0224003590576,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 174.0224003590576
+      },
+      "score": 209.6688535888141,
+      "fim_proxy_per_s": 1.5060918098963477e-08,
+      "candidate_id": "C04"
+    },
+    {
+      "point": [
+        -212.22863628295391,
+        443.47721517274647
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 77.67202660835265,
+      "action_time_s": 172.70509831248424,
+      "time_breakdown": {
+        "movement_s": 167.70509831248424,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 172.70509831248424
+      },
+      "score": 211.54111161666057,
+      "fim_proxy_per_s": 2.118479782341167e-08,
+      "candidate_id": "C05"
+    },
+    {
+      "point": [
+        227.44459036842483,
+        -164.130761869989
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 78.41487478467359,
+      "action_time_s": 172.7050983124842,
+      "time_breakdown": {
+        "movement_s": 167.7050983124842,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 172.7050983124842
+      },
+      "score": 211.912535704821,
+      "fim_proxy_per_s": 1.972945222765971e-08,
+      "candidate_id": "C06"
+    },
+    {
+      "point": [
+        180.9489656518772,
+        -23.23376407615362
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 100.23461039750441,
+      "action_time_s": 170.70827816378892,
+      "time_breakdown": {
+        "movement_s": 165.70827816378892,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 170.70827816378892
+      },
+      "score": 220.82558336254112,
+      "fim_proxy_per_s": 3.070662005832075e-08,
+      "candidate_id": "C07"
+    },
+    {
+      "point": [
+        357.725660948514,
+        -200.01045937279054
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 60.902452731014414,
+      "action_time_s": 197.58622483179926,
+      "time_breakdown": {
+        "movement_s": 192.58622483179926,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 197.58622483179926
+      },
+      "score": 228.03745119730647,
+      "fim_proxy_per_s": 1.3264776537048291e-08,
+      "candidate_id": "C08"
+    },
+    {
+      "point": [
+        4.172270355240372,
+        403.5429312204833
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 88.05507364642025,
+      "action_time_s": 190.4720235870106,
+      "time_breakdown": {
+        "movement_s": 185.4720235870106,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 190.4720235870106
+      },
+      "score": 234.49956041022074,
+      "fim_proxy_per_s": 2.2231176250218015e-08,
+      "candidate_id": "C09"
+    },
+    {
+      "point": [
+        254.17227035524036,
+        153.5429312204833
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 110.36096309853627,
+      "action_time_s": 198.42300358580866,
+      "time_breakdown": {
+        "movement_s": 193.42300358580866,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 198.42300358580866
+      },
+      "score": 253.6034851350768,
+      "fim_proxy_per_s": 1.6019879024288082e-08,
+      "candidate_id": "C10"
+    },
+    {
+      "point": [
+        -0.4378519672135277,
+        158.94635653615828
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 345.0374983137737,
+      "action_time_s": 156.01079796246407,
+      "time_breakdown": {
+        "movement_s": 151.01079796246407,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 156.01079796246407
+      },
+      "score": 328.5295471193509,
+      "fim_proxy_per_s": 1.192213635580375e-06,
+      "candidate_id": "C11"
+    },
+    {
+      "point": [
+        7.607977042735456,
+        139.67322665137874
+      ],
+      "guaranteed_reception": true,
+      "worst_case_radius_m": 380.57817561675375,
+      "action_time_s": 155.0,
+      "time_breakdown": {
+        "movement_s": 150.0,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 155.0
+      },
+      "score": 345.28908780837685,
+      "fim_proxy_per_s": 5.502237086452635e-07,
+      "candidate_id": "C12"
+    },
+    {
+      "point": [
+        -518.9856030609686,
+        -241.3769031131495
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 24.999999999999996,
+      "time_breakdown": {
+        "movement_s": 19.999999999999996,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 24.999999999999996
+      },
+      "score": 402.73182376067894,
+      "fim_proxy_per_s": 2.1614583135974835e-10,
+      "candidate_id": "C13"
+    },
+    {
+      "point": [
+        -526.1578155346704,
+        -376.7871546694273
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 26.306276379356692,
+      "time_breakdown": {
+        "movement_s": 21.306276379356692,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 26.306276379356692
+      },
+      "score": 404.0381001400356,
+      "fim_proxy_per_s": 9.459034043650481e-09,
+      "candidate_id": "C14"
+    },
+    {
+      "point": [
+        -489.6740546175434,
+        -281.8841015826652
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 27.36067977499789,
+      "time_breakdown": {
+        "movement_s": 22.36067977499789,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 27.36067977499789
+      },
+      "score": 405.0925035356768,
+      "fim_proxy_per_s": 5.775221858646311e-09,
+      "candidate_id": "C15"
+    },
+    {
+      "point": [
+        -548.2971515043939,
+        -200.86970464363378
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 27.360679774997894,
+      "time_breakdown": {
+        "movement_s": 22.360679774997894,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 27.360679774997894
+      },
+      "score": 405.0925035356768,
+      "fim_proxy_per_s": 5.416829928339947e-09,
+      "candidate_id": "C16"
+    },
+    {
+      "point": [
+        -460.36250617411815,
+        -322.3913000521809
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 33.28427124746189,
+      "time_breakdown": {
+        "movement_s": 28.28427124746189,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 33.28427124746189
+      },
+      "score": 411.01609500814084,
+      "fim_proxy_per_s": 9.147665534598637e-09,
+      "candidate_id": "C17"
+    },
+    {
+      "point": [
+        -577.6086999478191,
+        -160.3625061741181
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 33.2842712474619,
+      "time_breakdown": {
+        "movement_s": 28.284271247461902,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 33.2842712474619
+      },
+      "score": 411.01609500814084,
+      "fim_proxy_per_s": 8.939377457708134e-09,
+      "candidate_id": "C18"
+    },
+    {
+      "point": [
+        -397.4640076524215,
+        -153.44225778287375
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 55.0,
+      "time_breakdown": {
+        "movement_s": 50.0,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 55.0
+      },
+      "score": 432.73182376067894,
+      "fim_proxy_per_s": 4.1295838846129714e-10,
+      "candidate_id": "C19"
+    },
+    {
+      "point": [
+        -349.3811202380335,
+        -200.01045937279042
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 58.965815523526906,
+      "time_breakdown": {
+        "movement_s": 53.965815523526906,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 58.965815523526906
+      },
+      "score": 436.6976392842058,
+      "fim_proxy_per_s": 6.329903901729246e-09,
+      "candidate_id": "C20"
+    },
+    {
+      "point": [
+        -324.1851365438584,
+        -254.710253956663
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 60.90169943749474,
+      "time_breakdown": {
+        "movement_s": 55.90169943749474,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 60.90169943749474
+      },
+      "score": 438.6335231981737,
+      "fim_proxy_per_s": 1.0243556623409446e-08,
+      "candidate_id": "C21"
+    },
+    {
+      "point": [
+        -470.74287876098464,
+        -52.17426160908451
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 60.90169943749474,
+      "time_breakdown": {
+        "movement_s": 55.90169943749474,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 60.90169943749474
+      },
+      "score": 438.6335231981737,
+      "fim_proxy_per_s": 9.785321826332608e-09,
+      "candidate_id": "C22"
+    },
+    {
+      "point": [
+        -544.0217498695478,
+        49.09373456470473
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 75.71067811865476,
+      "time_breakdown": {
+        "movement_s": 70.71067811865476,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 75.71067811865476
+      },
+      "score": 453.4425018793337,
+      "fim_proxy_per_s": 1.3786721775377732e-08,
+      "candidate_id": "C23"
+    },
+    {
+      "point": [
+        -250.90626543529527,
+        -355.97825013045224
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 75.71067811865476,
+      "time_breakdown": {
+        "movement_s": 70.71067811865476,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 75.71067811865476
+      },
+      "score": 453.4425018793337,
+      "fim_proxy_per_s": 1.3696310809730976e-08,
+      "candidate_id": "C24"
+    },
+    {
+      "point": [
+        -297.9138648223798,
+        -73.22853438975835
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 80.54636475213574,
+      "time_breakdown": {
+        "movement_s": 75.54636475213574,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 80.54636475213574
+      },
+      "score": 458.27818851281467,
+      "fim_proxy_per_s": 0.0,
+      "candidate_id": "C25"
+    },
+    {
+      "point": [
+        -495.82772964475964,
+        153.54293122048335
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 98.07052215842208,
+      "time_breakdown": {
+        "movement_s": 93.07052215842208,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 98.07052215842208
+      },
+      "score": 475.802345919101,
+      "fim_proxy_per_s": 1.6206258736675618e-08,
+      "candidate_id": "C26"
+    },
+    {
+      "point": [
+        -745.8277296447596,
+        153.54293122048338
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 100.28209006805282,
+      "time_breakdown": {
+        "movement_s": 95.28209006805282,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 100.28209006805282
+      },
+      "score": 478.01391382873175,
+      "fim_proxy_per_s": 1.0565903013932723e-08,
+      "candidate_id": "C27"
+    },
+    {
+      "point": [
+        -194.92801530484303,
+        -6.884515565747506
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 105.0,
+      "time_breakdown": {
+        "movement_s": 100.0,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 105.0
+      },
+      "score": 482.73182376067894,
+      "fim_proxy_per_s": 1.6910536918851344e-09,
+      "candidate_id": "C28"
+    },
+    {
+      "point": [
+        -172.60442494139656,
+        -23.233764076153562
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 106.83644277509472,
+      "time_breakdown": {
+        "movement_s": 101.83644277509472,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 106.83644277509472
+      },
+      "score": 484.56826653577366,
+      "fim_proxy_per_s": 6.987277675217205e-09,
+      "candidate_id": "C29"
+    },
+    {
+      "point": [
+        -341.4857575219693,
+        195.65147678183098
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 116.80339887498948,
+      "time_breakdown": {
+        "movement_s": 111.80339887498948,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 116.80339887498948
+      },
+      "score": 494.53522263566845,
+      "fim_proxy_per_s": 2.2542509561065444e-08,
+      "candidate_id": "C30"
+    },
+    {
+      "point": [
+        -48.37027308771678,
+        -209.420507913326
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 116.80339887498948,
+      "time_breakdown": {
+        "movement_s": 111.80339887498948,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 116.80339887498948
+      },
+      "score": 494.53522263566845,
+      "fim_proxy_per_s": 2.179954840101268e-08,
+      "candidate_id": "C31"
+    },
+    {
+      "point": [
+        4.172270355240266,
+        -346.4570687795167
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 126.19115339096172,
+      "time_breakdown": {
+        "movement_s": 121.19115339096172,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 126.19115339096172
+      },
+      "score": 503.9229771516407,
+      "fim_proxy_per_s": 1.6777789144931452e-08,
+      "candidate_id": "C32"
+    },
+    {
+      "point": [
+        4.17227035524022,
+        -596.4570687795167
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 139.59731437076277,
+      "time_breakdown": {
+        "movement_s": 134.59731437076277,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 139.59731437076277
+      },
+      "score": 517.3291381314417,
+      "fim_proxy_per_s": 1.0111028153096931e-08,
+      "candidate_id": "C33"
+    },
+    {
+      "point": [
+        -488.0434997390955,
+        398.18746912940946
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 146.4213562373095,
+      "time_breakdown": {
+        "movement_s": 141.4213562373095,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 146.4213562373095
+      },
+      "score": 524.1531799979884,
+      "fim_proxy_per_s": 1.4696334882008563e-08,
+      "candidate_id": "C34"
+    },
+    {
+      "point": [
+        98.18746912940946,
+        -411.9565002609045
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 146.4213562373095,
+      "time_breakdown": {
+        "movement_s": 141.4213562373095,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 146.4213562373095
+      },
+      "score": 524.1531799979884,
+      "fim_proxy_per_s": 1.3993698539366137e-08,
+      "candidate_id": "C35"
+    },
+    {
+      "point": [
+        -526.1578155346702,
+        683.873017110394
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 202.32802963639216,
+      "time_breakdown": {
+        "movement_s": 197.32802963639216,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 202.32802963639216
+      },
+      "score": 580.059853397071,
+      "fim_proxy_per_s": 8.635933518135342e-09,
+      "candidate_id": "C36"
+    },
+    {
+      "point": [
+        180.94896565187724,
+        330.3196265171202
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 205.7171261776552,
+      "time_breakdown": {
+        "movement_s": 200.7171261776552,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 205.7171261776552
+      },
+      "score": 583.4489499383342,
+      "fim_proxy_per_s": 3.62874936750465e-09,
+      "candidate_id": "C37"
+    },
+    {
+      "point": [
+        -432.0652496086433,
+        747.2812036941142
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 217.13203435596424,
+      "time_breakdown": {
+        "movement_s": 212.13203435596424,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 217.13203435596424
+      },
+      "score": 594.8638581166432,
+      "fim_proxy_per_s": 8.273862957814988e-09,
+      "candidate_id": "C38"
+    },
+    {
+      "point": [
+        447.2812036941142,
+        -467.9347503913567
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 217.13203435596424,
+      "time_breakdown": {
+        "movement_s": 212.13203435596424,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 217.13203435596424
+      },
+      "score": 594.8638581166432,
+      "fim_proxy_per_s": 7.984613097092325e-09,
+      "candidate_id": "C39"
+    },
+    {
+      "point": [
+        4.1722703552403875,
+        653.5429312204833
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 230.76698199220868,
+      "time_breakdown": {
+        "movement_s": 225.76698199220868,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 230.76698199220868
+      },
+      "score": 608.4988057528876,
+      "fim_proxy_per_s": 9.174659846358525e-09,
+      "candidate_id": "C40"
+    },
+    {
+      "point": [
+        534.5023562451508,
+        -376.7871546694274
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 232.41960016216944,
+      "time_breakdown": {
+        "movement_s": 227.41960016216944,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 232.41960016216944
+      },
+      "score": 610.1514239228484,
+      "fim_proxy_per_s": 7.517831592413191e-09,
+      "candidate_id": "C41"
+    },
+    {
+      "point": [
+        504.17227035524036,
+        153.5429312204833
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 243.738148864526,
+      "time_breakdown": {
+        "movement_s": 238.738148864526,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 243.738148864526
+      },
+      "score": 621.469972625205,
+      "fim_proxy_per_s": 6.520752963557051e-09,
+      "candidate_id": "C42"
+    },
+    {
+      "point": [
+        357.72566094851413,
+        507.0963218137571
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 255.4909510800391,
+      "time_breakdown": {
+        "movement_s": 250.4909510800391,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 255.4909510800391
+      },
+      "score": 633.2227748407181,
+      "fim_proxy_per_s": 1.4609047567954404e-09,
+      "candidate_id": "C43"
+    },
+    {
+      "point": [
+        4.1722703552404035,
+        903.5429312204833
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 274.33545771450133,
+      "time_breakdown": {
+        "movement_s": 269.33545771450133,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 274.33545771450133
+      },
+      "score": 652.0672814751803,
+      "fim_proxy_per_s": 5.145059947622277e-09,
+      "candidate_id": "C44"
+    },
+    {
+      "point": [
+        754.1722703552404,
+        153.5429312204833
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 290.620988602668,
+      "time_breakdown": {
+        "movement_s": 285.620988602668,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 290.620988602668
+      },
+      "score": 668.3528123633469,
+      "fim_proxy_per_s": 3.6458854633590793e-09,
+      "candidate_id": "C45"
+    },
+    {
+      "point": [
+        534.5023562451511,
+        683.873017110394
+      ],
+      "guaranteed_reception": false,
+      "worst_case_radius_m": 755.4636475213579,
+      "action_time_s": 305.3399214306156,
+      "time_breakdown": {
+        "movement_s": 300.3399214306156,
+        "switching_s": 0.0,
+        "measurement_s": 5.0,
+        "optical_s": 0.0,
+        "laser_s": 0.0,
+        "total_s": 305.3399214306156
+      },
+      "score": 683.0717451912946,
+      "fim_proxy_per_s": 8.149342629950118e-10,
+      "candidate_id": "C46"
+    }
+  ],
+  "candidate_regions": {
+    "guaranteed_reception": {
+      "status": "bounded",
+      "vertices": [
+        [
+          -365.0617874458846,
+          561.0242716479789
+        ],
+        [
+          -361.25648553763017,
+          473.868528900321
+        ],
+        [
+          -349.86954045809256,
+          387.3760939810476
+        ],
+        [
+          -330.987613734953,
+          302.20522654545834
+        ],
+        [
+          -304.7544082317929,
+          219.0041283223098
+        ],
+        [
+          -271.36957448253406,
+          138.40600990727796
+        ],
+        [
+          -243.37848090919658,
+          84.63561943851926
+        ],
+        [
+          -210.80750357851076,
+          33.509426089920986
+        ],
+        [
+          -157.69990240849657,
+          -35.70174724557287
+        ],
+        [
+          -98.76224047606588,
+          -100.02091874558127
+        ],
+        [
+          -34.44306897605939,
+          -158.95858067801026
+        ],
+        [
+          34.76810435943429,
+          -212.0661818480244
+        ],
+        [
+          108.34454071048154,
+          -258.93954134347206
+        ],
+        [
+          185.72627896978116,
+          -299.22192459568294
+        ],
+        [
+          266.32439738481213,
+          -332.60675834494145
+        ],
+        [
+          349.5254956079602,
+          -358.8399638481014
+        ],
+        [
+          396.97174060830844,
+          -369.3585431271279
+        ],
+        [
+          399.99999999999955,
+          -300.0000000000002
+        ],
+        [
+          396.19469809174507,
+          -212.84425725234206
+        ],
+        [
+          384.8077530122075,
+          -126.35182233306989
+        ],
+        [
+          365.9258262890679,
+          -41.18095489747947
+        ],
+        [
+          339.69262078590793,
+          42.02014332566847
+        ],
+        [
+          306.30778703664953,
+          122.61826174069921
+        ],
+        [
+          266.02540378443825,
+          199.99999999999972
+        ],
+        [
+          219.1520442889913,
+          273.5764363510458
+        ],
+        [
+          166.0444431189776,
+          342.787609686539
+        ],
+        [
+          107.1067811865471,
+          407.1067811865473
+        ],
+        [
+          42.78760968653887,
+          466.0444431189778
+        ],
+        [
+          -26.423563648954314,
+          519.1520442889914
+        ],
+        [
+          -100.00000000000034,
+          566.0254037844384
+        ],
+        [
+          -177.38173825930102,
+          606.3077870366498
+        ],
+        [
+          -257.97985667433164,
+          639.692620785908
+        ],
+        [
+          -341.18095489747947,
+          665.925826289068
+        ],
+        [
+          -358.4171385174085,
+          669.74699620194
+        ],
+        [
+          -361.25648553763006,
+          648.1800143956382
+        ]
+      ],
+      "area_m2": 427429.9782527124,
+      "definition": "max_{g in source_region} distance(sensor,g) <= min_receive_radius",
+      "radius_m": 1000.0,
+      "approximation": {
+        "kind": "intersection_of_inscribed_regular_polygons",
+        "relation_to_exact_region": "inner",
+        "circle_sides": 72
+      },
+      "constraint_centers": [
+        [
+          -600.0000000000005,
+          -300.0000000000002
+        ],
+        [
+          634.9382125541154,
+          561.0242716479787
+        ],
+        [
+          608.3445407104812,
+          607.0858624409668
+        ]
+      ]
+    },
+    "possible_reception": {
+      "status": "bounded",
+      "vertices": [
+        [
+          -2100.0000000000005,
+          -365.4914143627665
+        ],
+        [
+          -2088.5840942752366,
+          -495.9758138802104
+        ],
+        [
+          -2065.8391647613885,
+          -624.9687191205843
+        ],
+        [
+          -2031.9383141058183,
+          -751.4884161869769
+        ],
+        [
+          -1987.1395482519085,
+          -874.5720137900288
+        ],
+        [
+          -1931.783812858045,
+          -993.2827714320651
+        ],
+        [
+          -1866.2923984952715,
+          -1106.717228567935
+        ],
+        [
+          -1791.1637343717048,
+          -1214.012080485205
+        ],
+        [
+          -1706.9695949852328,
+          -1314.3507485744105
+        ],
+        [
+          -1614.3507485744135,
+          -1406.9695949852298
+        ],
+        [
+          -1514.012080485204,
+          -1491.163734371705
+        ],
+        [
+          -1406.7172285679328,
+          -1566.2923984952727
+        ],
+        [
+          -1293.2827714320715,
+          -1631.7838128580413
+        ],
+        [
+          -1174.572013790027,
+          -1687.1395482519088
+        ],
+        [
+          -1051.4884161869759,
+          -1731.9383141058183
+        ],
+        [
+          -924.9687191205871,
+          -1765.8391647613876
+        ],
+        [
+          -795.9758138802085,
+          -1788.5840942752366
+        ],
+        [
+          -665.491414362767,
+          -1800.0000000000002
+        ],
+        [
+          -534.508585637233,
+          -1800.0000000000002
+        ],
+        [
+          -404.0241861197943,
+          -1788.5840942752368
+        ],
+        [
+          -275.03128087941815,
+          -1765.8391647613882
+        ],
+        [
+          -148.51158381302076,
+          -1731.9383141058167
+        ],
+        [
+          -25.427986209970697,
+          -1687.1395482519076
+        ],
+        [
+          93.2827714320663,
+          -1631.7838128580438
+        ],
+        [
+          236.7421024322083,
+          -1548.9575294873484
+        ],
+        [
+          1548.9502930393214,
+          -630.1394627237244
+        ],
+        [
+          1649.2889611285257,
+          -545.9453233372535
+        ],
+        [
+          1741.9078075393486,
+          -453.32647692643064
+        ],
+        [
+          1826.101946925816,
+          -352.9878088372303
+        ],
+        [
+          1901.2306110493894,
+          -245.69295691995143
+        ],
+        [
+          1966.7220254121569,
+          -132.25849978409173
+        ],
+        [
+          2022.0777608060234,
+          -13.547742142049316
+        ],
+        [
+          2066.876526659932,
+          109.53585546099981
+        ],
+        [
+          2100.777377315504,
+          236.05555252739862
+        ],
+        [
+          2123.5223068293512,
+          365.0484577677664
+        ],
+        [
+          2134.938212554115,
+          495.53285728521143
+        ],
+        [
+          2134.938212554115,
+          626.5156860107472
+        ],
+        [
+          2123.5223068293517,
+          757.0000855281858
+        ],
+        [
+          2100.7773773155027,
+          885.9929907685646
+        ],
+        [
+          2066.876526659934,
+          1012.5126878349525
+        ],
+        [
+          2022.0777608060223,
+          1135.596285438009
+        ],
+        [
+          1966.7220254121567,
+          1254.3070430800499
+        ],
+        [
+          1874.6369392057568,
+          1413.8030910088942
+        ],
+        [
+          1799.5082750821812,
+          1521.0979429261768
+        ],
+        [
+          1715.3141356957155,
+          1621.4366110153749
+        ],
+        [
+          1622.6952892848924,
+          1714.055457426198
+        ],
+        [
+          1522.3566211956866,
+          1798.24959681267
+        ],
+        [
+          1415.0617692784124,
+          1873.37826093624
+        ],
+        [
+          1301.6273121425475,
+          1938.8696752990106
+        ],
+        [
+          1182.9165545005103,
+          1994.2254106928744
+        ],
+        [
+          1059.8329568974598,
+          2039.0241765467838
+        ],
+        [
+          933.3132598310658,
+          2072.925027202354
+        ],
+        [
+          804.3203545906835,
+          2095.669956716204
+        ],
+        [
+          673.8359550732548,
+          2107.0858624409666
+        ],
+        [
+          542.8531263477103,
+          2107.0858624409666
+        ],
+        [
+          412.36872683027434,
+          2095.6699567162036
+        ],
+        [
+          283.375821589901,
+          2072.9250272023555
+        ],
+        [
+          156.85612452349966,
+          2039.0241765467829
+        ],
+        [
+          33.77252692045825,
+          1994.225410692877
+        ],
+        [
+          -84.93823072159272,
+          1938.8696752990065
+        ],
+        [
+          -198.3726878574486,
+          1873.378260936241
+        ],
+        [
+          -1074.8660860823484,
+          1259.6509763081212
+        ],
+        [
+          -1614.35074857441,
+          806.9695949852329
+        ],
+        [
+          -1706.9695949852317,
+          714.3507485744115
+        ],
+        [
+          -1791.1637343717005,
+          614.0120804852097
+        ],
+        [
+          -1866.2923984952738,
+          506.7172285679307
+        ],
+        [
+          -1931.783812858043,
+          393.2827714320688
+        ],
+        [
+          -1987.139548251909,
+          274.57201379002703
+        ],
+        [
+          -2031.9383141058174,
+          151.4884161869785
+        ],
+        [
+          -2065.8391647613885,
+          24.968719120582477
+        ],
+        [
+          -2088.5840942752366,
+          -104.02418611979172
+        ],
+        [
+          -2100.0000000000005,
+          -234.50858563723543
+        ]
+      ],
+      "area_m2": 11745244.43015011,
+      "definition": "distance(sensor, source_region) <= max_receive_radius",
+      "radius_m": 1500.0,
+      "approximation": {
+        "kind": "finite_support_minkowski_outer_polygon",
+        "relation_to_exact_region": "outer",
+        "circle_sides": 72
+      }
+    }
+  },
+  "region": {
+    "status": "bounded",
+    "vertices": [
+      [
+        -600.0000000000005,
+        -300.0000000000002
+      ],
+      [
+        634.9382125541154,
+        561.0242716479787
+      ],
+      [
+        608.3445407104812,
+        607.0858624409668
+      ]
+    ],
+    "diameter": 1510.9272950427157,
+    "diameter_pair": [
+      [
+        -600.0000000000005,
+        -300.0000000000002
+      ],
+      [
+        608.3445407104812,
+        607.0858624409668
+      ]
+    ],
+    "area": 39890.507765451155,
+    "diameter_circle": {
+      "center": [
+        4.172270355240357,
+        153.5429312204833
+      ],
+      "radius": 755.4636475213579,
+      "covers": true,
+      "excess": 0.0
+    },
+    "minimum_enclosing_circle": {
+      "center": [
+        4.172270355240357,
+        153.5429312204833
+      ],
+      "radius": 755.4636475213579,
+      "support": [
+        [
+          -600.0000000000005,
+          -300.0000000000002
+        ],
+        [
+          608.3445407104812,
+          607.0858624409668
+        ]
+      ]
+    },
+    "planes": [
+      [
+        1.0,
+        0.0,
+        1800.0
+      ],
+      [
+        0.9659258262890683,
+        0.25881904510252074,
+        1800.0
+      ],
+      [
+        0.8660254037844387,
+        0.49999999999999994,
+        1800.0
+      ],
+      [
+        0.7071067811865476,
+        0.7071067811865476,
+        1800.0
+      ],
+      [
+        0.5000000000000001,
+        0.8660254037844386,
+        1800.0
+      ],
+      [
+        0.25881904510252074,
+        0.9659258262890683,
+        1800.0
+      ],
+      [
+        6.123233995736766e-17,
+        1.0,
+        1800.0
+      ],
+      [
+        -0.25881904510252063,
+        0.9659258262890683,
+        1800.0
+      ],
+      [
+        -0.4999999999999998,
+        0.8660254037844387,
+        1800.0
+      ],
+      [
+        -0.7071067811865475,
+        0.7071067811865476,
+        1800.0
+      ],
+      [
+        -0.8660254037844387,
+        0.49999999999999994,
+        1800.0
+      ],
+      [
+        -0.9659258262890682,
+        0.258819045102521,
+        1800.0
+      ],
+      [
+        -1.0,
+        1.2246467991473532e-16,
+        1800.0
+      ],
+      [
+        -0.9659258262890683,
+        -0.2588190451025208,
+        1800.0
+      ],
+      [
+        -0.8660254037844388,
+        -0.4999999999999997,
+        1800.0
+      ],
+      [
+        -0.7071067811865479,
+        -0.7071067811865471,
+        1800.0
+      ],
+      [
+        -0.5000000000000004,
+        -0.8660254037844385,
+        1800.0
+      ],
+      [
+        -0.25881904510252063,
+        -0.9659258262890683,
+        1800.0
+      ],
+      [
+        -1.8369701987210297e-16,
+        -1.0,
+        1800.0
+      ],
+      [
+        0.2588190451025203,
+        -0.9659258262890684,
+        1800.0
+      ],
+      [
+        0.5000000000000001,
+        -0.8660254037844386,
+        1800.0
+      ],
+      [
+        0.7071067811865474,
+        -0.7071067811865477,
+        1800.0
+      ],
+      [
+        0.8660254037844384,
+        -0.5000000000000004,
+        1800.0
+      ],
+      [
+        0.9659258262890681,
+        -0.25881904510252157,
+        1800.0
+      ],
+      [
+        1.0,
+        0.0,
+        900.0
+      ],
+      [
+        0.9659258262890683,
+        0.25881904510252074,
+        842.7987906958028
+      ],
+      [
+        0.8660254037844387,
+        0.49999999999999994,
+        830.3847577293368
+      ],
+      [
+        0.7071067811865476,
+        0.7071067811865476,
+        863.6038969321072
+      ],
+      [
+        0.5000000000000001,
+        0.8660254037844386,
+        940.1923788646684
+      ],
+      [
+        0.25881904510252074,
+        0.9659258262890683,
+        1054.930825051767
+      ],
+      [
+        6.123233995736766e-17,
+        1.0,
+        1200.0
+      ],
+      [
+        -0.25881904510252063,
+        0.9659258262890683,
+        1365.5136791747918
+      ],
+      [
+        -0.4999999999999998,
+        0.8660254037844387,
+        1540.1923788646684
+      ],
+      [
+        -0.7071067811865475,
+        0.7071067811865476,
+        1712.1320343559642
+      ],
+      [
+        -0.8660254037844387,
+        0.49999999999999994,
+        1869.6152422706632
+      ],
+      [
+        -0.9659258262890682,
+        0.258819045102521,
+        2001.909782242685
+      ],
+      [
+        -1.0,
+        1.2246467991473532e-16,
+        2100.0
+      ],
+      [
+        -0.9659258262890683,
+        -0.2588190451025208,
+        2157.2012093041976
+      ],
+      [
+        -0.8660254037844388,
+        -0.4999999999999997,
+        2169.615242270663
+      ],
+      [
+        -0.7071067811865479,
+        -0.7071067811865471,
+        2136.396103067893
+      ],
+      [
+        -0.5000000000000004,
+        -0.8660254037844385,
+        2059.807621135332
+      ],
+      [
+        -0.25881904510252063,
+        -0.9659258262890683,
+        1945.069174948233
+      ],
+      [
+        -1.8369701987210297e-16,
+        -1.0,
+        1800.0
+      ],
+      [
+        0.2588190451025203,
+        -0.9659258262890684,
+        1634.4863208252084
+      ],
+      [
+        0.5000000000000001,
+        -0.8660254037844386,
+        1459.8076211353316
+      ],
+      [
+        0.7071067811865474,
+        -0.7071067811865477,
+        1287.867965644036
+      ],
+      [
+        0.8660254037844384,
+        -0.5000000000000004,
+        1130.3847577293373
+      ],
+      [
+        0.9659258262890681,
+        -0.25881904510252157,
+        998.0902177573156
+      ],
+      [
+        0.571931138581833,
+        -0.8203016352052994,
+        -97.06819258750994
+      ],
+      [
+        -0.6003504373884004,
+        0.799737051991188,
+        120.28914683568385
+      ]
+    ],
+    "observation_count": 1,
+    "approximation": {
+      "kind": "circumscribed_regular_polygon",
+      "circle_sides": 24,
+      "conservative": true
+    }
+  },
+  "config": {
+    "error_deg": 1.005,
+    "arena_radius": 1800.0,
+    "min_receive_radius": 1000.0,
+    "max_receive_radius": 1500.0,
+    "circle_sides": 24,
+    "candidate_region_sides": 72,
+    "scenario_limit": 8,
+    "uncertainty_seconds_per_metre": 0.5,
+    "continuous_fim_enabled": true,
+    "fim_samples_per_edge": 4,
+    "fim_initial_step_m": 200.0,
+    "fim_min_step_m": 2.0,
+    "fim_max_iterations": 120,
+    "fim_seed_limit": 10,
+    "fim_extra_time_budgets_s": [
+      15.0,
+      30.0,
+      60.0
+    ],
+    "fim_execution_extra_time_s": 30.0,
+    "fim_cpu_time_limit_s": 8.0,
+    "near_optimal_region_mode": "off",
+    "near_optimal_region_cpu_limit_s": 5.0,
+    "near_optimal_time_slack_s": 10.0,
+    "near_optimal_tolerances": [
+      0.05,
+      0.1
+    ]
+  },
+  "near_optimal_region_summary": {
+    "status": "disabled",
+    "evaluated_point_count": 0,
+    "cpu_wall_time_s": 0.0
+  },
+  "planning_cpu_wall_time_s": 8.247758499999918,
+  "limitations": [
+    "源物理圆域用外切正多边形保守近似。",
+    "保证接收域是圆交集的内近似；可能接收域是圆盘Minkowski和的外近似。",
+    "最坏情形在有限边界场景和误差端点上计算，不声称连续全局最优。",
+    "连续FIM在测点坐标上优化，但源位置鲁棒性仍由有限边界场景近似。",
+    "连续FIM优化的是信息量替代目标；最终另用离散基线的集合评分同口径比较。",
+    "5%/10%近优域是已验证局部采样点凸包的绘图近似，不是连续置信区域或严格子水平集证书。"
+  ]
+}
