@@ -85,3 +85,31 @@
     \bottomrule
   \end{tabularx}
 \end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{问题四符号说明}
+  \label{tab:q4-symbols}
+  \begin{tabularx}{0.94\textwidth}{@{}cXc@{}}
+    \toprule
+    符号 & 含义 & 单位 \\
+    \midrule
+    $\kappa_j$ & 频道 $j$ 的干扰源类型，取全向或定向 & -- \\
+    $\psi_j$ & 定向干扰源最大场强方向的方位角 & $^\circ$ \\
+    $u(\psi)$ & 方位角 $\psi$ 对应的单位方向向量 & -- \\
+    $V(\xi,s)$ & 可能状态 $\xi$ 在检测点 $s$ 是否能够接收的指示量 & -- \\
+    $d_4$ & 问题四全域三角网边长，本文取 $985$ & $\mathrm{m}$ \\
+    $Q_{ij}$ & 平移三角网中由整数下标 $(i,j)$ 确定的顶点 & $\mathrm{m}$ \\
+    $\mathcal P_4$ & 问题四全域扫描驻留点集合 & -- \\
+    $\Xi_j$ & 频道 $j$ 的源位置、类型、接收半径和发射方向的有限可能状态集合 & -- \\
+    $w_\xi$ & 可能状态 $\xi$ 的归一化相对权重 & -- \\
+    $\mathcal G_j$ & 频道 $j$ 当前使用的多方向探测组 & -- \\
+    $\rho_j$ & 四侧探测点相对定位区域中心的偏移距离 & $\mathrm{m}$ \\
+    $C_{\mathrm{base}}$ & 从当前检测点开始完成预计清除点列的基础时间 & $\mathrm{s}$ \\
+    $C_{\mathrm{clr}}$ & 立即执行当前清除覆盖的预计剩余时间 & $\mathrm{s}$ \\
+    $C(\pi,\xi)$ & 探测顺序 $\pi$ 在可能状态 $\xi$ 下的预计完成时间 & $\mathrm{s}$ \\
+    $\alpha_R$ & 尾部风险评价的分位水平，本文取 $0.9$ & -- \\
+    $\Delta_s$ & 继续检测相对立即清除所需的最小节省余量，本文取 $10$ & $\mathrm{s}$ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
