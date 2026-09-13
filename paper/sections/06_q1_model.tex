@@ -8,14 +8,17 @@
   \label{eq:q1-intersection}
 \end{equation}
 
-由于角区宽度 $2\delta<180^\circ$，每个 $C_i$ 是两个闭半平面的交。因此，$\Omega$ 为凸集；当其非空、有界且具有非零面积时，有限条边界直线围成凸多边形。保留满足全部观测约束的边界交点并取凸包，可得逆时针排列的顶点 $V_1,\ldots,V_m$，即
+由于角区宽度 $2\delta<180^\circ$，每个 $C_i$ 是两个闭半平面的交，故非空、有界且具有非零面积的
+$\Omega$ 为凸多边形。保留满足全部观测约束的边界交点并取凸包，可得逆时针排列的顶点
+$V_1,\ldots,V_m$，即
 
 \begin{equation}
   \Omega=\operatorname{conv}\{V_1,V_2,\ldots,V_m\},
   \label{eq:q1-convex-hull}
 \end{equation}
 
-其中 $\operatorname{conv}$ 表示凸包。求交时，边界直线的交点只是候选顶点，还须逐一检查它是否处于每个测点的前向误差角区内；不满足任一观测约束的点均应剔除。保留下来的顶点既给出定位区域的边界，也作为后续直径和圆覆盖计算的共同输入。
+其中 $\operatorname{conv}$ 表示凸包。边界交点仍须逐一检查是否处于全部前向误差角区内，
+保留的顶点用于后续直径和圆覆盖计算。
 
 图~\ref{fig:q1-region-intersection} 给出了两个角度误差区域交会形成有界凸定位区域的示意。
 
@@ -52,9 +55,14 @@
   \label{eq:q1-diameter-proof}
 \end{equation}
 
-上述不等式利用了 $\sum_{i,j}\lambda_i\mu_j=1$：任意两点的距离不超过各顶点对距离的加权平均，进而不超过其中的最大值。又因顶点属于 $\Omega$，最远顶点对取得该上界，故结论成立。\hfill$\square$
+由于 $\sum_{i,j}\lambda_i\mu_j=1$ 且顶点属于 $\Omega$，任意两点距离不超过最大顶点对距离，
+而最远顶点对取得该上界。\hfill$\square$
 
-式~\eqref{eq:q1-vertex-diameter} 已将连续区域上的最大距离问题化为凸多边形顶点集上的最远点对问题，故采用旋转卡壳法求解。Toussaint 在文献~\cite{toussaint1983} 中证明了旋转卡壳定理：凸多边形的直径端点必属于对踵点对；旋转一对平行支撑线能够遍历全部对踵点对，且对应顶点只沿边界顺序单调移动。本文利用该定理将式~\eqref{eq:q1-vertex-diameter} 中的全部顶点对搜索缩减为对踵点对搜索。具体地，对边向量 $E_i=V_{i+1}-V_i$，以 $A(i,j)=|E_i\mathbin{\boldsymbol{\times}}(V_j-V_i)|$ 衡量顶点 $V_j$ 到该边所在直线的距离。依次增加 $j$，直至 $A(i,j)$ 不再增大；若相邻两项相等，则同时检查两个候选点。两个顶点指标均至多绕多边形一周，因此只需 $O(m)$ 时间即可求得直径。
+本文采用旋转卡壳法求解最远顶点对。由旋转卡壳定理~\cite{toussaint1983}，直径端点必属于对踵点对。
+对边向量 $E_i=V_{i+1}-V_i$，以
+$A(i,j)=|E_i\mathbin{\boldsymbol{\times}}(V_j-V_i)|$ 衡量顶点到该边所在直线的距离；
+依次增加 $j$ 至该量不再增大，相等时同时检查两个候选点。两个指标均至多绕多边形一周，
+故时间复杂度为 $O(m)$。
 
 \subsubsection{直径圆的覆盖判据}
 
@@ -73,7 +81,8 @@
 \noindent\textbf{证明：}
 若圆覆盖区域，必然包含全部顶点；反之，闭圆盘为凸集，包含全部顶点就包含它们的凸包 $\Omega$。\hfill$\square$
 
-直径圆不一定覆盖第三个顶点，如图~\ref{fig:q1-diameter-circle} 所示。最远点对仅限制各顶点间的距离，而圆覆盖要求全部顶点到同一圆心的距离不超过半径，因此仍须逐顶点检查式~\eqref{eq:q1-circle-criterion}。这也为问题二改用最小包围圆衡量定位不确定性提供了依据。
+直径圆不一定覆盖第三个顶点，如图~\ref{fig:q1-diameter-circle} 所示，因此仍须逐顶点检查
+式~\eqref{eq:q1-circle-criterion}；问题二据此改用最小包围圆衡量定位不确定性。
 
 \begin{figure}[H]
   \centering
@@ -94,7 +103,8 @@
   \label{eq:q1-physical-region}
 \end{equation}
 
-其中 $1500\ \mathrm m$ 是有效接收半径的统一上界；接收半径下界 $1000\ \mathrm m$ 不构成源与测点之间的距离下界。$K$ 仍为凸集，但目标圆盘或接收圆盘可能截断 $\Omega$，使边界出现圆弧，如图~\ref{fig:q1-curved-regions} 所示。
+其中 $1500\ \mathrm m$ 是有效接收半径的统一上界，$1000\ \mathrm m$ 不构成源与测点间的距离下界。
+$K$ 仍为凸集，但圆盘可能截断 $\Omega$ 并形成图~\ref{fig:q1-curved-regions} 所示的圆弧边界。
 
 \begin{figure}[H]
   \centering
@@ -112,6 +122,7 @@
   \label{fig:q1-curved-regions}
 \end{figure}
 
-圆弧上的直径端点可能不在直线边界交点中，仅对这些交点取凸包会遗漏可行位置。由 $K\subseteq\Omega$，问题一的多边形直径仍是物理可行域直径的上界。
-
-问题二将以固定边数的外切正多边形替代圆盘，得到 $K\subseteq\widehat K$，从而有 $\operatorname{diam}(K)\leq\operatorname{diam}(\widehat K)$。这种外近似保留全部真实可能位置，并可继续使用多边形的顶点、直径和覆盖算法。覆盖 $\widehat K$ 的圆必覆盖 $K$，而不能覆盖 $\widehat K$ 并不意味着不能覆盖 $K$。因此它提供的是保守覆盖判定；具体构造与精度在下一问说明，后续多次观测的区域更新也沿用这一处理方式。
+圆弧上的直径端点可能不在直线边界交点中。由 $K\subseteq\Omega$，问题一的多边形直径仍是物理
+可行域直径的上界。问题二用固定边数的外切正多边形替代圆盘，得到
+$K\subseteq\widehat K$ 及
+$\operatorname{diam}(K)\leq\operatorname{diam}(\widehat K)$；该外近似保留真实位置并提供保守覆盖判定。
